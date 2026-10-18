@@ -5,6 +5,15 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.7.0 – Excel raporları
+Raporlar sekmesindeki tablo simgesinden (PDF'in yanında) üç Excel çıktısı alınır:
+- **Kullanım raporu** (ekrandaki liste, seçili tarih aralığıyla)
+- **Tüm cihazlar** (seri no, ürün, kategori, durum, şu anki depo/araç)
+- **Hareket geçmişi** (giriş, transfer, kullanım, iade, çıkış; kim, ne zaman, nereden nereye)
+
+Web'de dosya doğrudan iner; telefonda paylaş menüsü açılır (WhatsApp, e-posta, Drive...).
+Tarih aralığı seçildiğinde son gün de dahil edilir.
+
 ## 1.6.1
 - Giriş ekranı son kullanılan e-postayı hatırlar; şifreyi telefonun/tarayıcının şifre
   kaydedicisi doldurabilir (girişten sonra "şifreyi kaydet" teklifi gelir).

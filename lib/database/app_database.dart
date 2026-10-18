@@ -536,6 +536,58 @@ class AppDatabase {
   }
 
   // ---------------------------------------------------------------------
+  // Excel raporları için ham listeler
+  // ---------------------------------------------------------------------
+
+  /// Sistemdeki tüm cihazlar: seri no, ürün, kategori, şu anki konum ve durum.
+  Future<List<Map<String, Object?>>> cihazListesiRaporu() async {
+    final db = await _database;
+    return db.rawQuery('''
+      SELECT c.seri_no AS seri_no, u.ad AS urun_adi, u.kategori AS kategori,
+             c.durum AS durum, d.ad AS depo_adi, d.tur AS depo_tur,
+             c.kullanim_yeri AS kullanim_yeri, c.updated_at AS guncelleme
+      FROM cihazlar c
+      JOIN urunler u ON u.id = c.urun_id
+      LEFT JOIN depolar d ON d.id = c.depo_id
+      WHERE c.deleted = 0
+      ORDER BY u.ad COLLATE NOCASE, c.seri_no
+    ''');
+  }
+
+  /// Seri numaralı tüm hareketler (giriş, transfer, kullanım, iade, çıkış).
+  Future<List<Map<String, Object?>>> hareketRaporu({
+    DateTime? baslangic,
+    DateTime? bitis,
+  }) async {
+    final db = await _database;
+    final kosullar = <String>['sh.deleted = 0', 'sh.cihaz_id IS NOT NULL'];
+    final args = <Object?>[];
+    if (baslangic != null) {
+      kosullar.add('sh.tarih >= ?');
+      args.add(baslangic.millisecondsSinceEpoch);
+    }
+    if (bitis != null) {
+      kosullar.add('sh.tarih <= ?');
+      args.add(bitis.millisecondsSinceEpoch);
+    }
+    return db.rawQuery('''
+      SELECT sh.tarih AS tarih, sh.tip AS tip, c.seri_no AS seri_no,
+             u.ad AS urun_adi, d.ad AS kaynak, hd.ad AS hedef,
+             kk.kullanim_yeri AS kullanim_yeri, k.ad AS kullanici,
+             sh.not_ AS not_
+      FROM stok_hareketleri sh
+      JOIN urunler u ON u.id = sh.urun_id
+      LEFT JOIN cihazlar c ON c.id = sh.cihaz_id
+      LEFT JOIN depolar d ON d.id = sh.depo_id
+      LEFT JOIN depolar hd ON hd.id = sh.hedef_depo_id
+      LEFT JOIN kullanim_kayitlari kk ON kk.stok_hareket_id = sh.id
+      LEFT JOIN kullanicilar k ON k.id = sh.kullanici_id
+      WHERE ${kosullar.join(' AND ')}
+      ORDER BY sh.tarih DESC
+    ''', args);
+  }
+
+  // ---------------------------------------------------------------------
   // Stok özetleri ve hareket geçmişi
   // ---------------------------------------------------------------------
   Future<Map<String, DepoOzet>> depoOzetleri() async {

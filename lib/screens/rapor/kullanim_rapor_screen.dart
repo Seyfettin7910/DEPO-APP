@@ -5,6 +5,7 @@ import 'package:printing/printing.dart';
 
 import '../../database/app_database.dart';
 import '../../providers/app_providers.dart';
+import '../../services/excel_rapor_service.dart';
 import '../../services/pdf_report_service.dart';
 
 class KullanimRaporScreen extends ConsumerStatefulWidget {
@@ -28,7 +29,7 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
   void _yenile() {
     _future = ref.read(appDatabaseProvider).kullanimRaporu(
           baslangic: _tarihAraligi?.start,
-          bitis: _tarihAraligi?.end,
+          bitis: _bitisGunSonu(),
         );
   }
 
@@ -65,6 +66,52 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
     );
   }
 
+  Future<void> _excel(String tur) async {
+    final db = ref.read(appDatabaseProvider);
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(
+        const SnackBar(content: Text('Excel dosyası hazırlanıyor...')));
+    try {
+      switch (tur) {
+        case 'kullanim':
+          await ExcelRaporService.kullanimRaporu(
+            await _future,
+            baslangic: _tarihAraligi?.start,
+            bitis: _tarihAraligi?.end,
+          );
+          break;
+        case 'cihazlar':
+          await ExcelRaporService.cihazListesi(await db.cihazListesiRaporu());
+          break;
+        case 'hareketler':
+          await ExcelRaporService.hareketRaporu(
+            await db.hareketRaporu(
+              baslangic: _tarihAraligi?.start,
+              bitis: _bitisGunSonu(),
+            ),
+            baslangic: _tarihAraligi?.start,
+            bitis: _tarihAraligi?.end,
+          );
+          break;
+      }
+      messenger.hideCurrentSnackBar();
+    } catch (e) {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(
+          content: Text('Excel oluşturulamadı: $e'),
+          backgroundColor: Colors.red.shade700,
+        ));
+    }
+  }
+
+  /// Tarih aralığının son gününü de kapsasın (23:59'a kadar).
+  DateTime? _bitisGunSonu() {
+    final b = _tarihAraligi?.end;
+    if (b == null) return null;
+    return DateTime(b.year, b.month, b.day, 23, 59, 59, 999);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -84,6 +131,37 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
             icon: const Icon(Icons.picture_as_pdf_outlined),
             tooltip: 'PDF olarak dışa aktar',
             onPressed: _pdfOlusturVePaylas,
+          ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.grid_on),
+            tooltip: 'Excel olarak dışa aktar',
+            onSelected: _excel,
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: 'kullanim',
+                child: ListTile(
+                  leading: Icon(Icons.local_shipping_outlined),
+                  title: Text('Kullanım raporu'),
+                  subtitle: Text('Ekrandaki liste'),
+                ),
+              ),
+              PopupMenuItem(
+                value: 'cihazlar',
+                child: ListTile(
+                  leading: Icon(Icons.inventory_2_outlined),
+                  title: Text('Tüm cihazlar'),
+                  subtitle: Text('Seri no, ürün, şu anki konum'),
+                ),
+              ),
+              PopupMenuItem(
+                value: 'hareketler',
+                child: ListTile(
+                  leading: Icon(Icons.history),
+                  title: Text('Hareket geçmişi'),
+                  subtitle: Text('Giriş, transfer, kullanım, iade, çıkış'),
+                ),
+              ),
+            ],
           ),
         ],
       ),
