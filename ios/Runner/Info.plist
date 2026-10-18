@@ -40,5 +40,7 @@
 	<false/>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Cihazın kullanıldığı / monte edildiği yerin konumunu kaydetmek için.</string>
 </dict>
 </plist>

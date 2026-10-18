@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../services/excel_rapor_service.dart';
 import '../../services/pdf_report_service.dart';
@@ -109,6 +110,27 @@ class _RaporOnizlemeScreenState extends State<RaporOnizlemeScreen> {
     );
   }
 
+  DataCell _hucre(ThemeData tema, Object? v) {
+    if (v is RaporLink) {
+      return DataCell(
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.place, size: 14, color: tema.colorScheme.primary),
+            const SizedBox(width: 2),
+            Text(v.metin,
+                style: tema.textTheme.bodySmall?.copyWith(
+                    color: tema.colorScheme.primary,
+                    decoration: TextDecoration.underline)),
+          ],
+        ),
+        onTap: () => launchUrl(Uri.parse(v.url),
+            mode: LaunchMode.externalApplication),
+      );
+    }
+    return DataCell(Text(v?.toString() ?? '', style: tema.textTheme.bodySmall));
+  }
+
   Widget _bolum(BuildContext context, Rapor r, RaporBolumu b) {
     final tema = Theme.of(context);
     final sutunlar = b.sutunlariAl(r);
@@ -156,10 +178,7 @@ class _RaporOnizlemeScreenState extends State<RaporOnizlemeScreen> {
                   for (final satir in gosterilen)
                     DataRow(cells: [
                       for (var i = 0; i < sutunlar.length; i++)
-                        DataCell(Text(
-                          i < satir.length ? (satir[i]?.toString() ?? '') : '',
-                          style: tema.textTheme.bodySmall,
-                        )),
+                        _hucre(tema, i < satir.length ? satir[i] : null),
                     ]),
                 ],
               ),

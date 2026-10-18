@@ -1,7 +1,7 @@
 name: depo_app
 description: Çok kullanıcılı, çoklu depo stok ve kullanım takip uygulaması (iOS / Android / Windows / Web)
 publish_to: 'none'
-version: 1.12.0+20
+version: 1.13.0+21
 
 environment:
   sdk: '>=3.3.0 <4.0.0'
@@ -50,6 +50,8 @@ dependencies:
   # Güncelleme kontrolü ve indirme linkini açma
   http: '>=0.13.5 <2.0.0'
   url_launcher: '>=6.1.0 <7.0.0'
+  # Sahada kullanım anındaki GPS konumu
+  geolocator: '>=13.0.0 <15.0.0'
   fl_chart: ^0.68.0
 
 dev_dependencies:

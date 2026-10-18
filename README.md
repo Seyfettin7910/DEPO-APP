@@ -5,6 +5,17 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.13.0 – Kurulum konumu (GPS)
+> **Önce Supabase'de `supabase_guncelleme_1_13_0.sql` çalıştırılmalı.**
+
+- "Sahada kullanıldı" penceresi açılınca telefonun o anki GPS konumu bir kez okunur ve
+  kayda eklenir (isteğe bağlı kutucuk). Konum yalnızca o an alınır; kişi takibi yapılmaz.
+  İzin yoksa veya GPS kapalıysa kayıt konumsuz yapılır.
+- Cihaz kartında "Kurulum konumu" düğmesi ve geçmişte 📍 ile Google Haritalar'da açılır.
+- Kullanım raporuna **Konum (GPS)** sütunu; Ürünler / Stok durumu raporlarında sahadaki
+  cihazların kullanım yerinin yanında koordinat. Excel'de tıklanınca harita açılır,
+  uygulama içi önizlemede de dokunulabilir.
+
 ## 1.12.0 – Geri alma sebebi
 > **Önce Supabase'de `supabase_guncelleme_1_12_0.sql` çalıştırılmalı**
 > (`stok_hareketleri` tablosuna `sebep` sütunu).

@@ -38,7 +38,11 @@ alter table stok_hareketleri add column if not exists sebep text;
 
 create table if not exists kullanim_kayitlari (
   id text primary key, stok_hareket_id text not null, arac_id text,
-  kullanim_yeri text, not_ text);
+  kullanim_yeri text, not_ text, enlem double precision, boylam double precision,
+  konum_hassasiyet double precision);
+alter table kullanim_kayitlari add column if not exists enlem double precision;
+alter table kullanim_kayitlari add column if not exists boylam double precision;
+alter table kullanim_kayitlari add column if not exists konum_hassasiyet double precision;
 
 -- 2) Senkron tetikleyicisi:
 --    * Eski bir telefondan gelen eski veri, daha yeni veriyi ezemez.

@@ -116,6 +116,11 @@ class ExcelRaporService {
   }
 
   static CellValue _hucre(Object? v) {
+    if (v is RaporLink) {
+      final url = v.url.replaceAll('"', '');
+      final metin = v.metin.replaceAll('"', "'");
+      return FormulaCellValue('HYPERLINK("$url","$metin")');
+    }
     if (v is int) return IntCellValue(v);
     if (v is double) return DoubleCellValue(v);
     return TextCellValue(v?.toString() ?? '');

@@ -62,3 +62,14 @@ class RaporBolumu {
   List<String> sutunlariAl(Rapor r) => sutunlar ?? r.sutunlar;
   List<double> genislikleriAl(Rapor r) => genislikler ?? r.genislikler;
 }
+
+/// Tıklanabilir bağlantılı hücre (örn. harita konumu). Önizlemede ve PDF'te
+/// metin olarak, Excel'de tıklanabilir bağlantı olarak görünür.
+class RaporLink {
+  const RaporLink(this.metin, this.url);
+  final String metin;
+  final String url;
+
+  @override
+  String toString() => metin;
+}

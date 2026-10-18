@@ -2,6 +2,7 @@ import 'package:intl/intl.dart';
 
 import '../../database/app_database.dart';
 import '../../database/models.dart';
+import '../konum_servisi.dart';
 import 'rapor_modeli.dart';
 
 /// Veritabanından [Rapor] nesneleri üretir. Önizleme, PDF ve Excel aynı
@@ -71,11 +72,31 @@ class RaporOlusturucu {
     20.0, 13.0, 18.0, 20.0, 18.0, 15.0, 11.0, 11.0
   ];
 
+  /// GPS konumu olan hücre için tıklanabilir harita bağlantısı.
+  static Object? konumHucresi(double? enlem, double? boylam, {String? on}) {
+    if (enlem == null || boylam == null) return on ?? '';
+    final k = KonumServisi.koordinat(enlem, boylam);
+    return RaporLink(
+      on == null || on.isEmpty ? k : '$on ($k)',
+      KonumServisi.haritaLinki(enlem, boylam),
+    );
+  }
+
+  static Object? _kullanimYeriHucresi(Map<String, Object?> r) {
+    final yer = r['kullanim_yeri'] as String?;
+    final konum = r['son_konum'] as String?;
+    if (r['durum'] != 'kullanimda' || konum == null) return yer ?? '';
+    final p = konum.split(',');
+    final e = p.isNotEmpty ? double.tryParse(p[0]) : null;
+    final b = p.length > 1 ? double.tryParse(p[1]) : null;
+    return konumHucresi(e, b, on: yer);
+  }
+
   static List<Object?> _cihazSatiri(Map<String, Object?> r) => [
         r['seri_no'] ?? '',
         durumEtiketi(r['durum'] as String?, r['depo_tur'] as String?),
         r['depo_adi'] ?? '',
-        r['kullanim_yeri'] ?? '',
+        _kullanimYeriHucresi(r),
         r['firma'] ?? '',
         r['ihale'] ?? '',
         _gunMs(r['alim_tarihi']),
@@ -103,12 +124,15 @@ class RaporOlusturucu {
       dosyaOn: 'kullanim_raporu',
       ozet: [
         MapEntry('Toplam kullanım', '${satirlar.length}'),
+        MapEntry('Konumu kayıtlı',
+            '${satirlar.where((s) => s.enlem != null).length}'),
         MapEntry('Ürün çeşidi', '${urunler.length}'),
       ],
       sutunlar: const [
-        'Tarih', 'Seri No', 'Ürün', 'Çıktığı yer', 'Kullanım yeri / Araç'
+        'Tarih', 'Seri No', 'Ürün', 'Çıktığı yer', 'Kullanım yeri / Araç',
+        'Konum (GPS)'
       ],
-      genislikler: const [17, 22, 26, 20, 28],
+      genislikler: const [15, 19, 22, 17, 24, 22],
       bolumler: [
         if (urunler.isNotEmpty)
           RaporBolumu(
@@ -129,6 +153,7 @@ class RaporOlusturucu {
                 s.urunAdi,
                 s.depoAdi,
                 s.aracPlaka ?? s.kullanimYeri ?? 'Belirtilmedi',
+                konumHucresi(s.enlem, s.boylam),
               ],
           ],
         ),

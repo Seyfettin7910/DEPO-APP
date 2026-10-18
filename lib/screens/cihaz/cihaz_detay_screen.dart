@@ -9,6 +9,7 @@ import '../../services/ses_servisi.dart';
 import '../../widgets/depo_secici.dart';
 import '../../widgets/alim_bilgisi_alanlari.dart';
 import '../../widgets/iade_sebebi.dart';
+import '../../services/konum_servisi.dart';
 
 /// Cihazın şu anki konumunu tek satırda anlatır.
 String cihazKonumMetni(CihazBilgi b) {
@@ -100,6 +101,27 @@ class CihazDetayScreen extends ConsumerWidget {
                           ),
                         ],
                       ),
+                      if (durum == CihazDurumu.kullanimda)
+                        Builder(builder: (context) {
+                          final gecmis = gecmisAsync.value ?? const [];
+                          final k = gecmis
+                              .where((h) =>
+                                  h.tip == HareketTipi.kullanim &&
+                                  h.enlem != null &&
+                                  h.boylam != null)
+                              .firstOrNull;
+                          if (k == null) return const SizedBox.shrink();
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: OutlinedButton.icon(
+                              onPressed: () =>
+                                  KonumServisi.haritadaAc(k.enlem!, k.boylam!),
+                              icon: const Icon(Icons.place),
+                              label: Text('Kurulum konumu: '
+                                  '${KonumServisi.koordinat(k.enlem!, k.boylam!)}'),
+                            ),
+                          );
+                        }),
                     ],
                   ),
                 ),
@@ -163,6 +185,14 @@ class CihazDetayScreen extends ConsumerWidget {
                         ListTile(
                           contentPadding: EdgeInsets.zero,
                           leading: Icon(_ikon(h.tip)),
+                          trailing: (h.enlem != null && h.boylam != null)
+                              ? IconButton(
+                                  icon: const Icon(Icons.place),
+                                  tooltip: 'Haritada aç',
+                                  onPressed: () => KonumServisi.haritadaAc(
+                                      h.enlem!, h.boylam!),
+                                )
+                              : null,
                           title: Text(_baslik(h)),
                           subtitle: Text([
                             _tarihFormat.format(h.tarih),
@@ -397,11 +427,15 @@ class CihazDetayScreen extends ConsumerWidget {
     final yerCtrl = TextEditingController();
     final notCtrl = TextEditingController();
     String? hata;
+    // Konum, pencere açılır açılmaz arka planda okunmaya başlar.
+    final konumIstegi = KonumServisi.konumAl();
+    var konumKaydet = true;
 
     final onay = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setState) => AlertDialog(
+          scrollable: true,
           title: const Text('Sahada kullanıldı'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -419,6 +453,49 @@ class CihazDetayScreen extends ConsumerWidget {
               TextField(
                 controller: notCtrl,
                 decoration: const InputDecoration(labelText: 'Not (opsiyonel)'),
+              ),
+              const SizedBox(height: 12),
+              FutureBuilder<KonumSonucu>(
+                future: konumIstegi,
+                builder: (ctx, snap) {
+                  if (!snap.hasData) {
+                    return const Row(
+                      children: [
+                        SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2)),
+                        SizedBox(width: 10),
+                        Expanded(child: Text('Konum alınıyor...')),
+                      ],
+                    );
+                  }
+                  final k = snap.data!;
+                  if (!k.basarili) {
+                    return Row(
+                      children: [
+                        Icon(Icons.location_off,
+                            color: Colors.orange.shade800, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                            child: Text(
+                                '${k.hata}. Konumsuz kaydedilecek.',
+                                style: const TextStyle(fontSize: 13))),
+                      ],
+                    );
+                  }
+                  return CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    value: konumKaydet,
+                    onChanged: (v) => setState(() => konumKaydet = v ?? true),
+                    secondary: Icon(Icons.place, color: Colors.green.shade700),
+                    title: const Text('Konumu kaydet'),
+                    subtitle: Text(
+                        '${KonumServisi.koordinat(k.enlem!, k.boylam!)}'
+                        '${k.hassasiyet == null ? '' : ' (±${k.hassasiyet!.round()} m)'}'),
+                  );
+                },
               ),
               if (hata != null)
                 Padding(
@@ -453,13 +530,21 @@ class CihazDetayScreen extends ConsumerWidget {
     await _calistir(
       context,
       ref,
-      () => db.cihazlariTopluHareketKaydet(
-        cihazIdleri: [bilgi.cihaz.id],
-        tip: HareketTipi.kullanim,
-        kullaniciId: ref.read(aktifKullaniciIdProvider) ?? _kullanici,
-        kullanimYeri: yerCtrl.text.trim(),
-        not_: notCtrl.text.trim().isEmpty ? null : notCtrl.text.trim(),
-      ),
+      () async {
+        // Konum henüz gelmediyse (en fazla ~20 sn) beklenir.
+        final k = konumKaydet ? await konumIstegi : null;
+        final konumVar = k != null && k.basarili;
+        await db.cihazlariTopluHareketKaydet(
+          cihazIdleri: [bilgi.cihaz.id],
+          tip: HareketTipi.kullanim,
+          kullaniciId: ref.read(aktifKullaniciIdProvider) ?? _kullanici,
+          kullanimYeri: yerCtrl.text.trim(),
+          not_: notCtrl.text.trim().isEmpty ? null : notCtrl.text.trim(),
+          enlem: konumVar ? k?.enlem : null,
+          boylam: konumVar ? k?.boylam : null,
+          konumHassasiyet: konumVar ? k?.hassasiyet : null,
+        );
+      },
       'Kullanım kaydedildi, stoktan düşüldü',
     );
   }

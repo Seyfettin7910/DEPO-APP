@@ -303,6 +303,10 @@ class KullanimKaydi {
   final String? aracId;
   final String? kullanimYeri;
   final String? not_;
+  // Kullanım / montaj anındaki GPS konumu (opsiyonel)
+  final double? enlem;
+  final double? boylam;
+  final double? konumHassasiyet; // metre
   final DateTime updatedAt;
   final bool dirty;
   final bool deleted;
@@ -313,6 +317,9 @@ class KullanimKaydi {
     this.aracId,
     this.kullanimYeri,
     this.not_,
+    this.enlem,
+    this.boylam,
+    this.konumHassasiyet,
     required this.updatedAt,
     this.dirty = true,
     this.deleted = false,
@@ -324,6 +331,9 @@ class KullanimKaydi {
         aracId: m['arac_id'] as String?,
         kullanimYeri: m['kullanim_yeri'] as String?,
         not_: m['not_'] as String?,
+        enlem: (m['enlem'] as num?)?.toDouble(),
+        boylam: (m['boylam'] as num?)?.toDouble(),
+        konumHassasiyet: (m['konum_hassasiyet'] as num?)?.toDouble(),
         updatedAt: _epochToDate(m['updated_at'] as int),
         dirty: _intToBool(m['dirty'] as int),
         deleted: _intToBool(m['deleted'] as int),
@@ -335,6 +345,9 @@ class KullanimKaydi {
         'arac_id': aracId,
         'kullanim_yeri': kullanimYeri,
         'not_': not_,
+        'enlem': enlem,
+        'boylam': boylam,
+        'konum_hassasiyet': konumHassasiyet,
         'updated_at': _dateToEpoch(updatedAt),
         'dirty': _boolToInt(dirty),
         'deleted': _boolToInt(deleted),

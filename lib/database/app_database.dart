@@ -79,6 +79,9 @@ CREATE TABLE kullanim_kayitlari (
   arac_id TEXT,
   kullanim_yeri TEXT,
   not_ TEXT,
+  enlem REAL,
+  boylam REAL,
+  konum_hassasiyet REAL,
   updated_at INTEGER NOT NULL,
   dirty INTEGER NOT NULL DEFAULT 1,
   deleted INTEGER NOT NULL DEFAULT 0
@@ -180,6 +183,8 @@ class CihazHareketSatiri {
   final String? not_;
   final String? kullaniciAdi;
   final String? sebep;
+  final double? enlem;
+  final double? boylam;
   final String? depoId; // hareketin çıkış (kaynak) deposu
   final String? hedefDepoId;
 
@@ -195,6 +200,8 @@ class CihazHareketSatiri {
     this.not_,
     this.kullaniciAdi,
     this.sebep,
+    this.enlem,
+    this.boylam,
   });
 }
 
@@ -206,6 +213,8 @@ class KullanimRaporSatiri {
   final int miktar;
   final DateTime tarih;
   final String? seriNo;
+  final double? enlem;
+  final double? boylam;
 
   KullanimRaporSatiri({
     required this.urunAdi,
@@ -215,6 +224,8 @@ class KullanimRaporSatiri {
     required this.miktar,
     required this.tarih,
     this.seriNo,
+    this.enlem,
+    this.boylam,
   });
 }
 
@@ -237,7 +248,7 @@ class AppDatabase {
         : p.join(await getDatabasesPath(), 'depo_app.sqlite');
     _db = await openDatabase(
       path,
-      version: 6,
+      version: 7,
       onCreate: (db, version) async {
         for (final stmt in _createTablesSql.split(';')) {
           final trimmed = stmt.trim();
@@ -273,6 +284,13 @@ class AppDatabase {
         if (oldVersion < 6) {
           // 1.12.0: depoya geri almada sebep (Arıza, Değişim...)
           await db.execute('ALTER TABLE stok_hareketleri ADD COLUMN sebep TEXT');
+        }
+        if (oldVersion < 7) {
+          // 1.13.0: sahada kullanım anındaki GPS konumu
+          await db.execute('ALTER TABLE kullanim_kayitlari ADD COLUMN enlem REAL');
+          await db.execute('ALTER TABLE kullanim_kayitlari ADD COLUMN boylam REAL');
+          await db.execute(
+              'ALTER TABLE kullanim_kayitlari ADD COLUMN konum_hassasiyet REAL');
         }
         if (oldVersion < 4) {
           // 1.4.0: araçlar seyyar depo olarak depolar tablosunda tutulur.
@@ -530,7 +548,9 @@ class AppDatabase {
         d.ad as depo_adi,
         a.plaka as arac_plaka,
         kk.kullanim_yeri as kullanim_yeri,
-        c.seri_no as seri_no
+        c.seri_no as seri_no,
+        kk.enlem as enlem,
+        kk.boylam as boylam
       FROM kullanim_kayitlari kk
       JOIN stok_hareketleri sh ON sh.id = kk.stok_hareket_id
       JOIN urunler u ON u.id = sh.urun_id
@@ -548,6 +568,8 @@ class AppDatabase {
               aracPlaka: r['arac_plaka'] as String?,
               kullanimYeri: r['kullanim_yeri'] as String?,
               seriNo: r['seri_no'] as String?,
+              enlem: (r['enlem'] as num?)?.toDouble(),
+              boylam: (r['boylam'] as num?)?.toDouble(),
               miktar: r['miktar'] as int,
               tarih: DateTime.fromMillisecondsSinceEpoch(r['tarih'] as int),
             ))
@@ -568,7 +590,11 @@ class AppDatabase {
              d.tur AS depo_tur, c.kullanim_yeri AS kullanim_yeri,
              c.alim_tarihi AS alim_tarihi, c.firma AS firma,
              c.ihale AS ihale, c.garanti_bitis AS garanti_bitis,
-             c.updated_at AS guncelleme
+             c.updated_at AS guncelleme,
+             (SELECT kk.enlem || ',' || kk.boylam FROM kullanim_kayitlari kk
+                JOIN stok_hareketleri sh ON sh.id = kk.stok_hareket_id
+               WHERE sh.cihaz_id = c.id AND kk.enlem IS NOT NULL
+               ORDER BY sh.tarih DESC LIMIT 1) AS son_konum
       FROM cihazlar c
       JOIN urunler u ON u.id = c.urun_id
       LEFT JOIN depolar d ON d.id = c.depo_id
@@ -787,7 +813,8 @@ class AppDatabase {
              sh.depo_id AS depo_id, sh.hedef_depo_id AS hedef_depo_id,
              d.ad AS depo_adi, hd.ad AS hedef_depo_adi,
              a.plaka AS arac_plaka, kk.kullanim_yeri AS kullanim_yeri,
-             k.ad AS kullanici_adi, sh.sebep AS sebep
+             k.ad AS kullanici_adi, sh.sebep AS sebep,
+             kk.enlem AS enlem, kk.boylam AS boylam
       FROM stok_hareketleri sh
       LEFT JOIN kullanicilar k ON k.id = sh.kullanici_id
       LEFT JOIN depolar d ON d.id = sh.depo_id
@@ -811,6 +838,8 @@ class AppDatabase {
               not_: r['not_'] as String?,
               kullaniciAdi: r['kullanici_adi'] as String?,
               sebep: r['sebep'] as String?,
+              enlem: (r['enlem'] as num?)?.toDouble(),
+              boylam: (r['boylam'] as num?)?.toDouble(),
             ))
         .toList();
   }
@@ -1004,6 +1033,9 @@ class AppDatabase {
     String? kullanimYeri,
     String? not_,
     String? sebep,
+    double? enlem,
+    double? boylam,
+    double? konumHassasiyet,
   }) async {
     final rows = await txn.query('cihazlar',
         where: 'id = ?', whereArgs: [cihazId], limit: 1);
@@ -1100,6 +1132,9 @@ class AppDatabase {
           aracId: null,
           kullanimYeri: guncelle['kullanim_yeri'] as String?,
           not_: not_,
+          enlem: enlem,
+          boylam: boylam,
+          konumHassasiyet: konumHassasiyet,
           updatedAt: simdi,
         ).toMap(),
       );
@@ -1118,6 +1153,9 @@ class AppDatabase {
     String? kullanimYeri,
     String? not_,
     String? sebep,
+    double? enlem,
+    double? boylam,
+    double? konumHassasiyet,
   }) async {
     if (tip == HareketTipi.girisi) {
       throw ArgumentError('Depoya alma için cihazlariGirisYap kullanın');
@@ -1137,6 +1175,9 @@ class AppDatabase {
           kullanimYeri: kullanimYeri,
           not_: not_,
           sebep: sebep,
+          enlem: enlem,
+          boylam: boylam,
+          konumHassasiyet: konumHassasiyet,
         );
       }
     });
@@ -1170,7 +1211,7 @@ class AppDatabase {
     ],
     'kullanim_kayitlari': [
       'id', 'stok_hareket_id', 'arac_id', 'kullanim_yeri', 'not_',
-      'updated_at', 'deleted'
+      'enlem', 'boylam', 'konum_hassasiyet', 'updated_at', 'deleted'
     ],
   };
 
