@@ -1,7 +1,7 @@
 name: depo_app
 description: Çok kullanıcılı, çoklu depo stok ve kullanım takip uygulaması (iOS / Android / Windows / Web)
 publish_to: 'none'
-version: 1.9.0+15
+version: 1.9.1+16
 
 environment:
   sdk: '>=3.3.0 <4.0.0'
@@ -47,6 +47,9 @@ dependencies:
   # Excel (.xlsx) rapor çıktısı ve telefonda paylaşma
   excel: '>=4.0.2 <5.0.0'
   share_plus: '>=7.2.0 <11.0.0'
+  # Güncelleme kontrolü ve indirme linkini açma
+  http: '>=0.13.5 <2.0.0'
+  url_launcher: '>=6.1.0 <7.0.0'
   fl_chart: ^0.68.0
 
 dev_dependencies:

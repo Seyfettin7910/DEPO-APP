@@ -49,17 +49,17 @@ jobs:
           flutter create --org com.example --project-name depo_app --platforms android "$RUNNER_TEMP/sablon"
           python3 tool/android_hazirla.py "$RUNNER_TEMP/sablon"
 
+      - name: Sürüm numarası
+        id: surum
+        run: echo "v=$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d+ -f1)" >> "$GITHUB_OUTPUT"
+
       - run: flutter pub get
 
       - name: APK derle
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: depo
-        run: flutter build apk --release
-
-      - name: Sürüm numarası
-        id: surum
-        run: echo "v=$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d+ -f1)" >> "$GITHUB_OUTPUT"
+        run: flutter build apk --release --dart-define=APP_SURUM=${{ steps.surum.outputs.v }}
 
       - run: cp build/app/outputs/flutter-apk/app-release.apk depo-takip.apk
 

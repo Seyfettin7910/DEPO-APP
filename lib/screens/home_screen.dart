@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/app_providers.dart';
+import '../services/guncelleme_servisi.dart';
 import '../widgets/sync_durum_dugmesi.dart';
 import 'depo/depo_list_screen.dart';
 import 'urun/urun_list_screen.dart';
@@ -16,7 +17,8 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen>
+    with WidgetsBindingObserver {
   int _index = 0;
 
   static const _screens = [
@@ -32,6 +34,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     super.initState();
     // Sync servisini başlat (provider okunduğu an .start() tetiklenir).
     Future.microtask(() => ref.read(syncServiceProvider));
+
+    // Yeni sürüm kontrolü: açılıştan kısa süre sonra ve uygulamaya dönüşte.
+    WidgetsBinding.instance.addObserver(this);
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) GuncellemeServisi.kontrolEtVeSor(context);
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      GuncellemeServisi.kontrolEtVeSor(context);
+    }
   }
 
   /// Son öğe ("Çıkış") sekme değil; onay sorup oturumu kapatır.

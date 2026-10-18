@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../services/guncelleme_servisi.dart';
 import '../../services/oturum_kilidi.dart';
 import '../../services/supabase_service.dart';
 
@@ -174,11 +175,12 @@ class _GirisScreenState extends State<GirisScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text(
+                  Text(
                     'Hesap bilgilerini yöneticinizden alın.\n'
-                    'Güvenlik için 5 dakika işlem yapılmazsa oturum kapanır.',
+                    'Güvenlik için 5 dakika işlem yapılmazsa oturum kapanır.'
+                    '${GuncellemeServisi.mevcutSurum.isEmpty ? '' : '\nSürüm ${GuncellemeServisi.mevcutSurum}'}',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 12),
+                    style: const TextStyle(fontSize: 12),
                   ),
                 ],
               ),

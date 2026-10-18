@@ -5,6 +5,12 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.9.1 – Güncelleme uyarısı
+- Uygulama açılınca (ve en fazla 6 saatte bir uygulamaya dönüldüğünde) yeni sürüm
+  var mı bakar. Telefonda "İndir" APK linkini açar; web'de "Yenile" sayfayı yeniler.
+- Sürüm numarası derlemede gömülür (`--dart-define=APP_SURUM`); giriş ekranının
+  altında görünür. FlutLab derlemelerinde kontrol yapılmaz.
+
 ## 1.9.0 – Otomatik oturum kapatma ve Çıkış düğmesi
 - **5 dakika** dokunma/tuş olmazsa oturum kapanır, giriş ekranı gelir (uygulama arka
   plandayken veya kapalıyken geçen süre de sayılır). Süre `lib/services/oturum_kilidi.dart`

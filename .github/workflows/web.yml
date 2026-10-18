@@ -31,7 +31,12 @@ jobs:
       - run: flutter pub get
       # Tarayıcı veritabanı için sqlite3.wasm ve sqflite_sw.js üretir.
       - run: dart run sqflite_common_ffi_web:setup --force
-      - run: flutter build web --release --base-href "/${{ github.event.repository.name }}/"
+      - name: Sürüm numarası
+        id: surum
+        run: echo "v=$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d+ -f1)" >> "$GITHUB_OUTPUT"
+      - run: flutter build web --release --base-href "/${{ github.event.repository.name }}/" --dart-define=APP_SURUM=${{ steps.surum.outputs.v }}
+      # Uygulama bu dosyaya bakıp "yeni sürüm var" der.
+      - run: echo '{"surum":"${{ steps.surum.outputs.v }}"}' > build/web/version.json
       - uses: actions/upload-pages-artifact@v3
         with:
           path: build/web
