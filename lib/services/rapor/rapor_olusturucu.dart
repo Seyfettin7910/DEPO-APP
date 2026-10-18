@@ -2,6 +2,7 @@ import 'package:intl/intl.dart';
 
 import '../../database/app_database.dart';
 import '../../database/models.dart';
+import '../adres_servisi.dart';
 import '../konum_servisi.dart';
 import 'rapor_modeli.dart';
 
@@ -130,9 +131,9 @@ class RaporOlusturucu {
       ],
       sutunlar: const [
         'Tarih', 'Seri No', 'Ürün', 'Çıktığı yer', 'Kullanım yeri / Araç',
-        'Konum (GPS)'
+        'Bölge (mahalle, ilçe / il)', 'Konum (GPS)'
       ],
-      genislikler: const [15, 19, 22, 17, 24, 22],
+      genislikler: const [14, 17, 19, 15, 21, 24, 20],
       bolumler: [
         if (urunler.isNotEmpty)
           RaporBolumu(
@@ -153,6 +154,7 @@ class RaporOlusturucu {
                 s.urunAdi,
                 s.depoAdi,
                 s.aracPlaka ?? s.kullanimYeri ?? 'Belirtilmedi',
+                Adres(il: s.il, ilce: s.ilce, mahalle: s.mahalle).ozet,
                 konumHucresi(s.enlem, s.boylam),
               ],
           ],
@@ -491,6 +493,104 @@ class RaporOlusturucu {
         if (ozetSatirlari.isNotEmpty)
           RaporBolumu(baslik: 'Özet', satirlar: ozetSatirlari),
         ...detaylar,
+      ],
+    );
+  }
+
+  // ------------------------------------------------------------------
+  // Bölge raporu: il / ilçe / mahalle bazında kurulum noktaları
+  // ------------------------------------------------------------------
+  static Future<Rapor> bolge(AppDatabase db, {String? filtre}) async {
+    var rows = await db.bolgeRaporu();
+    final f = (filtre ?? '').trim().toLowerCase();
+    if (f.isNotEmpty) {
+      rows = rows
+          .where((r) => [r['il'], r['ilce'], r['mahalle'], r['kullanim_yeri']]
+              .whereType<String>()
+              .any((v) => v.toLowerCase().contains(f)))
+          .toList();
+    }
+
+    String deger(Object? v) {
+      final t = (v as String?)?.trim() ?? '';
+      return t.isEmpty ? 'Belirsiz' : t;
+    }
+
+    // il|ilçe|mahalle -> kayıtlar (sorgu zaten bu sırayla gelir)
+    final gruplar = <String, List<Map<String, Object?>>>{};
+    for (final r in rows) {
+      final k = '${deger(r['il'])}|${deger(r['ilce'])}|${deger(r['mahalle'])}';
+      gruplar.putIfAbsent(k, () => []).add(r);
+    }
+
+    final iller = <String>{};
+    final ilceler = <String>{};
+    var belirsiz = 0;
+    for (final r in rows) {
+      if ((r['il'] as String?)?.isNotEmpty ?? false) iller.add(r['il'] as String);
+      if ((r['ilce'] as String?)?.isNotEmpty ?? false) {
+        ilceler.add('${r['il']}|${r['ilce']}');
+      }
+      if (((r['mahalle'] as String?) ?? '').isEmpty) belirsiz++;
+    }
+
+    final ozetSatirlari = <List<Object?>>[];
+    final detaylar = <RaporBolumu>[];
+    for (final e in gruplar.entries) {
+      final p = e.key.split('|');
+      final konumlu = e.value.where((r) => r['enlem'] != null).length;
+      ozetSatirlari.add([p[0], p[1], p[2], e.value.length, konumlu]);
+      detaylar.add(RaporBolumu(
+        baslik: '${p[2]} · ${p[1]} / ${p[0]} (${e.value.length})',
+        satirlar: [
+          for (final r in e.value)
+            [
+              r['seri_no'] ?? '',
+              r['urun_adi'] ?? '',
+              r['kullanim_yeri'] ?? '',
+              _tarihMs(r['tarih']),
+              konumHucresi((r['enlem'] as num?)?.toDouble(),
+                  (r['boylam'] as num?)?.toDouble()),
+            ],
+        ],
+      ));
+    }
+    // Özet: en çok kurulum olan bölge üstte
+    ozetSatirlari.sort((a, b) => (b[3] as int).compareTo(a[3] as int));
+
+    return Rapor(
+      baslik: 'Bölge Raporu (Kurulum Noktaları)',
+      altBaslik: [
+        if (f.isNotEmpty) 'Filtre: "$filtre"',
+        'Sahada olan cihazlar',
+        _olusturma(),
+      ].join(' · '),
+      dosyaOn: 'bolge_raporu',
+      ozet: [
+        MapEntry('Kurulum noktası', '${rows.length}'),
+        MapEntry('İl', '${iller.length}'),
+        MapEntry('İlçe', '${ilceler.length}'),
+        MapEntry('Mahalle / köy', '${gruplar.length}'),
+        if (belirsiz > 0) MapEntry('Mahallesi belirsiz', '$belirsiz'),
+      ],
+      sutunlar: const [
+        'Seri No', 'Ürün', 'Kullanım yeri', 'Kurulum tarihi', 'Konum (GPS)'
+      ],
+      genislikler: const [20, 24, 26, 15, 24],
+      bolumler: [
+        if (ozetSatirlari.isNotEmpty)
+          RaporBolumu(
+            baslik: 'Mahalle / köy bazında kurulum sayıları',
+            sutunlar: const [
+              'İl', 'İlçe', 'Mahalle / köy', 'Kurulum', 'Konumu kayıtlı'
+            ],
+            genislikler: const [16, 18, 26, 10, 12],
+            satirlar: ozetSatirlari,
+          ),
+        ...detaylar,
+        if (rows.isEmpty)
+          const RaporBolumu(
+              baslik: 'Sahada kayıtlı kurulum yok', satirlar: []),
       ],
     );
   }

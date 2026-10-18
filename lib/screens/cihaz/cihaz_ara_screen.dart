@@ -68,7 +68,7 @@ class _CihazAraScreenState extends ConsumerState<CihazAraScreen> {
               controller: _ctrl,
               textInputAction: TextInputAction.search,
               decoration: InputDecoration(
-                hintText: 'Seri no, model, depo veya araç plakası',
+                hintText: 'Seri no, model, depo, plaka, mahalle / köy, ilçe',
                 prefixIcon: const Icon(Icons.search),
                 border: const OutlineInputBorder(),
                 suffixIcon: Row(

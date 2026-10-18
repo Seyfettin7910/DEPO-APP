@@ -4,6 +4,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../database/app_database.dart';
+import 'adres_servisi.dart';
 import 'supabase_service.dart';
 
 /// Arayüze gösterilen senkron durumu.
@@ -129,6 +130,8 @@ class SyncService {
       final sorunlar = <String>[];
       await _gonder(sorunlar);
       await _cek(sorunlar);
+      // İnternetsiz kaydedilmiş kurulum noktalarının il/ilçe/mahallesini bul.
+      unawaited(AdresTamamlayici.calistir(db));
 
       _yayinla(SyncDurum(
         bekleyen: await db.bekleyenSayisi(),

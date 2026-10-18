@@ -5,6 +5,18 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.14.0 – İl / ilçe / mahalle (köy)
+> **Önce Supabase'de `supabase_guncelleme_1_14_0.sql` çalıştırılmalı.**
+
+- "Sahada kullanıldı" penceresinde GPS konumu gelince il, ilçe ve mahalle/köy
+  OpenStreetMap (Nominatim) üzerinden otomatik doldurulur; elle düzeltilebilir.
+- Köyde internet yoksa konum kaydedilir, adres internet gelince arka planda (senkron
+  sonrası) tamamlanır. Elle yazılan alanlara dokunulmaz.
+- Ara sekmesinde mahalle / köy / ilçe adıyla arama.
+- Yeni **Bölge raporu:** il / ilçe / mahalle bazında kurulum sayıları (en çok olan üstte)
+  ve her mahallenin cihaz listesi, harita bağlantılarıyla. İsteğe bağlı filtre.
+- Kullanım raporuna **Bölge** sütunu; cihaz kartında ve geçmişte bölge gösterimi.
+
 ## 1.13.0 – Kurulum konumu (GPS)
 > **Önce Supabase'de `supabase_guncelleme_1_13_0.sql` çalıştırılmalı.**
 

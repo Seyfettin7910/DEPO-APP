@@ -307,6 +307,9 @@ class KullanimKaydi {
   final double? enlem;
   final double? boylam;
   final double? konumHassasiyet; // metre
+  final String? il;
+  final String? ilce;
+  final String? mahalle; // mahalle veya köy
   final DateTime updatedAt;
   final bool dirty;
   final bool deleted;
@@ -320,6 +323,9 @@ class KullanimKaydi {
     this.enlem,
     this.boylam,
     this.konumHassasiyet,
+    this.il,
+    this.ilce,
+    this.mahalle,
     required this.updatedAt,
     this.dirty = true,
     this.deleted = false,
@@ -334,6 +340,9 @@ class KullanimKaydi {
         enlem: (m['enlem'] as num?)?.toDouble(),
         boylam: (m['boylam'] as num?)?.toDouble(),
         konumHassasiyet: (m['konum_hassasiyet'] as num?)?.toDouble(),
+        il: m['il'] as String?,
+        ilce: m['ilce'] as String?,
+        mahalle: m['mahalle'] as String?,
         updatedAt: _epochToDate(m['updated_at'] as int),
         dirty: _intToBool(m['dirty'] as int),
         deleted: _intToBool(m['deleted'] as int),
@@ -348,6 +357,9 @@ class KullanimKaydi {
         'enlem': enlem,
         'boylam': boylam,
         'konum_hassasiyet': konumHassasiyet,
+        'il': il,
+        'ilce': ilce,
+        'mahalle': mahalle,
         'updated_at': _dateToEpoch(updatedAt),
         'dirty': _boolToInt(dirty),
         'deleted': _boolToInt(deleted),

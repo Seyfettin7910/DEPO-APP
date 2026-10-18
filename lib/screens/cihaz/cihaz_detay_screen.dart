@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -10,6 +12,7 @@ import '../../widgets/depo_secici.dart';
 import '../../widgets/alim_bilgisi_alanlari.dart';
 import '../../widgets/iade_sebebi.dart';
 import '../../services/konum_servisi.dart';
+import '../../services/adres_servisi.dart';
 
 /// Cihazın şu anki konumunu tek satırda anlatır.
 String cihazKonumMetni(CihazBilgi b) {
@@ -117,8 +120,13 @@ class CihazDetayScreen extends ConsumerWidget {
                               onPressed: () =>
                                   KonumServisi.haritadaAc(k.enlem!, k.boylam!),
                               icon: const Icon(Icons.place),
-                              label: Text('Kurulum konumu: '
-                                  '${KonumServisi.koordinat(k.enlem!, k.boylam!)}'),
+                              label: Text(
+                                  Adres(il: k.il, ilce: k.ilce, mahalle: k.mahalle)
+                                          .ozet
+                                          .isNotEmpty
+                                      ? 'Kurulum: ${Adres(il: k.il, ilce: k.ilce, mahalle: k.mahalle).ozet}'
+                                      : 'Kurulum konumu: '
+                                          '${KonumServisi.koordinat(k.enlem!, k.boylam!)}'),
                             ),
                           );
                         }),
@@ -198,6 +206,11 @@ class CihazDetayScreen extends ConsumerWidget {
                             _tarihFormat.format(h.tarih),
                             if (h.kullaniciAdi != null) h.kullaniciAdi!,
                             if (h.sebep != null) 'Sebep: ${h.sebep}',
+                            if (Adres(il: h.il, ilce: h.ilce, mahalle: h.mahalle)
+                                .ozet
+                                .isNotEmpty)
+                              Adres(il: h.il, ilce: h.ilce, mahalle: h.mahalle)
+                                  .ozet,
                             if (h.not_ != null &&
                                 h.not_!.isNotEmpty &&
                                 h.not_ != 'İade')
@@ -430,11 +443,47 @@ class CihazDetayScreen extends ConsumerWidget {
     // Konum, pencere açılır açılmaz arka planda okunmaya başlar.
     final konumIstegi = KonumServisi.konumAl();
     var konumKaydet = true;
+    final ilCtrl = TextEditingController();
+    final ilceCtrl = TextEditingController();
+    final mahalleCtrl = TextEditingController();
+    var adresDurumu = 'Konum bekleniyor...';
+    var adresIstendi = false;
 
     final onay = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setState) => AlertDialog(
+        builder: (ctx, setState) {
+          // Konum gelince adresi (il/ilçe/mahalle) bir kez sor ve boş alanları doldur.
+          if (!adresIstendi) {
+            adresIstendi = true;
+            konumIstegi.then((k) async {
+              if (!k.basarili) {
+                if (ctx.mounted) {
+                  setState(() => adresDurumu =
+                      'Konum yok: bölgeyi elle yazabilirsiniz');
+                }
+                return;
+              }
+              if (ctx.mounted) setState(() => adresDurumu = 'Adres bulunuyor...');
+              final a = await AdresServisi.konumdanAdres(k.enlem!, k.boylam!);
+              if (!ctx.mounted) return;
+              setState(() {
+                if (a == null) {
+                  adresDurumu = 'İnternet yok: adres sonra otomatik bulunacak';
+                } else {
+                  if (ilCtrl.text.isEmpty) ilCtrl.text = a.il ?? '';
+                  if (ilceCtrl.text.isEmpty) ilceCtrl.text = a.ilce ?? '';
+                  if (mahalleCtrl.text.isEmpty) {
+                    mahalleCtrl.text = a.mahalle ?? '';
+                  }
+                  adresDurumu = a.bos
+                      ? 'Bu konum için adres bulunamadı'
+                      : 'Konumdan bulundu, gerekirse düzeltin';
+                }
+              });
+            });
+          }
+          return AlertDialog(
           scrollable: true,
           title: const Text('Sahada kullanıldı'),
           content: Column(
@@ -497,6 +546,34 @@ class CihazDetayScreen extends ConsumerWidget {
                   );
                 },
               ),
+              const SizedBox(height: 4),
+              Text(adresDurumu,
+                  style: Theme.of(ctx).textTheme.bodySmall),
+              TextField(
+                controller: mahalleCtrl,
+                textCapitalization: TextCapitalization.words,
+                decoration:
+                    const InputDecoration(labelText: 'Mahalle / köy'),
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: ilceCtrl,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: const InputDecoration(labelText: 'İlçe'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: ilCtrl,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: const InputDecoration(labelText: 'İl'),
+                    ),
+                  ),
+                ],
+              ),
               if (hata != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
@@ -521,10 +598,17 @@ class CihazDetayScreen extends ConsumerWidget {
               child: const Text('Kaydet'),
             ),
           ],
-        ),
+        );
+        },
       ),
     );
     if (onay != true || !context.mounted) return;
+
+    String? bosIseNull(TextEditingController c) =>
+        c.text.trim().isEmpty ? null : c.text.trim();
+    final il = bosIseNull(ilCtrl);
+    final ilce = bosIseNull(ilceCtrl);
+    final mahalle = bosIseNull(mahalleCtrl);
 
     final db = ref.read(appDatabaseProvider);
     await _calistir(
@@ -543,7 +627,12 @@ class CihazDetayScreen extends ConsumerWidget {
           enlem: konumVar ? k?.enlem : null,
           boylam: konumVar ? k?.boylam : null,
           konumHassasiyet: konumVar ? k?.hassasiyet : null,
+          il: il,
+          ilce: ilce,
+          mahalle: mahalle,
         );
+        // İnternet varsa eksik adres hemen tamamlanır.
+        unawaited(AdresTamamlayici.calistir(db));
       },
       'Kullanım kaydedildi, stoktan düşüldü',
     );

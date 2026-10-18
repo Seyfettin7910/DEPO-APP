@@ -86,6 +86,13 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
               onTap: () => Navigator.pop(ctx, 'stok'),
             ),
             ListTile(
+              leading: const Icon(Icons.map_outlined),
+              title: const Text('Bölge raporu'),
+              subtitle: const Text(
+                  'İl / ilçe / mahalle bazında kurulum noktaları ve konumları'),
+              onTap: () => Navigator.pop(ctx, 'bolge'),
+            ),
+            ListTile(
               leading: const Icon(Icons.verified_user_outlined),
               title: const Text('Garanti durumu'),
               subtitle: const Text(
@@ -123,6 +130,35 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
       urun = await _urunSec();
       if (urun == null || !mounted) return;
     }
+    String? bolgeFiltresi;
+    if (tur == 'bolge') {
+      final ctrl = TextEditingController();
+      final tamam = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Bölge raporu'),
+          content: TextField(
+            controller: ctrl,
+            autofocus: true,
+            decoration: const InputDecoration(
+              labelText: 'İl, ilçe veya mahalle / köy (opsiyonel)',
+              hintText: 'Boş bırakırsanız tümü',
+            ),
+            onSubmitted: (_) => Navigator.pop(ctx, true),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('İptal')),
+            FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Oluştur')),
+          ],
+        ),
+      );
+      if (tamam != true || !mounted) return;
+      bolgeFiltresi = ctrl.text;
+    }
 
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
@@ -134,6 +170,9 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
           break;
         case 'stok':
           rapor = await RaporOlusturucu.urunStokDurumu(db, urun!);
+          break;
+        case 'bolge':
+          rapor = await RaporOlusturucu.bolge(db, filtre: bolgeFiltresi);
           break;
         case 'garanti':
           rapor = await RaporOlusturucu.garanti(db);

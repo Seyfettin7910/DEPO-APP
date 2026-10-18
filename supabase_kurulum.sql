@@ -43,6 +43,9 @@ create table if not exists kullanim_kayitlari (
 alter table kullanim_kayitlari add column if not exists enlem double precision;
 alter table kullanim_kayitlari add column if not exists boylam double precision;
 alter table kullanim_kayitlari add column if not exists konum_hassasiyet double precision;
+alter table kullanim_kayitlari add column if not exists il text;
+alter table kullanim_kayitlari add column if not exists ilce text;
+alter table kullanim_kayitlari add column if not exists mahalle text;
 
 -- 2) Senkron tetikleyicisi:
 --    * Eski bir telefondan gelen eski veri, daha yeni veriyi ezemez.

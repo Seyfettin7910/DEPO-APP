@@ -82,6 +82,9 @@ CREATE TABLE kullanim_kayitlari (
   enlem REAL,
   boylam REAL,
   konum_hassasiyet REAL,
+  il TEXT,
+  ilce TEXT,
+  mahalle TEXT,
   updated_at INTEGER NOT NULL,
   dirty INTEGER NOT NULL DEFAULT 1,
   deleted INTEGER NOT NULL DEFAULT 0
@@ -185,6 +188,9 @@ class CihazHareketSatiri {
   final String? sebep;
   final double? enlem;
   final double? boylam;
+  final String? il;
+  final String? ilce;
+  final String? mahalle;
   final String? depoId; // hareketin çıkış (kaynak) deposu
   final String? hedefDepoId;
 
@@ -202,6 +208,9 @@ class CihazHareketSatiri {
     this.sebep,
     this.enlem,
     this.boylam,
+    this.il,
+    this.ilce,
+    this.mahalle,
   });
 }
 
@@ -215,6 +224,9 @@ class KullanimRaporSatiri {
   final String? seriNo;
   final double? enlem;
   final double? boylam;
+  final String? il;
+  final String? ilce;
+  final String? mahalle;
 
   KullanimRaporSatiri({
     required this.urunAdi,
@@ -226,6 +238,9 @@ class KullanimRaporSatiri {
     this.seriNo,
     this.enlem,
     this.boylam,
+    this.il,
+    this.ilce,
+    this.mahalle,
   });
 }
 
@@ -248,7 +263,7 @@ class AppDatabase {
         : p.join(await getDatabasesPath(), 'depo_app.sqlite');
     _db = await openDatabase(
       path,
-      version: 7,
+      version: 8,
       onCreate: (db, version) async {
         for (final stmt in _createTablesSql.split(';')) {
           final trimmed = stmt.trim();
@@ -291,6 +306,12 @@ class AppDatabase {
           await db.execute('ALTER TABLE kullanim_kayitlari ADD COLUMN boylam REAL');
           await db.execute(
               'ALTER TABLE kullanim_kayitlari ADD COLUMN konum_hassasiyet REAL');
+        }
+        if (oldVersion < 8) {
+          // 1.14.0: kurulum noktasının il / ilçe / mahalle (köy) bilgisi
+          await db.execute('ALTER TABLE kullanim_kayitlari ADD COLUMN il TEXT');
+          await db.execute('ALTER TABLE kullanim_kayitlari ADD COLUMN ilce TEXT');
+          await db.execute('ALTER TABLE kullanim_kayitlari ADD COLUMN mahalle TEXT');
         }
         if (oldVersion < 4) {
           // 1.4.0: araçlar seyyar depo olarak depolar tablosunda tutulur.
@@ -550,7 +571,10 @@ class AppDatabase {
         kk.kullanim_yeri as kullanim_yeri,
         c.seri_no as seri_no,
         kk.enlem as enlem,
-        kk.boylam as boylam
+        kk.boylam as boylam,
+        kk.il as il,
+        kk.ilce as ilce,
+        kk.mahalle as mahalle
       FROM kullanim_kayitlari kk
       JOIN stok_hareketleri sh ON sh.id = kk.stok_hareket_id
       JOIN urunler u ON u.id = sh.urun_id
@@ -570,6 +594,9 @@ class AppDatabase {
               seriNo: r['seri_no'] as String?,
               enlem: (r['enlem'] as num?)?.toDouble(),
               boylam: (r['boylam'] as num?)?.toDouble(),
+              il: r['il'] as String?,
+              ilce: r['ilce'] as String?,
+              mahalle: r['mahalle'] as String?,
               miktar: r['miktar'] as int,
               tarih: DateTime.fromMillisecondsSinceEpoch(r['tarih'] as int),
             ))
@@ -814,7 +841,8 @@ class AppDatabase {
              d.ad AS depo_adi, hd.ad AS hedef_depo_adi,
              a.plaka AS arac_plaka, kk.kullanim_yeri AS kullanim_yeri,
              k.ad AS kullanici_adi, sh.sebep AS sebep,
-             kk.enlem AS enlem, kk.boylam AS boylam
+             kk.enlem AS enlem, kk.boylam AS boylam,
+             kk.il AS il, kk.ilce AS ilce, kk.mahalle AS mahalle
       FROM stok_hareketleri sh
       LEFT JOIN kullanicilar k ON k.id = sh.kullanici_id
       LEFT JOIN depolar d ON d.id = sh.depo_id
@@ -840,6 +868,9 @@ class AppDatabase {
               sebep: r['sebep'] as String?,
               enlem: (r['enlem'] as num?)?.toDouble(),
               boylam: (r['boylam'] as num?)?.toDouble(),
+              il: r['il'] as String?,
+              ilce: r['ilce'] as String?,
+              mahalle: r['mahalle'] as String?,
             ))
         .toList();
   }
@@ -964,6 +995,56 @@ class AppDatabase {
     _notify();
   }
 
+  /// Konumu olan ama il/ilçe/mahallesi bulunmamış kullanım kayıtları.
+  Future<List<Map<String, Object?>>> adresiEksikKullanimlar(
+      {int limit = 15}) async {
+    final db = await _database;
+    return db.rawQuery(
+        'SELECT id, enlem, boylam FROM kullanim_kayitlari '
+        'WHERE deleted = 0 AND enlem IS NOT NULL AND boylam IS NOT NULL '
+        'AND mahalle IS NULL AND ilce IS NULL '
+        'ORDER BY updated_at DESC LIMIT ?',
+        [limit]);
+  }
+
+  /// Arka planda bulunan adresi yazar; elle girilmiş alanlara dokunmaz.
+  /// Adres bulunamadıysa boş metin yazılır (tekrar denenmez).
+  Future<void> kullanimAdresiTamamla(
+      String id, String? il, String? ilce, String? mahalle) async {
+    final db = await _database;
+    await db.rawUpdate(
+        "UPDATE kullanim_kayitlari SET "
+        "il = COALESCE(NULLIF(il, ''), ?), "
+        "ilce = COALESCE(NULLIF(ilce, ''), ?), "
+        "mahalle = COALESCE(NULLIF(mahalle, ''), ?), "
+        'updated_at = ?, dirty = 1 WHERE id = ?',
+        [il ?? '', ilce ?? '', mahalle ?? '',
+         DateTime.now().millisecondsSinceEpoch, id]);
+    _notify();
+  }
+
+  /// Sahada (kullanımda) olan cihazların son kurulum noktası ve bölgesi.
+  Future<List<Map<String, Object?>>> bolgeRaporu() async {
+    final db = await _database;
+    return db.rawQuery('''
+      SELECT c.seri_no AS seri_no, u.ad AS urun_adi, kk.il AS il,
+             kk.ilce AS ilce, kk.mahalle AS mahalle,
+             kk.kullanim_yeri AS kullanim_yeri, kk.enlem AS enlem,
+             kk.boylam AS boylam, sh.tarih AS tarih
+      FROM cihazlar c
+      JOIN urunler u ON u.id = c.urun_id
+      JOIN stok_hareketleri sh ON sh.cihaz_id = c.id AND sh.deleted = 0
+      JOIN kullanim_kayitlari kk ON kk.stok_hareket_id = sh.id
+      WHERE c.deleted = 0 AND c.durum = 'kullanimda'
+        AND sh.tarih = (SELECT MAX(sh2.tarih) FROM stok_hareketleri sh2
+                        JOIN kullanim_kayitlari kk2
+                          ON kk2.stok_hareket_id = sh2.id
+                        WHERE sh2.cihaz_id = c.id AND sh2.deleted = 0)
+      ORDER BY kk.il COLLATE NOCASE, kk.ilce COLLATE NOCASE,
+               kk.mahalle COLLATE NOCASE, u.ad COLLATE NOCASE
+    ''');
+  }
+
   /// Daha önce girilmiş firma veya ihale adları (yazarken öneri için).
   Future<List<String>> oncekiAlimDegerleri(String kolon) async {
     if (kolon != 'firma' && kolon != 'ihale') return [];
@@ -996,9 +1077,13 @@ class AppDatabase {
     final rows = await db.rawQuery(
         '$_cihazBilgiSelect WHERE c.deleted = 0 AND ('
         'c.seri_no LIKE ? OR u.ad LIKE ? OR d.ad LIKE ? OR '
-        'a.plaka LIKE ? OR c.kullanim_yeri LIKE ?) '
+        'a.plaka LIKE ? OR c.kullanim_yeri LIKE ? OR '
+        "(c.durum = 'kullanimda' AND EXISTS (SELECT 1 FROM kullanim_kayitlari kk "
+        'JOIN stok_hareketleri sh ON sh.id = kk.stok_hareket_id '
+        'WHERE sh.cihaz_id = c.id AND (kk.mahalle LIKE ? OR kk.ilce LIKE ? '
+        'OR kk.il LIKE ?)))) '
         'ORDER BY (c.seri_no = ?) DESC, u.ad, c.seri_no LIMIT ?',
-        [like, like, like, like, like, _normSeri(q), limit]);
+        [like, like, like, like, like, like, like, like, _normSeri(q), limit]);
     return rows.map(CihazBilgi.fromRow).toList();
   }
 
@@ -1036,6 +1121,9 @@ class AppDatabase {
     double? enlem,
     double? boylam,
     double? konumHassasiyet,
+    String? il,
+    String? ilce,
+    String? mahalle,
   }) async {
     final rows = await txn.query('cihazlar',
         where: 'id = ?', whereArgs: [cihazId], limit: 1);
@@ -1135,6 +1223,9 @@ class AppDatabase {
           enlem: enlem,
           boylam: boylam,
           konumHassasiyet: konumHassasiyet,
+          il: il,
+          ilce: ilce,
+          mahalle: mahalle,
           updatedAt: simdi,
         ).toMap(),
       );
@@ -1156,6 +1247,9 @@ class AppDatabase {
     double? enlem,
     double? boylam,
     double? konumHassasiyet,
+    String? il,
+    String? ilce,
+    String? mahalle,
   }) async {
     if (tip == HareketTipi.girisi) {
       throw ArgumentError('Depoya alma için cihazlariGirisYap kullanın');
@@ -1178,6 +1272,9 @@ class AppDatabase {
           enlem: enlem,
           boylam: boylam,
           konumHassasiyet: konumHassasiyet,
+          il: il,
+          ilce: ilce,
+          mahalle: mahalle,
         );
       }
     });
@@ -1211,7 +1308,8 @@ class AppDatabase {
     ],
     'kullanim_kayitlari': [
       'id', 'stok_hareket_id', 'arac_id', 'kullanim_yeri', 'not_',
-      'enlem', 'boylam', 'konum_hassasiyet', 'updated_at', 'deleted'
+      'enlem', 'boylam', 'konum_hassasiyet', 'il', 'ilce', 'mahalle',
+      'updated_at', 'deleted'
     ],
   };
 
