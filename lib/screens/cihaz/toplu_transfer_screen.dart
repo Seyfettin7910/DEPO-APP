@@ -10,6 +10,7 @@ import '../../widgets/depo_secici.dart';
 import '../../widgets/kod_yardimci.dart';
 import 'cihaz_detay_screen.dart';
 import '../../widgets/hedefli_tarayici.dart';
+import '../../widgets/iade_sebebi.dart';
 
 /// Birden çok cihazı seri numarasıyla okutup tek seferde bir depoya veya
 /// araca (seyyar depo) taşır. [tip] transfer ya da kullanıma verme olabilir;
@@ -33,6 +34,7 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen> {
   final _seriCtrl = TextEditingController();
   final _notCtrl = TextEditingController();
   final _liste = <CihazBilgi>[];
+  String? _sebep; // toplu iadede opsiyonel geri alma sebebi
 
   String? _hedefId;
   bool _kameraAcik = false;
@@ -174,6 +176,7 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen> {
             kullaniciId: ref.read(aktifKullaniciIdProvider) ?? 'demo-kullanici',
             hedefDepoId: _hedefId,
             not_: _notCtrl.text.trim().isEmpty ? null : _notCtrl.text.trim(),
+            sebep: _iade ? _sebep : null,
           );
       SesServisi.basari();
       if (!mounted) return;
@@ -321,6 +324,12 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen> {
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
+                  if (_iade)
+                    IadeSebebiSecici(
+                      secili: _sebep,
+                      zorunlu: false,
+                      onSecildi: (v) => setState(() => _sebep = v),
+                    ),
                   TextField(
                     controller: _notCtrl,
                     decoration:

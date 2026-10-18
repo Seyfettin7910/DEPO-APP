@@ -240,6 +240,7 @@ class StokHareketi {
   final DateTime tarih;
   final String? not_;
   final String? cihazId; // seri numaralı cihaz hareketlerinde dolu
+  final String? sebep; // depoya geri almada: Arıza, Değişim...
   final DateTime updatedAt;
   final bool dirty;
   final bool deleted;
@@ -255,6 +256,7 @@ class StokHareketi {
     required this.tarih,
     this.not_,
     this.cihazId,
+    this.sebep,
     required this.updatedAt,
     this.dirty = true,
     this.deleted = false,
@@ -271,6 +273,7 @@ class StokHareketi {
         tarih: _epochToDate(m['tarih'] as int),
         not_: m['not_'] as String?,
         cihazId: m['cihaz_id'] as String?,
+        sebep: m['sebep'] as String?,
         updatedAt: _epochToDate(m['updated_at'] as int),
         dirty: _intToBool(m['dirty'] as int),
         deleted: _intToBool(m['deleted'] as int),
@@ -287,6 +290,7 @@ class StokHareketi {
         'tarih': _dateToEpoch(tarih),
         'not_': not_,
         'cihaz_id': cihazId,
+        'sebep': sebep,
         'updated_at': _dateToEpoch(updatedAt),
         'dirty': _boolToInt(dirty),
         'deleted': _boolToInt(deleted),

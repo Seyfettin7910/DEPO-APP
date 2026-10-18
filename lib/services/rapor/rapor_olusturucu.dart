@@ -478,9 +478,12 @@ class RaporOlusturucu {
     final rows = await db.hareketRaporu(baslangic: baslangic, bitis: bitis);
 
     final tipSayilari = <String, int>{};
+    final sebepSayilari = <String, int>{};
     for (final r in rows) {
       final t = _tipAdlari[r['tip']] ?? '${r['tip']}';
       tipSayilari[t] = (tipSayilari[t] ?? 0) + 1;
+      final sb = r['sebep'] as String?;
+      if (sb != null) sebepSayilari[sb] = (sebepSayilari[sb] ?? 0) + 1;
     }
 
     return Rapor(
@@ -490,24 +493,29 @@ class RaporOlusturucu {
       ozet: [
         MapEntry('Toplam hareket', '${rows.length}'),
         for (final e in tipSayilari.entries) MapEntry(e.key, '${e.value}'),
+        for (final e in sebepSayilari.entries)
+          MapEntry('Geri alma: ${e.key}', '${e.value}'),
       ],
       sutunlar: const [
         'Tarih', 'İşlem', 'Seri No', 'Ürün', 'Nereden', 'Nereye',
-        'Kullanım yeri', 'Kullanıcı', 'Not'
+        'Kullanım yeri', 'Sebep', 'Kullanıcı', 'Not'
       ],
-      genislikler: const [16, 10, 18, 22, 16, 16, 20, 14, 20],
+      genislikler: const [15, 10, 17, 20, 15, 15, 18, 13, 13, 18],
       bolumler: [
         RaporBolumu(
           satirlar: [
             for (final r in rows)
               [
                 _tarihMs(r['tarih']),
-                _tipAdlari[r['tip']] ?? (r['tip'] ?? ''),
+                r['tip'] == 'girisi' && r['sebep'] != null
+                    ? 'Geri alma'
+                    : (_tipAdlari[r['tip']] ?? (r['tip'] ?? '')),
                 r['seri_no'] ?? '',
                 r['urun_adi'] ?? '',
                 r['kaynak'] ?? '',
                 r['hedef'] ?? '',
                 r['kullanim_yeri'] ?? '',
+                r['sebep'] ?? '',
                 r['kullanici'] ?? '',
                 r['not_'] ?? '',
               ],

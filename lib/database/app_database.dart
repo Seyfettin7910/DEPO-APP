@@ -68,6 +68,7 @@ CREATE TABLE stok_hareketleri (
   tarih INTEGER NOT NULL,
   not_ TEXT,
   cihaz_id TEXT,
+  sebep TEXT,
   updated_at INTEGER NOT NULL,
   dirty INTEGER NOT NULL DEFAULT 1,
   deleted INTEGER NOT NULL DEFAULT 0
@@ -178,6 +179,7 @@ class CihazHareketSatiri {
   final String? kullanimYeri;
   final String? not_;
   final String? kullaniciAdi;
+  final String? sebep;
   final String? depoId; // hareketin çıkış (kaynak) deposu
   final String? hedefDepoId;
 
@@ -192,6 +194,7 @@ class CihazHareketSatiri {
     this.kullanimYeri,
     this.not_,
     this.kullaniciAdi,
+    this.sebep,
   });
 }
 
@@ -234,7 +237,7 @@ class AppDatabase {
         : p.join(await getDatabasesPath(), 'depo_app.sqlite');
     _db = await openDatabase(
       path,
-      version: 5,
+      version: 6,
       onCreate: (db, version) async {
         for (final stmt in _createTablesSql.split(';')) {
           final trimmed = stmt.trim();
@@ -266,6 +269,10 @@ class AppDatabase {
           await db.execute('ALTER TABLE cihazlar ADD COLUMN firma TEXT');
           await db.execute('ALTER TABLE cihazlar ADD COLUMN ihale TEXT');
           await db.execute('ALTER TABLE cihazlar ADD COLUMN garanti_bitis INTEGER');
+        }
+        if (oldVersion < 6) {
+          // 1.12.0: depoya geri almada sebep (Arıza, Değişim...)
+          await db.execute('ALTER TABLE stok_hareketleri ADD COLUMN sebep TEXT');
         }
         if (oldVersion < 4) {
           // 1.4.0: araçlar seyyar depo olarak depolar tablosunda tutulur.
@@ -590,7 +597,7 @@ class AppDatabase {
       SELECT sh.tarih AS tarih, sh.tip AS tip, c.seri_no AS seri_no,
              u.ad AS urun_adi, d.ad AS kaynak, hd.ad AS hedef,
              kk.kullanim_yeri AS kullanim_yeri, k.ad AS kullanici,
-             sh.not_ AS not_
+             sh.not_ AS not_, sh.sebep AS sebep
       FROM stok_hareketleri sh
       JOIN urunler u ON u.id = sh.urun_id
       LEFT JOIN cihazlar c ON c.id = sh.cihaz_id
@@ -780,7 +787,7 @@ class AppDatabase {
              sh.depo_id AS depo_id, sh.hedef_depo_id AS hedef_depo_id,
              d.ad AS depo_adi, hd.ad AS hedef_depo_adi,
              a.plaka AS arac_plaka, kk.kullanim_yeri AS kullanim_yeri,
-             k.ad AS kullanici_adi
+             k.ad AS kullanici_adi, sh.sebep AS sebep
       FROM stok_hareketleri sh
       LEFT JOIN kullanicilar k ON k.id = sh.kullanici_id
       LEFT JOIN depolar d ON d.id = sh.depo_id
@@ -803,6 +810,7 @@ class AppDatabase {
               kullanimYeri: r['kullanim_yeri'] as String?,
               not_: r['not_'] as String?,
               kullaniciAdi: r['kullanici_adi'] as String?,
+              sebep: r['sebep'] as String?,
             ))
         .toList();
   }
@@ -820,6 +828,7 @@ class AppDatabase {
     required String kullaniciId,
     String? not_,
     AlimBilgisi? alim,
+    String? sebep,
   }) async {
     if (seriNolar.every((x) => _normSeri(x).isEmpty)) {
       throw StateError('Hiç seri numarası eklenmedi');
@@ -899,6 +908,7 @@ class AppDatabase {
             kullaniciId: kullaniciId,
             tarih: simdi,
             not_: not_,
+            sebep: sebep,
             cihazId: cihazId,
             updatedAt: simdi,
           ).toMap(),
@@ -993,6 +1003,7 @@ class AppDatabase {
     String? aracId,
     String? kullanimYeri,
     String? not_,
+    String? sebep,
   }) async {
     final rows = await txn.query('cihazlar',
         where: 'id = ?', whereArgs: [cihazId], limit: 1);
@@ -1075,6 +1086,7 @@ class AppDatabase {
         tarih: simdi,
         not_: not_,
         cihazId: cihazId,
+        sebep: sebep,
         updatedAt: simdi,
       ).toMap(),
     );
@@ -1105,6 +1117,7 @@ class AppDatabase {
     String? aracId,
     String? kullanimYeri,
     String? not_,
+    String? sebep,
   }) async {
     if (tip == HareketTipi.girisi) {
       throw ArgumentError('Depoya alma için cihazlariGirisYap kullanın');
@@ -1123,6 +1136,7 @@ class AppDatabase {
           aracId: aracId,
           kullanimYeri: kullanimYeri,
           not_: not_,
+          sebep: sebep,
         );
       }
     });
@@ -1151,7 +1165,8 @@ class AppDatabase {
     ],
     'stok_hareketleri': [
       'id', 'urun_id', 'depo_id', 'hedef_depo_id', 'tip', 'miktar',
-      'kullanici_id', 'tarih', 'not_', 'cihaz_id', 'updated_at', 'deleted'
+      'kullanici_id', 'tarih', 'not_', 'cihaz_id', 'sebep', 'updated_at',
+      'deleted'
     ],
     'kullanim_kayitlari': [
       'id', 'stok_hareket_id', 'arac_id', 'kullanim_yeri', 'not_',

@@ -5,6 +5,17 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.12.0 – Geri alma sebebi
+> **Önce Supabase'de `supabase_guncelleme_1_12_0.sql` çalıştırılmalı**
+> (`stok_hareketleri` tablosuna `sebep` sütunu).
+
+- Sahada kullanılan / çıkışı yapılan cihaz kartında "Depoya geri al" denince **sebep
+  zorunlu**: Arıza, Değişim, İşi bitti / ihtiyaç kalmadı, Yanlış kayıt, Diğer
+  ("Diğer"de açıklama zorunlu).
+- Araçtan iade ve toplu iadede sebep opsiyonel olarak seçilebilir.
+- Sebep cihaz geçmişinde ("Sahadan geri alındı · Sebep: Arıza") ve Hareket geçmişi
+  raporunda (Sebep sütunu + sebep bazlı sayılar) görünür.
+
 ## 1.11.0 – Alım ve garanti bilgileri
 > **Önce Supabase'de `supabase_guncelleme_1_11_0.sql` çalıştırılmalı** (cihazlar tablosuna
 > 4 sütun ekler). Çalıştırılmazsa yeni sürümde cihaz senkronizasyonu hata verir.

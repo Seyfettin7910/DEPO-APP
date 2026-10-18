@@ -32,7 +32,9 @@ alter table cihazlar add column if not exists garanti_bitis bigint;
 create table if not exists stok_hareketleri (
   id text primary key, urun_id text not null, depo_id text not null,
   hedef_depo_id text, tip text not null, miktar integer not null,
-  kullanici_id text not null, tarih bigint not null, not_ text, cihaz_id text);
+  kullanici_id text not null, tarih bigint not null, not_ text, cihaz_id text,
+  sebep text);
+alter table stok_hareketleri add column if not exists sebep text;
 
 create table if not exists kullanim_kayitlari (
   id text primary key, stok_hareket_id text not null, arac_id text,
