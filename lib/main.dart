@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 import 'database/platform/db_fabrika.dart';
 
@@ -79,6 +80,9 @@ class _BaslangicEkraniState extends State<BaslangicEkrani> {
       _adim = 'Başlatılıyor...';
     });
     try {
+      // Türkçe tarih biçimleri (ay adları vb.) raporlarda kullanılır.
+      await initializeDateFormatting('tr_TR');
+
       setState(() => _adim = 'Yerel veritabanı hazırlanıyor...');
       veritabaniFabrikasiniAyarla();
 

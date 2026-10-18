@@ -8,6 +8,7 @@ import '../../providers/app_providers.dart';
 import '../cihaz/cihaz_detay_screen.dart';
 import '../cihaz/toplu_giris_screen.dart';
 import '../cihaz/toplu_transfer_screen.dart';
+import '../rapor/sayim_screen.dart';
 
 /// Bir deponun detayı: "Stok" sekmesinde ürünlerin güncel adedi,
 /// "Hareketler" sekmesinde giren/çıkan her işlem görünür.
@@ -88,6 +89,12 @@ void _islemMenusu(BuildContext context, String depoId, String depoAdi) {
               subtitle: const Text('Seri no okutup bir depo/araca ver'),
               onTap: () => ac(const TopluTransferScreen(
                   tip: HareketTipi.kullanim)),
+            ),
+            ListTile(
+              leading: const Icon(Icons.fact_check_outlined),
+              title: Text('Sayım yap ($depoAdi)'),
+              subtitle: const Text('Cihazları okutup sistemle karşılaştır'),
+              onTap: () => ac(SayimScreen(onceSeciliDepoId: depoId)),
             ),
           ],
         ),

@@ -539,19 +539,21 @@ class AppDatabase {
   // Excel raporları için ham listeler
   // ---------------------------------------------------------------------
 
-  /// Sistemdeki tüm cihazlar: seri no, ürün, kategori, şu anki konum ve durum.
-  Future<List<Map<String, Object?>>> cihazListesiRaporu() async {
+  /// Cihazlar: seri no, ürün, kategori, şu anki konum ve durum.
+  /// [urunId] verilirse yalnızca o ürünün cihazları.
+  Future<List<Map<String, Object?>>> cihazListesiRaporu({String? urunId}) async {
     final db = await _database;
     return db.rawQuery('''
-      SELECT c.seri_no AS seri_no, u.ad AS urun_adi, u.kategori AS kategori,
-             c.durum AS durum, d.ad AS depo_adi, d.tur AS depo_tur,
-             c.kullanim_yeri AS kullanim_yeri, c.updated_at AS guncelleme
+      SELECT c.seri_no AS seri_no, c.urun_id AS urun_id, u.ad AS urun_adi,
+             u.kategori AS kategori, c.durum AS durum, d.ad AS depo_adi,
+             d.tur AS depo_tur, c.kullanim_yeri AS kullanim_yeri,
+             c.updated_at AS guncelleme
       FROM cihazlar c
       JOIN urunler u ON u.id = c.urun_id
       LEFT JOIN depolar d ON d.id = c.depo_id
-      WHERE c.deleted = 0
-      ORDER BY u.ad COLLATE NOCASE, c.seri_no
-    ''');
+      WHERE c.deleted = 0 ${urunId == null ? '' : 'AND c.urun_id = ?'}
+      ORDER BY u.ad COLLATE NOCASE, d.ad COLLATE NOCASE, c.seri_no
+    ''', [if (urunId != null) urunId]);
   }
 
   /// Seri numaralı tüm hareketler (giriş, transfer, kullanım, iade, çıkış).

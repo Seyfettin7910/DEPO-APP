@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:printing/printing.dart';
 
 import '../../database/app_database.dart';
 import '../../providers/app_providers.dart';
-import '../../services/excel_rapor_service.dart';
-import '../../services/pdf_report_service.dart';
+import '../../database/models.dart';
+import '../../services/rapor/rapor_modeli.dart';
+import '../../services/rapor/rapor_olusturucu.dart';
+import 'rapor_onizleme_screen.dart';
+import 'sayim_screen.dart';
 
 class KullanimRaporScreen extends ConsumerStatefulWidget {
   const KullanimRaporScreen({super.key});
@@ -49,60 +51,156 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
     }
   }
 
-  Future<void> _pdfOlusturVePaylas() async {
-    final satirlar = await _future;
-    final doc = await PdfReportService.kullanimRaporuOlustur(
-      satirlar: satirlar,
-      baslangic: _tarihAraligi?.start,
-      bitis: _tarihAraligi?.end,
+  /// Rapor türünü seçtirir, raporu hazırlar ve önizleme ekranını açar.
+  /// PDF ve Excel çıktısı önizleme ekranındaki düğmelerden alınır.
+  Future<void> _raporSec() async {
+    final aralik = _tarihAraligi == null
+        ? 'Tüm zamanlar'
+        : '${DateFormat('dd.MM.yyyy').format(_tarihAraligi!.start)} - '
+            '${DateFormat('dd.MM.yyyy').format(_tarihAraligi!.end)}';
+    final tur = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Text('Rapor oluştur',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ),
+            ListTile(
+              leading: const Icon(Icons.category_outlined),
+              title: const Text('Ürünler'),
+              subtitle: const Text('Ürün çeşidine göre ayrılmış cihaz listesi'),
+              onTap: () => Navigator.pop(ctx, 'urunler'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.inventory_outlined),
+              title: const Text('Ürün stok durumu'),
+              subtitle: const Text(
+                  'Seçilen ürün: depoda, araçta, sahada kullanılan, çıkan'),
+              onTap: () => Navigator.pop(ctx, 'stok'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.local_shipping_outlined),
+              title: const Text('Kullanım raporu'),
+              subtitle: Text('Sahada kullanılanlar · $aralik'),
+              onTap: () => Navigator.pop(ctx, 'kullanim'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.history),
+              title: const Text('Hareket geçmişi'),
+              subtitle: Text('Giriş, transfer, kullanım, iade, çıkış · $aralik'),
+              onTap: () => Navigator.pop(ctx, 'hareketler'),
+            ),
+          ],
+        ),
+      ),
     );
+    if (tur == null || !mounted) return;
 
-    // Layout callback: kullanıcı sistemin yazdır/PDF-olarak-kaydet/paylaş
-    // diyaloğunu görür. iOS/Android'de paylaş menüsü, Windows'ta yazıcı
-    // veya "PDF olarak kaydet" seçeneği olarak çıkar.
-    await Printing.layoutPdf(
-      onLayout: (format) => doc.save(),
-      name: 'kullanim_raporu_${DateTime.now().millisecondsSinceEpoch}.pdf',
-    );
-  }
-
-  Future<void> _excel(String tur) async {
     final db = ref.read(appDatabaseProvider);
+    Urun? urun;
+    if (tur == 'stok') {
+      urun = await _urunSec();
+      if (urun == null || !mounted) return;
+    }
+
     final messenger = ScaffoldMessenger.of(context);
-    messenger.showSnackBar(
-        const SnackBar(content: Text('Excel dosyası hazırlanıyor...')));
+    final navigator = Navigator.of(context);
     try {
+      final Rapor rapor;
       switch (tur) {
-        case 'kullanim':
-          await ExcelRaporService.kullanimRaporu(
-            await _future,
-            baslangic: _tarihAraligi?.start,
-            bitis: _tarihAraligi?.end,
-          );
+        case 'urunler':
+          rapor = await RaporOlusturucu.urunler(db);
           break;
-        case 'cihazlar':
-          await ExcelRaporService.cihazListesi(await db.cihazListesiRaporu());
+        case 'stok':
+          rapor = await RaporOlusturucu.urunStokDurumu(db, urun!);
           break;
         case 'hareketler':
-          await ExcelRaporService.hareketRaporu(
-            await db.hareketRaporu(
-              baslangic: _tarihAraligi?.start,
-              bitis: _bitisGunSonu(),
-            ),
-            baslangic: _tarihAraligi?.start,
-            bitis: _tarihAraligi?.end,
-          );
+          rapor = await RaporOlusturucu.hareketler(db,
+              baslangic: _tarihAraligi?.start, bitis: _bitisGunSonu());
           break;
+        default:
+          rapor = await RaporOlusturucu.kullanim(db,
+              baslangic: _tarihAraligi?.start, bitis: _bitisGunSonu());
       }
-      messenger.hideCurrentSnackBar();
+      navigator.push(MaterialPageRoute(
+          builder: (_) => RaporOnizlemeScreen(rapor: rapor)));
     } catch (e) {
-      messenger
-        ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(
-          content: Text('Excel oluşturulamadı: $e'),
-          backgroundColor: Colors.red.shade700,
-        ));
+      messenger.showSnackBar(SnackBar(
+        content: Text('Rapor hazırlanamadı: $e'),
+        backgroundColor: Colors.red.shade700,
+      ));
     }
+  }
+
+  /// Aranabilir ürün seçme penceresi.
+  Future<Urun?> _urunSec() async {
+    final urunler = List<Urun>.of(
+        await ref.read(appDatabaseProvider).tumUrunler())
+      ..sort((a, b) => a.ad.toLowerCase().compareTo(b.ad.toLowerCase()));
+    if (!mounted) return null;
+    if (urunler.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Henüz ürün tanımlanmamış')));
+      return null;
+    }
+    var filtre = '';
+    return showDialog<Urun>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) {
+          final liste = urunler
+              .where((u) =>
+                  filtre.isEmpty ||
+                  u.ad.toLowerCase().contains(filtre) ||
+                  (u.kategori ?? '').toLowerCase().contains(filtre))
+              .toList();
+          return AlertDialog(
+            title: const Text('Ürün seçin'),
+            contentPadding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+            content: SizedBox(
+              width: 400,
+              height: 420,
+              child: Column(
+                children: [
+                  TextField(
+                    autofocus: true,
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.search),
+                      hintText: 'Ürün veya kategori ara',
+                    ),
+                    onChanged: (v) =>
+                        setState(() => filtre = v.trim().toLowerCase()),
+                  ),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: liste.length,
+                      itemBuilder: (_, i) => ListTile(
+                        dense: true,
+                        title: Text(liste[i].ad),
+                        subtitle: liste[i].kategori == null
+                            ? null
+                            : Text(liste[i].kategori!),
+                        onTap: () => Navigator.pop(ctx, liste[i]),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('İptal')),
+            ],
+          );
+        },
+      ),
+    );
   }
 
   /// Tarih aralığının son gününü de kapsasın (23:59'a kadar).
@@ -116,7 +214,7 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Kullanım Raporu'),
+        title: const Text('Raporlar'),
         actions: [
           IconButton(
             icon: const Icon(Icons.date_range),
@@ -128,40 +226,15 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
             onPressed: () => setState(_yenile),
           ),
           IconButton(
-            icon: const Icon(Icons.picture_as_pdf_outlined),
-            tooltip: 'PDF olarak dışa aktar',
-            onPressed: _pdfOlusturVePaylas,
+            icon: const Icon(Icons.fact_check_outlined),
+            tooltip: 'Sayım',
+            onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SayimScreen())),
           ),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.grid_on),
-            tooltip: 'Excel olarak dışa aktar',
-            onSelected: _excel,
-            itemBuilder: (_) => const [
-              PopupMenuItem(
-                value: 'kullanim',
-                child: ListTile(
-                  leading: Icon(Icons.local_shipping_outlined),
-                  title: Text('Kullanım raporu'),
-                  subtitle: Text('Ekrandaki liste'),
-                ),
-              ),
-              PopupMenuItem(
-                value: 'cihazlar',
-                child: ListTile(
-                  leading: Icon(Icons.inventory_2_outlined),
-                  title: Text('Tüm cihazlar'),
-                  subtitle: Text('Seri no, ürün, şu anki konum'),
-                ),
-              ),
-              PopupMenuItem(
-                value: 'hareketler',
-                child: ListTile(
-                  leading: Icon(Icons.history),
-                  title: Text('Hareket geçmişi'),
-                  subtitle: Text('Giriş, transfer, kullanım, iade, çıkış'),
-                ),
-              ),
-            ],
+          IconButton(
+            icon: const Icon(Icons.summarize_outlined),
+            tooltip: 'Rapor oluştur (PDF / Excel)',
+            onPressed: _raporSec,
           ),
         ],
       ),

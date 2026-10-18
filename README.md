@@ -5,6 +5,19 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.10.0 – Raporlar ve sayım
+- **Tek rapor yapısı:** Raporlar sekmesinde sağ üstteki "Rapor oluştur" ile rapor seçilir,
+  önce uygulamada önizlenir; PDF ve Excel aynı başlık/sütunlarla oradan alınır.
+  - **Ürünler:** ürün çeşidine göre ayrılmış (önce ürün özeti, sonra her ürünün cihazları)
+  - **Ürün stok durumu:** seçilen ürün için depoda / araçta / sahada kullanılan / çıkan
+    dökümü ve konumlara göre dağılım
+  - **Kullanım raporu** ve **Hareket geçmişi** (seçili tarih aralığıyla)
+- **PDF düzeltmeleri:** tarih aralığı seçilince takılma giderildi; Türkçe karakterler için
+  DejaVu Sans yazı tipi uygulamaya gömüldü (assets/fonts, internet gerekmez).
+- **Sayım modu:** Raporlar > Sayım veya depo ekranı > "Seri no ile işlem" > Sayım yap.
+  Depo/araç seçilir, seri nolar okutulur; Bulunan / Eksik / Fazla anlık görünür, sonunda
+  sayım raporu alınır. Sayım sistemde hiçbir kaydı değiştirmez.
+
 ## 1.9.1 – Güncelleme uyarısı
 - Uygulama açılınca (ve en fazla 6 saatte bir uygulamaya dönüldüğünde) yeni sürüm
   var mı bakar. Telefonda "İndir" APK linkini açar; web'de "Yenile" sayfayı yeniler.
