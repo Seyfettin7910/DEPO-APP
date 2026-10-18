@@ -18,11 +18,19 @@ class SupabaseConfig {
 class SupabaseService {
   static SupabaseClient get client => Supabase.instance.client;
 
+  static bool _hazir = false;
+
   static Future<void> init() async {
+    if (_hazir) return;
     await Supabase.initialize(
       url: SupabaseConfig.url,
       anonKey: SupabaseConfig.anonKey,
+      // Giriş yalnızca e-posta + şifre ile; e-posta linkiyle dönüş
+      // (deep link) kullanılmıyor. Kapatmak açılışı hızlandırır ve bazı
+      // Android sürümlerinde açılışta takılmayı önler.
+      authOptions: const FlutterAuthClientOptions(detectSessionInUri: false),
     );
+    _hazir = true;
   }
 
   static User? get kullanici => client.auth.currentUser;
