@@ -5,6 +5,9 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.16.2
+- Güncelleme indirilirken toplam boyut, inen miktar ve yüzde görünür ("12,4 MB / 38,7 MB · %32"); Wi-Fi'de arka plan indirmesi alttaki şeritte izlenir. Mobil veride indirmeden önce boyut gösterilir.
+
 ## 1.16.1
 - Kritik stok hesabına araçlar (seyyar depo) da dahil: depolar + araçlardaki toplam, minimumla karşılaştırılır.
 

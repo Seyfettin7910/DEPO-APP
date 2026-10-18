@@ -34,6 +34,22 @@ class GuncellemeServisi {
   static final _ertelenen = <String>{};
   static String? _hazirSurum; // indirilip kurulmayı bekleyen sürüm
   static String? _hazirYol;
+  static int? _apkBoyutu; // GitHub'daki son APK'nın boyutu (bayt)
+
+  /// 40321123 -> "38,5 MB"
+  static String boyutMetni(int bayt) {
+    final mb = bayt / (1024 * 1024);
+    return '${mb.toStringAsFixed(1).replaceAll('.', ',')} MB';
+  }
+
+  static String _boyutEki() =>
+      _apkBoyutu == null ? '' : '\nBoyut: ${boyutMetni(_apkBoyutu!)}';
+
+  static String _ilerlemeMetni(int alinan, int? toplam) {
+    if (toplam == null) return '${boyutMetni(alinan)} indirildi';
+    final yuzde = (alinan * 100 / toplam).floor();
+    return '${boyutMetni(alinan)} / ${boyutMetni(toplam)}  ·  %$yuzde';
+  }
 
   static bool get _android =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
@@ -69,6 +85,14 @@ class GuncellemeServisi {
       basliklar: {'Accept': 'application/vnd.github+json'},
     );
     final tag = (yayin?['tag_name'] as String?)?.replaceFirst(RegExp(r'^v'), '');
+    final dosyalar = yayin?['assets'];
+    if (dosyalar is List) {
+      for (final d in dosyalar) {
+        if (d is Map && d['name'] == 'depo-takip.apk' && d['size'] is num) {
+          _apkBoyutu = (d['size'] as num).toInt();
+        }
+      }
+    }
     return (tag ?? dosya?['surum'] as String?, dosya?['min'] as String?);
   }
 
@@ -218,12 +242,36 @@ class GuncellemeServisi {
       final wifi = baglanti.contains(ConnectivityResult.wifi) ||
           baglanti.contains(ConnectivityResult.ethernet);
       if (wifi) {
-        // Wi-Fi'de sessizce arka planda indir
+        // Wi-Fi'de arka planda indir; altta küçük bir şeritte ilerleme görünür,
+        // kullanıcı çalışmaya devam edebilir.
+        if (!context.mounted) return;
+        final messenger = ScaffoldMessenger.of(context);
+        final durum = ValueNotifier<(int, int?)>((0, _apkBoyutu));
+        messenger.showSnackBar(SnackBar(
+          duration: const Duration(hours: 1),
+          content: ValueListenableBuilder<(int, int?)>(
+            valueListenable: durum,
+            builder: (_, d, __) => Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Güncelleme $hedef indiriliyor  ·  '
+                    '${_ilerlemeMetni(d.$1, d.$2)}'),
+                const SizedBox(height: 6),
+                LinearProgressIndicator(
+                    value: d.$2 == null ? null : d.$1 / d.$2!),
+              ],
+            ),
+          ),
+        ));
         try {
-          yol = await apk.apkIndir(apkLinki, hedef, (_) {});
+          yol = await apk.apkIndir(
+              apkLinki, hedef, (a, t) => durum.value = (a, t ?? _apkBoyutu));
         } catch (e) {
           debugPrint('Güncelleme indirilemedi: $e');
           return;
+        } finally {
+          messenger.hideCurrentSnackBar();
         }
       } else {
         if (!context.mounted) return;
@@ -232,7 +280,8 @@ class GuncellemeServisi {
           builder: (ctx) => AlertDialog(
             icon: const Icon(Icons.system_update),
             title: const Text('Yeni sürüm var'),
-            content: Text('Depo Takip $hedef hazır (telefondaki: $mevcutSurum).\n\n'
+            content: Text('Depo Takip $hedef hazır (telefondaki: $mevcutSurum).'
+                '${_boyutEki()}\n\n'
                 'Wi-Fi\'ye bağlanınca kendiliğinden indirilir. Şimdi mobil '
                 'veriyle indirmek ister misiniz?'),
             actions: [
@@ -332,7 +381,7 @@ class GuncellemeServisi {
 
   static Future<String?> _ilerlemeyleIndir(
       BuildContext context, String hedef) async {
-    final oran = ValueNotifier<double?>(null);
+    final durum = ValueNotifier<(int, int?)>((0, _apkBoyutu));
     final navigator = Navigator.of(context, rootNavigator: true);
     final messenger = ScaffoldMessenger.of(context);
     showDialog<void>(
@@ -342,14 +391,24 @@ class GuncellemeServisi {
         canPop: false,
         child: AlertDialog(
           title: Text('Depo Takip $hedef indiriliyor'),
-          content: ValueListenableBuilder<double?>(
-            valueListenable: oran,
-            builder: (_, v, __) => Column(
+          content: ValueListenableBuilder<(int, int?)>(
+            valueListenable: durum,
+            builder: (_, d, __) => Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                LinearProgressIndicator(value: v),
-                const SizedBox(height: 8),
-                Text(v == null ? 'Başlıyor...' : '%${(v * 100).round()}'),
+                LinearProgressIndicator(
+                  value: d.$2 == null ? null : d.$1 / d.$2!,
+                  minHeight: 8,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  d.$1 == 0 && d.$2 == null
+                      ? 'Başlıyor...'
+                      : _ilerlemeMetni(d.$1, d.$2),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 15),
+                ),
               ],
             ),
           ),
@@ -357,7 +416,8 @@ class GuncellemeServisi {
       ),
     );
     try {
-      return await apk.apkIndir(apkLinki, hedef, (v) => oran.value = v);
+      return await apk.apkIndir(
+          apkLinki, hedef, (a, t) => durum.value = (a, t ?? _apkBoyutu));
     } catch (e) {
       messenger.showSnackBar(SnackBar(
         content: Text('İndirilemedi: $e'),
@@ -385,7 +445,8 @@ class GuncellemeServisi {
             title: const Text('Güncelleme gerekli'),
             content: Text(
                 'Bu sürüm ($mevcutSurum) artık kullanılamıyor. Verilerin doğru '
-                'kaydedilmesi için Depo Takip $hedef sürümüne güncelleyin.'),
+                'kaydedilmesi için Depo Takip $hedef sürümüne güncelleyin.'
+                '${_android ? _boyutEki() : ''}'),
             actions: [
               FilledButton.icon(
                 onPressed: () => Navigator.pop(ctx),

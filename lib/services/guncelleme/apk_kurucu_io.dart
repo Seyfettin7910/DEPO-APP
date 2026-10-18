@@ -19,9 +19,9 @@ Future<String?> indirilmisApk(String surum) async {
   return null;
 }
 
-/// APK'yı indirir; [ilerleme] 0..1 (boyut bilinmiyorsa null) bildirir.
-Future<String> apkIndir(
-    String url, String surum, void Function(double? oran) ilerleme) async {
+/// APK'yı indirir; [ilerleme] (inen bayt, toplam bayt / bilinmiyorsa null).
+Future<String> apkIndir(String url, String surum,
+    void Function(int alinan, int? toplam) ilerleme) async {
   final hedef = await _dosya(surum);
   // Eski sürümlerin indirilmiş dosyalarını temizle
   try {
@@ -47,7 +47,7 @@ Future<String> apkIndir(
     await for (final parca in yanit.stream) {
       yazici.add(parca);
       alinan += parca.length;
-      ilerleme(toplam == null || toplam == 0 ? null : alinan / toplam);
+      ilerleme(alinan, toplam == null || toplam == 0 ? null : toplam);
     }
     await yazici.close();
     if (await hedef.exists()) await hedef.delete();
