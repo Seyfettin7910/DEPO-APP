@@ -1,8 +1,11 @@
 // Web'de APK kurulumu yoktur; sayfa yenilenerek güncellenir.
 Future<String?> indirilmisApk(String surum) async => null;
 
+Future<bool> indiriliyorMu(String surum) async => false;
+
 Future<String> apkIndir(String url, String surum,
-        void Function(int alinan, int? toplam) ilerleme) =>
+        void Function(int alinan, int? toplam) ilerleme,
+        {bool sadeceWifi = false}) =>
     throw UnsupportedError('Web\'de APK indirilmez');
 
 Future<bool> kurulumIzniVar() async => false;

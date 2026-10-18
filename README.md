@@ -5,6 +5,10 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.16.5
+- Güncelleme indirmesi Android'in kendi indirme yöneticisine geçti: uygulama arka plana düşse, hatta kapatılsa da indirme sürer; ilerleme bildirim çubuğunda görünür. Uygulama yeniden açılınca yarım kalan indirme kaldığı yerden izlenir, bitmişse "Şimdi kur" sorulur.
+- Wi-Fi ile başlayan otomatik indirme mobil veriye geçilirse duraklar, Wi-Fi gelince devam eder (kota yemez).
+
 ## 1.16.4
 - APK dosya adı **Depo-Otomasyon-Sistemi.apk** oldu. Eski uygulamaların güncellemesi bozulmasın diye aynı APK eski adla (depo-takip.apk) da yayınlanır; eski link de çalışır.
 

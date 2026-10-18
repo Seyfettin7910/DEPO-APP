@@ -14,7 +14,8 @@ import 'guncelleme/apk_kurucu.dart' as apk;
 ///
 /// - **Telefon (Android):** yeni sürüm Wi-Fi'deyken arka planda indirilir,
 ///   sonra "Şimdi kur" ile kurulur (veriler korunur). Mobil veride indirmeden
-///   önce sorulur.
+///   önce sorulur. İndirme Android'in indirme yöneticisiyle yapılır; uygulama
+///   arka plana düşse ya da kapatılsa da sürer.
 /// - **Web:** açılışta yeni sürüm varsa sayfa kendiliğinden yenilenir.
 /// - **Zorunlu güncelleme:** sunucudaki en düşük sürümün (min_surum.txt)
 ///   altındaki uygulamalar güncellenmeden kullanılamaz.
@@ -241,7 +242,10 @@ class GuncellemeServisi {
       final baglanti = await Connectivity().checkConnectivity();
       final wifi = baglanti.contains(ConnectivityResult.wifi) ||
           baglanti.contains(ConnectivityResult.ethernet);
-      if (wifi) {
+      // Önceden başlamış (uygulama kapatılmış olsa da süren) indirme varsa
+      // yeniden sormadan onu izle.
+      final suruyor = await apk.indiriliyorMu(hedef);
+      if (wifi || suruyor) {
         // Wi-Fi'de arka planda indir; altta küçük bir şeritte ilerleme görünür,
         // kullanıcı çalışmaya devam edebilir.
         if (!context.mounted) return;
@@ -257,6 +261,8 @@ class GuncellemeServisi {
               children: [
                 Text('Güncelleme $hedef indiriliyor  ·  '
                     '${_ilerlemeMetni(d.$1, d.$2)}'),
+                const Text('Uygulamadan çıksanız da indirme sürer.',
+                    style: TextStyle(fontSize: 11)),
                 const SizedBox(height: 6),
                 LinearProgressIndicator(
                     value: d.$2 == null ? null : d.$1 / d.$2!),
@@ -266,7 +272,8 @@ class GuncellemeServisi {
         ));
         try {
           yol = await apk.apkIndir(
-              apkLinki, hedef, (a, t) => durum.value = (a, t ?? _apkBoyutu));
+              apkLinki, hedef, (a, t) => durum.value = (a, t ?? _apkBoyutu),
+              sadeceWifi: !suruyor);
         } catch (e) {
           debugPrint('Güncelleme indirilemedi: $e');
           return;
@@ -408,6 +415,13 @@ class GuncellemeServisi {
                       : _ilerlemeMetni(d.$1, d.$2),
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 15),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Uygulamayı arka plana alabilirsiniz; indirme sürer, '
+                  'ilerleme bildirim çubuğunda görünür.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 12),
                 ),
               ],
             ),
