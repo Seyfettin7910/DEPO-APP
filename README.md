@@ -5,6 +5,9 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.14.1
+- Giriş ekranında "Developed by Seyfettin AYDIN".
+
 ## 1.14.0 – İl / ilçe / mahalle (köy)
 > **Önce Supabase'de `supabase_guncelleme_1_14_0.sql` çalıştırılmalı.**
 
