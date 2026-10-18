@@ -3,11 +3,6 @@
 Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlarına taşınır.
 
 ## Sırada
-- [ ] **iPhone ve bilgisayar tarayıcısı için bildirim (web push)**
-  - Bir kerelik bildirim anahtarı (VAPID) üretilip GitHub Secrets'a konur.
-  - Supabase'de zamanlanmış görev olayları (kritik stok, arıza, servis gecikmesi, garanti, transfer, giriş, hurda, servis dönüşü, güvenlik, günlük özet) hesaplayıp bildirim gönderir.
-  - iPhone: uygulama ana ekrana eklenir, uygulamada bir kez "Bildirimlere izin ver" düğmesine basılır (iOS 16.4+).
-  - Windows'ta Chrome/Edge'de sayfa kapalıyken de bildirim gelir.
 - [ ] **Kullanıcı rolleri ve yetkiler** (Yönetici / Depocu / Saha); silme yalnızca yöneticide, hareket kayıtları kimse tarafından silinemez.
 - [ ] **Veritabanı yedeği** (gece şifreli otomatik yedek + uygulamadan Excel dışa aktarım).
 - [ ] **Belediye sunucusuna geçiş** (alan adı → web + APK → veritabanı). Gerekli bilgi: sunucu Windows mu Linux mu, internete çıkışı ve dışarıdan erişimi var mı.

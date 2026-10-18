@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../providers/app_providers.dart';
 import '../services/oturum_kilidi.dart';
 import '../services/supabase_service.dart';
+import '../services/bildirim/web_bildirim.dart';
 
 /// AppBar'da senkron durumunu gösterir; menüden elle senkronize etme sağlar.
 /// (Çıkış, alt menüdeki tek "Çıkış" düğmesindedir.)
@@ -90,5 +91,14 @@ Future<void> cikisYapOnayli(BuildContext context, WidgetRef ref) async {
       ],
     ),
   );
-  if (onay == true) await OturumKilidi.instance.kilitle();
+  if (onay != true) return;
+  // Bu tarayıcıdaki bildirim aboneliği kapanır (oturum açıkken silinmeli).
+  await WebBildirim.kapat().timeout(const Duration(seconds: 5),
+      onTimeout: () {});
+  await OturumKilidi.instance.kilitle();
+  // Tam çıkış: sunucu oturumu da kapanır; arka plan kontrolü ve
+  // bildirimler durur. (İnternet yoksa ekran yine de kilitlenir.)
+  try {
+    await SupabaseService.cikisYap().timeout(const Duration(seconds: 8));
+  } catch (_) {}
 }

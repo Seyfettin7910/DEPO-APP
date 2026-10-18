@@ -1,0 +1,6 @@
+# Supabase CLI ayarı (yalnızca sunucu fonksiyonunun GitHub'dan yayınlanması için)
+project_id = "depo-app"
+
+[functions.bildirim-gonder]
+# Zamanlayıcı kendi anahtarıyla çağırır (fonksiyon içinde denetlenir)
+verify_jwt = false

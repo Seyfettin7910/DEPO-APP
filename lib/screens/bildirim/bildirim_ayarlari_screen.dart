@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -6,6 +7,7 @@ import '../../providers/app_providers.dart';
 import '../../services/bildirim/bildirim_ayarlari.dart';
 import '../../services/bildirim/bildirim_gosterici.dart';
 import '../../services/bildirim/bildirim_motoru.dart';
+import '../../services/bildirim/web_bildirim.dart';
 import '../../widgets/depo_secici.dart';
 import 'bildirimler_screen.dart';
 
@@ -21,6 +23,8 @@ class BildirimAyarlariScreen extends ConsumerStatefulWidget {
 class _BildirimAyarlariScreenState
     extends ConsumerState<BildirimAyarlariScreen> {
   BildirimAyarlari? _ayar;
+  bool? _webAbone; // web: bu tarayıcı bildirime abone mi
+  bool _webIslem = false;
 
   @override
   void initState() {
@@ -28,12 +32,132 @@ class _BildirimAyarlariScreenState
     BildirimAyarlari.yukle().then((a) {
       if (mounted) setState(() => _ayar = a);
     });
+    if (kIsWeb) {
+      WebBildirim.hazirla();
+      WebBildirim.aboneMi().then((v) {
+        if (mounted) setState(() => _webAbone = v);
+      });
+    }
   }
 
   Future<void> _degisti(void Function(BildirimAyarlari a) f) async {
     final a = _ayar!;
     setState(() => f(a));
     await a.kaydet();
+    // Web aboneliğinde ayarlar sunucuda da güncellenir.
+    if (kIsWeb && _webAbone == true) await WebBildirim.guncelle(a);
+  }
+
+  void _mesaj(String m) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+  }
+
+  /// iPhone / bilgisayar tarayıcısında bildirimleri açma kartı.
+  Widget _webKarti(BildirimAyarlari a, ThemeData tema) {
+    final izin = WebBildirim.izin;
+    Widget icerik;
+    if (WebBildirim.anaEkranGerekli) {
+      icerik = const Text(
+        'iPhone\'da bildirim almak için:\n'
+        '1. Safari veya Chrome\'da Paylaş simgesine basın\n'
+        '2. "Ana Ekrana Ekle" deyin\n'
+        '3. Uygulamayı ana ekrandaki simgeden açıp buraya tekrar gelin.',
+      );
+    } else if (!WebBildirim.destekleniyor) {
+      icerik = const Text('Bu tarayıcı bildirimleri desteklemiyor. '
+          'iPhone\'da iOS 16.4 veya üstü gerekir.');
+    } else if (izin == 'denied') {
+      icerik = Text(WebBildirim.iphone
+          ? 'Bildirim izni kapalı. iPhone Ayarlar > Bildirimler > '
+              'DEPO OTOMASYON SİSTEMİ bölümünden açın.'
+          : 'Bildirim izni bu site için engellenmiş. Adres çubuğundaki '
+              'kilit simgesinden bildirimlere izin verin.');
+    } else if (_webAbone == true) {
+      icerik = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Icon(Icons.check_circle, color: Colors.green.shade700),
+            const SizedBox(width: 8),
+            const Expanded(
+                child: Text('Bildirimler açık. Uygulama kapalıyken de gelir.')),
+          ]),
+          const SizedBox(height: 8),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            OutlinedButton.icon(
+              icon: const Icon(Icons.notifications_active_outlined),
+              label: const Text('Bu cihazda dene'),
+              onPressed: () async {
+                final ok = await WebBildirim.test('Test bildirimi',
+                    'Bildirimler bu cihazda görünüyor');
+                if (!ok) _mesaj('Bildirim gösterilemedi');
+              },
+            ),
+            TextButton.icon(
+              icon: const Icon(Icons.notifications_off_outlined),
+              label: const Text('Kapat'),
+              onPressed: _webIslem
+                  ? null
+                  : () async {
+                      setState(() => _webIslem = true);
+                      await WebBildirim.kapat();
+                      if (mounted) {
+                        setState(() {
+                          _webIslem = false;
+                          _webAbone = false;
+                        });
+                      }
+                    },
+            ),
+          ]),
+        ],
+      );
+    } else {
+      icerik = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Bu cihaza bildirim gelmesi için izin verin. '
+              'Uygulama kapalıyken de gelir.'),
+          const SizedBox(height: 8),
+          FilledButton.icon(
+            icon: const Icon(Icons.notifications_active),
+            label: Text(_webIslem ? 'Açılıyor...' : 'Bildirimlere izin ver'),
+            onPressed: _webIslem
+                ? null
+                : () {
+                    // İzin isteği düğmeye basılır basılmaz yapılmalı (iPhone).
+                    final islem = WebBildirim.ac(a);
+                    setState(() => _webIslem = true);
+                    islem.then((hata) {
+                      if (!mounted) return;
+                      setState(() {
+                        _webIslem = false;
+                        if (hata == null) _webAbone = true;
+                      });
+                      _mesaj(hata ?? 'Bildirimler açıldı');
+                    });
+                  },
+          ),
+        ],
+      );
+    }
+    return Card(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Bu cihaza bildirim',
+                style: tema.textTheme.titleSmall
+                    ?.copyWith(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            icerik,
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _gunSecici({
@@ -90,12 +214,13 @@ class _BildirimAyarlariScreenState
                   ? 'Seçtikleriniz bu telefona bildirim olarak gelir; uygulama '
                       'kapalıyken de yaklaşık 15 dakikada bir kontrol edilir. '
                       'Kendi yaptığınız işlemler için bildirim gelmez.'
-                  : 'Web sürümünde bildirimler yalnızca sayfa açıkken, üstteki '
-                      'zil simgesinde görünür. Telefona bildirim için Android '
-                      'uygulamasını kullanın.',
+                  : 'Seçtikleriniz sunucudan birkaç dakika içinde bu cihaza '
+                      'bildirim olarak gelir (izin verdiyseniz). Kendi '
+                      'yaptığınız işlemler için bildirim gelmez.',
               style: tema.textTheme.bodySmall,
             ),
           ),
+          if (kIsWeb) _webKarti(a, tema),
           for (final g in gruplar.entries) ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),

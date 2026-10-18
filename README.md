@@ -5,6 +5,12 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.20.0 – iPhone ve bilgisayara bildirim
+- Web sürümü (iPhone'da ana ekrana eklenen uygulama, bilgisayarda Chrome / Edge) uygulama kapalıyken de bildirim alır: Bildirim ayarları → "Bildirimlere izin ver".
+- Bildirimleri Supabase'deki zamanlanmış görev (2 dakikada bir) her abonenin kendi ayarlarına göre gönderir (supabase/functions/bildirim-gonder). Gizli anahtarlar sunucuda kendiliğinden üretilir.
+- "Çıkış" artık tam çıkış: sunucu oturumu kapanır, arka plan kontrolü ve bu tarayıcının bildirim aboneliği durur. 5 dakikalık kilit yalnızca ekranı kilitler.
+- Supabase: `supabase_guncelleme_1_20_0.sql` bir kez çalıştırılmalı; GitHub'a `SUPABASE_ACCESS_TOKEN` secret'ı eklenmeli.
+
 ## 1.19.0 – Bildirimler
 - 12 bildirim türü: kritik stok / tükendi, yeni arıza, servis gecikmesi, garanti bitiyor, araca / depoya cihaz geldi, depoya giriş, hurda ve silme, servisten dönüş, hatalı şifre denemeleri, yeni IP'den giriş, gönderilmemiş kayıtlar, günlük özet.
 - Android: uygulama kapalıyken de ~15 dakikada bir kontrol edilir (Firebase gerekmez). Bildirim çubuğunda yeni logo simgesi.

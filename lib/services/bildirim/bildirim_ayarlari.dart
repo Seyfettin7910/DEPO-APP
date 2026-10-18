@@ -127,17 +127,18 @@ class BildirimAyarlari {
     }
   }
 
+  /// Sunucuya da (web bildirimi) aynı biçimde gönderilir.
+  Map<String, dynamic> toJson() => {
+        'acik': [for (final t in acik) t.name],
+        'servisGecikmeGun': servisGecikmeGun,
+        'garantiGun': garantiGun,
+        'izlenenDepolar': izlenenDepolar.toList(),
+        'ozetSaat': ozetSaat,
+        'ozetDakika': ozetDakika,
+      };
+
   Future<void> kaydet() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-        _anahtar,
-        jsonEncode({
-          'acik': [for (final t in acik) t.name],
-          'servisGecikmeGun': servisGecikmeGun,
-          'garantiGun': garantiGun,
-          'izlenenDepolar': izlenenDepolar.toList(),
-          'ozetSaat': ozetSaat,
-          'ozetDakika': ozetDakika,
-        }));
+    await prefs.setString(_anahtar, jsonEncode(toJson()));
   }
 }

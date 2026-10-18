@@ -6,7 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/app_providers.dart';
 import '../services/bildirim/arka_plan.dart';
+import '../services/bildirim/bildirim_ayarlari.dart';
 import '../services/bildirim/bildirim_gosterici.dart';
+import '../services/bildirim/web_bildirim.dart';
 import '../services/guncelleme_servisi.dart';
 import '../services/supabase_service.dart';
 import '../widgets/sync_durum_dugmesi.dart';
@@ -64,6 +66,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Timer? _onPlanZamanlayici;
 
   Future<void> _bildirimleriHazirla() async {
+    if (kIsWeb) {
+      // Bu tarayıcı bildirime aboneyse kullanıcı ve ayarlar sunucuda tazelenir.
+      unawaited(BildirimAyarlari.yukle().then(WebBildirim.guncelle));
+      return;
+    }
     await onPlandaIsaretle(true);
     await Future.delayed(const Duration(seconds: 5));
     await bildirimIzniIste();
