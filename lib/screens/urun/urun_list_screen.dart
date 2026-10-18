@@ -82,7 +82,8 @@ class UrunListScreen extends ConsumerWidget {
                         const Text('depoda', style: TextStyle(fontSize: 11)),
                       ],
                     ),
-                    onTap: () => urunFormDialog(context, ref, mevcut: urun),
+                    // Kısa dokunuşta bir şey açılmaz; düzenleme ve silme
+                    // basılı tutunca çıkan menüden yapılır.
                     onLongPress: () async {
                       final secim = await secenekMenusu(context,
                           baslik: urun.ad,

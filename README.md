@@ -5,6 +5,9 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.15.1
+- Ürünler ekranında kısa dokunuşla düzenleme açılmıyor; Düzenle / Sil yalnızca basılı tutunca.
+
 ## 1.15.0 – Ürün ve cihaz silme (nedenli)
 - **Basılı tutunca:** Ürünler listesinde ürüne, Depo > Cihazlar sekmesinde ve Ara
   sonuçlarında seri numarasına basılı tutulunca seçenekler çıkar (Düzenle / Aç / Sil).
