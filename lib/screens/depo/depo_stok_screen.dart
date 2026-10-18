@@ -281,7 +281,7 @@ class _StokSatiri extends StatelessWidget {
   final String urunId;
   final Urun? urun;
   final int adet;
-  final KritikStok? kritik; // depolardaki TOPLAM minimumun altındaysa dolu
+  final KritikStok? kritik; // depolar + araçlardaki TOPLAM minimumun altındaysa
   const _StokSatiri({
     required this.depoId,
     required this.urunId,
@@ -301,7 +301,7 @@ class _StokSatiri extends StatelessWidget {
       subtitle: Text([
         if (urun?.kategori != null) urun!.kategori!,
         if (dusuk)
-          'Kritik: depolarda toplam ${kritik!.depoda} / minimum ${kritik!.minStok}',
+          'Kritik: toplam ${kritik!.toplam} / minimum ${kritik!.minStok}',
       ].join(' · ')),
       trailing: Text(
         '$adet',

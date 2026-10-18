@@ -5,6 +5,9 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.16.1
+- Kritik stok hesabına araçlar (seyyar depo) da dahil: depolar + araçlardaki toplam, minimumla karşılaştırılır.
+
 ## 1.16.0 – Kritik stok
 - Ürünün "Minimum adet uyarısı", **sabit depolardaki toplam** adede göre kontrol edilir
   (araçtakiler hesaba katılmaz, ayrıca gösterilir). Toplam minimuma eşit / altındaysa kritik.

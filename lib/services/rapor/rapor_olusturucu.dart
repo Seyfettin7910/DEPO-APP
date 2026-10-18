@@ -316,20 +316,20 @@ class RaporOlusturucu {
     final liste = await db.kritikStoklar();
     return Rapor(
       baslik: 'Kritik Stok',
-      altBaslik: 'Sabit depolardaki toplam adet, ürünün minimum adediyle '
-          'karşılaştırılır (araçtakiler hesaba katılmaz) · ${_olusturma()}',
+      altBaslik: 'Depolar ve araçlardaki (seyyar depo) toplam adet, ürünün '
+          'minimum adediyle karşılaştırılır · ${_olusturma()}',
       dosyaOn: 'kritik_stok',
       ozet: [
         MapEntry('Kritik ürün', '${liste.length}'),
-        MapEntry('Tükenen', '${liste.where((k) => k.depoda == 0).length}'),
+        MapEntry('Tükenen', '${liste.where((k) => k.toplam == 0).length}'),
         MapEntry('Toplam eksik',
             '${liste.fold<int>(0, (t, k) => t + (k.eksik > 0 ? k.eksik : 0))}'),
       ],
       sutunlar: const [
-        'Ürün', 'Kategori', 'Minimum', 'Depolarda', 'Araçlarda', 'Eksik',
-        'Durum'
+        'Ürün', 'Kategori', 'Minimum', 'Depolarda', 'Araçlarda', 'Toplam',
+        'Eksik', 'Durum'
       ],
-      genislikler: const [30, 18, 10, 10, 10, 9, 11],
+      genislikler: const [28, 16, 9, 9, 9, 9, 8, 10],
       bolumler: [
         RaporBolumu(
           aciklama: liste.isEmpty
@@ -343,6 +343,7 @@ class RaporOlusturucu {
                 k.minStok,
                 k.depoda,
                 k.aracta,
+                k.toplam,
                 k.eksik,
                 k.durum,
               ],

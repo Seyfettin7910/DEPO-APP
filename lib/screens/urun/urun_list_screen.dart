@@ -84,9 +84,9 @@ class UrunListScreen extends ConsumerWidget {
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 2),
                             child: Text(
-                              '• ${k.urunAdi}: depolarda ${k.depoda} / min '
+                              '• ${k.urunAdi}: toplam ${k.toplam} / min '
                               '${k.minStok} · ${k.durum}'
-                              '${k.aracta > 0 ? ' (araçlarda ${k.aracta})' : ''}',
+                              ' (depolarda ${k.depoda}, araçlarda ${k.aracta})',
                             ),
                           ),
                       ],

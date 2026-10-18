@@ -214,8 +214,8 @@ class CihazHareketSatiri {
   });
 }
 
-/// Minimum adedin altına inmiş (veya eşit) ürün. Hesap, sabit depolardaki
-/// toplam adede göre yapılır; araçtakiler ayrıca gösterilir.
+/// Minimum adedin altına inmiş (veya eşit) ürün. Hesap, depolar ve araçlardaki
+/// (seyyar depo) kullanılmamış toplam adede göre yapılır.
 class KritikStok {
   const KritikStok({
     required this.urunId,
@@ -233,12 +233,15 @@ class KritikStok {
   final int depoda;
   final int aracta;
 
-  /// Minimumun üstüne çıkmak için gereken adet.
-  int get eksik => minStok - depoda + 1;
+  /// Depolar + araçlar.
+  int get toplam => depoda + aracta;
 
-  String get durum => depoda == 0
+  /// Minimumun üstüne çıkmak için gereken adet.
+  int get eksik => minStok - toplam + 1;
+
+  String get durum => toplam == 0
       ? 'Tükendi'
-      : (depoda < minStok ? 'Kritik' : 'Sınırda');
+      : (toplam < minStok ? 'Kritik' : 'Sınırda');
 }
 
 class KullanimRaporSatiri {
@@ -731,8 +734,8 @@ class AppDatabase {
     };
   }
 
-  /// Minimum adet tanımlı ve sabit depolardaki toplamı minimuma eşit / altında
-  /// olan ürünler (en kritik üstte).
+  /// Minimum adet tanımlı ve depolar + araçlardaki toplamı minimuma eşit /
+  /// altında olan ürünler (en kritik üstte).
   Future<List<KritikStok>> kritikStoklar() async {
     final db = await _database;
     final rows = await db.rawQuery('''
@@ -748,8 +751,9 @@ class AppDatabase {
       LEFT JOIN depolar d ON d.id = c.depo_id AND d.deleted = 0
       WHERE u.deleted = 0 AND u.min_stok_seviyesi > 0
       GROUP BY u.id
-      HAVING depoda <= u.min_stok_seviyesi
-      ORDER BY (depoda * 1.0 / u.min_stok_seviyesi), u.ad COLLATE NOCASE
+      HAVING (depoda + aracta) <= u.min_stok_seviyesi
+      ORDER BY ((depoda + aracta) * 1.0 / u.min_stok_seviyesi),
+               u.ad COLLATE NOCASE
     ''');
     return [
       for (final r in rows)

@@ -15,8 +15,8 @@ class KritikStokSeridi extends ConsumerWidget {
     final liste = ref.watch(kritikStoklarProvider).value ?? const [];
     if (liste.isEmpty) return const SizedBox.shrink();
 
-    final tukenen = liste.where((k) => k.depoda == 0).length;
-    final adlar = liste.take(3).map((k) => '${k.urunAdi} (${k.depoda})').join(', ');
+    final tukenen = liste.where((k) => k.toplam == 0).length;
+    final adlar = liste.take(3).map((k) => '${k.urunAdi} (${k.toplam})').join(', ');
     final renk = tukenen > 0 ? Colors.red.shade700 : Colors.orange.shade800;
 
     return Material(
