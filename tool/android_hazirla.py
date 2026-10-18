@@ -64,5 +64,19 @@ metin = metin.replace(
     '            )',
 )
 
+# flutter_local_notifications için Java kütüphane uyarlaması (desugaring)
+assert "compileOptions {" in metin, "compileOptions bloğu bulunamadı"
+metin = metin.replace(
+    "compileOptions {",
+    "compileOptions {\n        isCoreLibraryDesugaringEnabled = true",
+    1,
+)
+metin = metin.rstrip() + '''
+
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+}
+'''
+
 uygulama.write_text(metin, encoding="utf-8")
 print("Android Gradle dosyaları hazır, release imzası eklendi.")

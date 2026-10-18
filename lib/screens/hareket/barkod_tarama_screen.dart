@@ -11,6 +11,7 @@ import '../cihaz/toplu_giris_screen.dart';
 import '../cihaz/toplu_transfer_screen.dart';
 import '../../widgets/hedefli_tarayici.dart';
 import '../../widgets/kritik_stok_seridi.dart';
+import '../../widgets/bildirim_dugmesi.dart';
 
 /// Hızlı tarama: seri numarası okutulunca cihazın kartı (hangi ürün, hangi
 /// depoda / araçta) açılır. Kayıtlı değilse uyarı sesi + titreşim verir ve
@@ -152,6 +153,7 @@ class _BarkodTaramaScreenState extends ConsumerState<BarkodTaramaScreen>
       appBar: AppBar(
         title: const Text('Seri No Okut'),
         actions: [
+          const BildirimDugmesi(),
           IconButton(
             icon: const Icon(Icons.keyboard),
             tooltip: 'Seri no yazarak ara',

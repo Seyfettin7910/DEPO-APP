@@ -2,6 +2,9 @@
     <!-- Barkod tarama için kamera izni -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Bildirimler (Android 13+ izin ister) ve arka plan kontrolü -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <!-- Uygulama içi güncelleme: indirilen yeni sürümü kurabilmek için -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- Sahada kullanım / montaj anındaki konum (yalnızca o an, bir kez) -->

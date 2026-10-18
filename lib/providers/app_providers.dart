@@ -93,3 +93,13 @@ final cihazServisKayitlariProvider =
     StreamProvider.family<List<ServisKaydi>, String>((ref, cihazId) {
   return ref.watch(appDatabaseProvider).cihazServisKayitlariStream(cihazId);
 });
+
+/// Uygulama içi bildirimler (zil simgesi ve liste).
+final okunmamisBildirimProvider = StreamProvider<int>((ref) {
+  return ref.watch(appDatabaseProvider).okunmamisBildirimSayisiStream();
+});
+
+final bildirimListesiProvider =
+    StreamProvider<List<Map<String, Object?>>>((ref) {
+  return ref.watch(appDatabaseProvider).bildirimListesiStream();
+});

@@ -8,6 +8,7 @@ import '../../widgets/depo_secici.dart';
 import '../../widgets/sync_durum_dugmesi.dart';
 import 'depo_stok_screen.dart';
 import '../../widgets/kritik_stok_seridi.dart';
+import '../../widgets/bildirim_dugmesi.dart';
 
 /// Depolar ve araçlar (seyyar depolar) bir arada. Araçlar da depo gibi
 /// çalışır: içinde cihaz tutar, transfer hedefi olur.
@@ -22,7 +23,7 @@ class DepoListScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Depolar'),
-        actions: const [SyncDurumDugmesi()],
+        actions: const [BildirimDugmesi(), SyncDurumDugmesi()],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _ekleSecimi(context, ref),

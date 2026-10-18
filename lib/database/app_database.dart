@@ -91,6 +91,26 @@ CREATE TABLE kullanim_kayitlari (
 );
 ''';
 
+/// Bildirimler ve "bildirim yapıldı" işaretleri: yalnızca bu cihazda
+/// tutulur, sunucuyla senkronize edilmez (şema sürümü 10).
+const _bildirimTabloSql = [
+  '''
+CREATE TABLE IF NOT EXISTS bildirimler (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  tur TEXT NOT NULL,
+  baslik TEXT NOT NULL,
+  govde TEXT NOT NULL,
+  hedef TEXT,
+  tarih INTEGER NOT NULL,
+  okundu INTEGER NOT NULL DEFAULT 0
+)''',
+  '''
+CREATE TABLE IF NOT EXISTS bildirim_gorulen (
+  anahtar TEXT PRIMARY KEY,
+  tarih INTEGER NOT NULL
+)''',
+];
+
 const _syncMetaSql = '''
 CREATE TABLE sync_meta (
   tablo TEXT PRIMARY KEY,
@@ -321,7 +341,7 @@ class AppDatabase {
         : p.join(await getDatabasesPath(), 'depo_app.sqlite');
     _db = await openDatabase(
       path,
-      version: 9,
+      version: 10,
       onCreate: (db, version) async {
         for (final stmt in _createTablesSql.split(';')) {
           final trimmed = stmt.trim();
@@ -330,6 +350,9 @@ class AppDatabase {
         await db.execute(_cihazlarTabloSql);
         await db.execute(_servisTabloSql);
         await db.execute(_syncMetaSql);
+        for (final t in _bildirimTabloSql) {
+          await db.execute(t);
+        }
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -378,6 +401,12 @@ class AppDatabase {
         }
         if (oldVersion < 9) {
           await db.execute(_servisTabloSql);
+        }
+        if (oldVersion < 10) {
+          // 1.19.0: bildirimler (yalnızca yerel)
+          for (final t in _bildirimTabloSql) {
+            await db.execute(t);
+          }
         }
         if (oldVersion < 4) {
           // 1.4.0: araçlar seyyar depo olarak depolar tablosunda tutulur.
@@ -2125,6 +2154,186 @@ class AppDatabase {
     });
 
     _notify();
+  }
+
+  // ---------------------------------------------------------------------
+  // Bildirimler (yalnızca bu telefonda tutulur, sunucuya gönderilmez)
+  // ---------------------------------------------------------------------
+
+  Future<void> bildirimEkle({
+    required String tur,
+    required String baslik,
+    required String govde,
+    String? hedef,
+  }) async {
+    final db = await _database;
+    await db.insert('bildirimler', {
+      'tur': tur,
+      'baslik': baslik,
+      'govde': govde,
+      'hedef': hedef,
+      'tarih': DateTime.now().millisecondsSinceEpoch,
+      'okundu': 0,
+    });
+    // Çok eskiyen bildirimler temizlenir (son 300 kalır).
+    await db.rawDelete(
+        'DELETE FROM bildirimler WHERE id NOT IN '
+        '(SELECT id FROM bildirimler ORDER BY id DESC LIMIT 300)');
+    _notify();
+  }
+
+  Future<List<Map<String, Object?>>> bildirimListesi() async {
+    final db = await _database;
+    return db.query('bildirimler', orderBy: 'id DESC', limit: 300);
+  }
+
+  Stream<List<Map<String, Object?>>> bildirimListesiStream() =>
+      _watch(bildirimListesi);
+
+  Future<int> okunmamisBildirimSayisi() async {
+    final db = await _database;
+    return Sqflite.firstIntValue(await db
+            .rawQuery('SELECT COUNT(*) FROM bildirimler WHERE okundu = 0')) ??
+        0;
+  }
+
+  Stream<int> okunmamisBildirimSayisiStream() =>
+      _watch(okunmamisBildirimSayisi);
+
+  Future<void> bildirimleriOkunduYap() async {
+    final db = await _database;
+    final n = await db.update('bildirimler', {'okundu': 1},
+        where: 'okundu = 0');
+    if (n > 0) _notify();
+  }
+
+  Future<void> bildirimleriTemizle() async {
+    final db = await _database;
+    await db.delete('bildirimler');
+    _notify();
+  }
+
+  /// Bir olay için daha önce bildirim yapıldı mı (aynı olay iki kez gelmesin).
+  Future<bool> bildirimGoruldu(String anahtar) async {
+    final db = await _database;
+    final r = await db.query('bildirim_gorulen',
+        columns: ['anahtar'], where: 'anahtar = ?', whereArgs: [anahtar],
+        limit: 1);
+    return r.isNotEmpty;
+  }
+
+  Future<int?> bildirimGorulmeZamani(String anahtar) async {
+    final db = await _database;
+    final r = await db.query('bildirim_gorulen',
+        columns: ['tarih'], where: 'anahtar = ?', whereArgs: [anahtar],
+        limit: 1);
+    return r.isEmpty ? null : (r.first['tarih'] as num).toInt();
+  }
+
+  Future<void> bildirimGorulduIsaretle(String anahtar, [int? tarih]) async {
+    final db = await _database;
+    await db.insert(
+        'bildirim_gorulen',
+        {
+          'anahtar': anahtar,
+          'tarih': tarih ?? DateTime.now().millisecondsSinceEpoch,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<void> bildirimGorulenSil(String anahtarOn) async {
+    final db = await _database;
+    await db.delete('bildirim_gorulen',
+        where: 'anahtar LIKE ?', whereArgs: ['$anahtarOn%']);
+  }
+
+  /// Ön ekle başlayan "görüldü" anahtarları (ör. kritik:...).
+  Future<List<String>> bildirimGorulenler(String anahtarOn) async {
+    final db = await _database;
+    final r = await db.query('bildirim_gorulen',
+        columns: ['anahtar'], where: 'anahtar LIKE ?',
+        whereArgs: ['$anahtarOn%']);
+    return [for (final x in r) x['anahtar'] as String];
+  }
+
+  Future<void> bildirimGorulenEskileriSil(int oncesi) async {
+    final db = await _database;
+    await db.delete('bildirim_gorulen',
+        where: "anahtar LIKE 'h:%' AND tarih < ?", whereArgs: [oncesi]);
+  }
+
+  /// Bildirim motoru için son hareketler (cihaz, ürün ve depo adlarıyla).
+  Future<List<Map<String, Object?>>> bildirimHareketleri(int sonrasi) async {
+    final db = await _database;
+    return db.rawQuery('''
+      SELECT sh.id AS id, sh.tip AS tip, sh.tarih AS tarih, sh.sebep AS sebep,
+             sh.not_ AS not_, sh.kullanici_id AS kullanici_id,
+             sh.depo_id AS depo_id, sh.hedef_depo_id AS hedef_depo_id,
+             c.seri_no AS seri_no, u.ad AS urun_adi, d.ad AS depo_adi,
+             hd.ad AS hedef_adi, hd.tur AS hedef_tur, k.ad AS kullanici
+      FROM stok_hareketleri sh
+      LEFT JOIN cihazlar c ON c.id = sh.cihaz_id
+      LEFT JOIN urunler u ON u.id = sh.urun_id
+      LEFT JOIN depolar d ON d.id = sh.depo_id
+      LEFT JOIN depolar hd ON hd.id = sh.hedef_depo_id
+      LEFT JOIN kullanicilar k ON k.id = sh.kullanici_id
+      WHERE sh.deleted = 0 AND sh.tarih > ?
+      ORDER BY sh.tarih
+    ''', [sonrasi]);
+  }
+
+  /// Açık servis dosyaları (cihaz ve ürün adıyla).
+  Future<List<Map<String, Object?>>> acikServisDosyalari() async {
+    final db = await _database;
+    return db.rawQuery(
+        'SELECT s.id AS id, s.acilis_tarihi AS acilis_tarihi, '
+        's.gonderim_tarihi AS gonderim_tarihi, s.firma AS firma, '
+        's.onarim_yeri AS onarim_yeri, c.seri_no AS seri_no, u.ad AS urun_adi '
+        'FROM servis_kayitlari s '
+        'LEFT JOIN cihazlar c ON c.id = s.cihaz_id '
+        'LEFT JOIN urunler u ON u.id = s.urun_id '
+        'WHERE s.deleted = 0 AND s.kapanis IS NULL '
+        'ORDER BY s.acilis_tarihi');
+  }
+
+  /// Garantisi [gun] gün içinde bitecek, kullanımdaki / stoktaki cihazlar.
+  Future<List<Map<String, Object?>>> garantisiBitecekler(int gun) async {
+    final db = await _database;
+    final simdi = DateTime.now();
+    final bugun = DateTime(simdi.year, simdi.month, simdi.day);
+    return db.rawQuery(
+        "SELECT c.id AS id, c.seri_no AS seri_no, c.garanti_bitis AS garanti_bitis, "
+        'u.ad AS urun_adi FROM cihazlar c JOIN urunler u ON u.id = c.urun_id '
+        "WHERE c.deleted = 0 AND c.durum <> 'cikti' "
+        'AND c.garanti_bitis IS NOT NULL AND c.garanti_bitis >= ? '
+        'AND c.garanti_bitis <= ? ORDER BY c.garanti_bitis',
+        [
+          bugun.millisecondsSinceEpoch,
+          bugun.add(Duration(days: gun + 1)).millisecondsSinceEpoch,
+        ]);
+  }
+
+  /// Sunucuya gönderilmeyi bekleyen en eski kaydın zamanı (yoksa null).
+  Future<int?> enEskiBekleyenKayit() async {
+    final db = await _database;
+    int? enEski;
+    for (final tablo in senkronKolonlari.keys) {
+      final v = Sqflite.firstIntValue(await db
+          .rawQuery('SELECT MIN(updated_at) FROM $tablo WHERE dirty = 1'));
+      if (v != null && (enEski == null || v < enEski)) enEski = v;
+    }
+    return enEski;
+  }
+
+  /// Günlük özet için: [bas]–[bit] arasındaki hareket sayıları (türe göre).
+  Future<Map<String, int>> hareketSayilari(DateTime bas, DateTime bit) async {
+    final db = await _database;
+    final r = await db.rawQuery(
+        'SELECT tip, COUNT(*) AS n FROM stok_hareketleri '
+        'WHERE deleted = 0 AND cihaz_id IS NOT NULL AND tarih >= ? AND tarih < ? '
+        'GROUP BY tip',
+        [bas.millisecondsSinceEpoch, bit.millisecondsSinceEpoch]);
+    return {for (final x in r) x['tip'] as String: (x['n'] as num).toInt()};
   }
 
   // ---------------------------------------------------------------------

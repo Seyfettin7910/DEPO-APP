@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../database/app_database.dart';
 import 'adres_servisi.dart';
+import 'bildirim/bildirim_motoru.dart';
 import 'supabase_service.dart';
 
 /// Arayüze gösterilen senkron durumu.
@@ -68,7 +69,10 @@ class SyncService {
   bool _calisiyor = false;
   bool _kapandi = false;
 
-  SyncService(this.db, {required this.onDurum});
+  /// false: bildirim kontrolünü çağıran kendisi yapar (arka plan görevi).
+  final bool bildirimCalistir;
+
+  SyncService(this.db, {required this.onDurum, this.bildirimCalistir = true});
 
   SyncDurum get durum => _durum;
 
@@ -147,6 +151,12 @@ class SyncService {
       ));
     } finally {
       _calisiyor = false;
+      // Senkrondan sonra yeni olaylar için bildirim kontrolü (çevrimdışı da
+      // çalışır: gönderilmemiş kayıt hatırlatması vb.)
+      if (bildirimCalistir && !_kapandi && SupabaseService.girisYapildi) {
+        unawaited(BildirimMotoru.calistir(db,
+            benimId: SupabaseService.kullanici?.id));
+      }
     }
   }
 

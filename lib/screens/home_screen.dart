@@ -1,9 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/app_providers.dart';
+import '../services/bildirim/arka_plan.dart';
+import '../services/bildirim/bildirim_gosterici.dart';
 import '../services/guncelleme_servisi.dart';
+import '../services/supabase_service.dart';
 import '../widgets/sync_durum_dugmesi.dart';
 import 'depo/depo_list_screen.dart';
 import 'urun/urun_list_screen.dart';
@@ -48,10 +53,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted) GuncellemeServisi.kontrolEt(context, acilis: true);
     });
+
+    // Bildirimler: izin (Android 13+), uygulama kapalıyken arka plan
+    // kontrolü ve "uygulama açık" işareti (arka plan görevi o sırada durur).
+    unawaited(_bildirimleriHazirla());
+    _onPlanZamanlayici = Timer.periodic(
+        const Duration(seconds: 45), (_) => onPlandaIsaretle(true));
+  }
+
+  Timer? _onPlanZamanlayici;
+
+  Future<void> _bildirimleriHazirla() async {
+    await onPlandaIsaretle(true);
+    await Future.delayed(const Duration(seconds: 5));
+    await bildirimIzniIste();
+    await arkaPlanBaslat();
   }
 
   @override
   void dispose() {
+    _onPlanZamanlayici?.cancel();
+    unawaited(onPlandaIsaretle(false));
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -59,7 +81,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && mounted) {
+      unawaited(onPlandaIsaretle(true));
+      // Arka plan görevi oturumu yenilemiş olabilir.
+      unawaited(SupabaseService.oturumuDisktenYenile());
       GuncellemeServisi.kontrolEt(context);
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      unawaited(onPlandaIsaretle(false));
     }
   }
 

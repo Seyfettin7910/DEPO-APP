@@ -62,4 +62,17 @@ class GirisKaydiServisi {
         await sorgu.order('tarih', ascending: false).limit(limit);
     return List<Map<String, dynamic>>.from(sonuc);
   }
+
+  /// Bu kullanıcı bu IP'den [once] tarihinden önce başarıyla girmiş mi?
+  static Future<bool> oncedenVarMi(String email, String ip, DateTime once) async {
+    final r = await SupabaseService.client
+        .from('giris_kayitlari')
+        .select('id')
+        .eq('email', email)
+        .eq('ip', ip)
+        .eq('basarili', true)
+        .lt('tarih', once.toUtc().toIso8601String())
+        .limit(1);
+    return (r as List).isNotEmpty;
+  }
 }

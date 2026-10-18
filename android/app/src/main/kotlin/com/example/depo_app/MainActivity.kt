@@ -60,6 +60,21 @@ class MainActivity : FlutterActivity() {
                             }
                         }
                     }
+                    "pilAyari" -> {
+                        // Arka plan bildirim kontrolü pil tasarrufu yüzünden
+                        // gecikmesin: "kısıtlama yok" izni ekranı.
+                        try {
+                            startActivity(
+                                Intent(
+                                    Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                                    Uri.parse("package:$packageName")
+                                )
+                            )
+                        } catch (e: Exception) {
+                            startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                        }
+                        result.success(null)
+                    }
                     "indirmeKlasoru" -> result.success(
                         getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath
                     )

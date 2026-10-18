@@ -31,3 +31,41 @@ jobs:
           if [ -n "$uyarilar" ]; then echo "::warning title=Analiz uyarıları::$uyarilar"; fi
           exit $durum
       - run: flutter build web --release
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: İmza anahtarı
+        env:
+          KS: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          echo "$KS" | base64 -d > "$RUNNER_TEMP/depo.jks"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/depo.jks" >> "$GITHUB_ENV"
+      - name: Gradle dosyaları
+        run: |
+          flutter create --org com.example --project-name depo_app --platforms android "$RUNNER_TEMP/sablon"
+          python3 tool/android_hazirla.py "$RUNNER_TEMP/sablon"
+      - run: flutter pub get
+      - name: APK derle (yayınlanmaz)
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: depo
+        run: |
+          set +e
+          flutter build apk --release > derleme.txt 2>&1
+          durum=$?
+          cat derleme.txt
+          if [ $durum -ne 0 ]; then
+            hatalar=$(grep -E "(^e: |error:|Error:|What went wrong|FAILURE|Could not|> )" derleme.txt | head -40 | sed ':a;N;$!ba;s/\n/%0A/g')
+            echo "::error title=Android derleme hatası::$hatalar"
+          fi
+          exit $durum

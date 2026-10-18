@@ -1,3 +1,7 @@
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Supabase bağlantı bilgileri. Buradaki "publishable (anon)" anahtar
@@ -28,9 +32,35 @@ class SupabaseService {
       // Giriş yalnızca e-posta + şifre ile; e-posta linkiyle dönüş
       // (deep link) kullanılmıyor. Kapatmak açılışı hızlandırır ve bazı
       // Android sürümlerinde açılışta takılmayı önler.
-      authOptions: const FlutterAuthClientOptions(detectSessionInUri: false),
+      authOptions: FlutterAuthClientOptions(
+        detectSessionInUri: false,
+        // Oturum bilinen bir anahtarla saklanır; arka plan görevi oturumu
+        // yenilerse uygulama açılınca buradan okunur.
+        localStorage: SharedPreferencesLocalStorage(persistSessionKey: _oturumAnahtari),
+      ),
     );
     _hazir = true;
+  }
+
+  static final _oturumAnahtari =
+      'sb-${Uri.parse(SupabaseConfig.url).host.split('.').first}-auth-token';
+
+  /// Arka plan görevi (uygulama kapalıyken) oturum anahtarını yenilemiş
+  /// olabilir; uygulama öne gelince diskteki güncel oturuma geçilir. Böylece
+  /// eski anahtarla yenileme yapılıp oturum düşmez.
+  static Future<void> oturumuDisktenYenile() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.reload();
+      final kayitli = prefs.getString(_oturumAnahtari);
+      final mevcut = client.auth.currentSession;
+      if (kayitli == null || mevcut == null) return;
+      final yenileme = (jsonDecode(kayitli) as Map)['refresh_token'];
+      if (yenileme == null || yenileme == mevcut.refreshToken) return;
+      await client.auth.recoverSession(kayitli);
+    } catch (e) {
+      debugPrint('Oturum diskten yenilenemedi: $e');
+    }
   }
 
   static User? get kullanici => client.auth.currentUser;

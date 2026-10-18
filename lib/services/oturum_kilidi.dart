@@ -97,18 +97,14 @@ class OturumKilidi extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
-  /// Oturumu kapatır ve giriş ekranına döner. İnternet yoksa bile ekran
-  /// kilitlenir; sunucudaki oturum kapatma denemesi arka planda yapılır.
+  /// Ekranı kilitler: tekrar e-posta + şifre ile giriş istenir.
+  /// Sunucu oturumu kapatılmaz; böylece uygulama kapalıyken de arka planda
+  /// senkron ve bildirim kontrolü sürer. Tam çıkış için "Çıkış" kullanılır.
   Future<void> kilitle({String? sebep}) async {
     sonSebep = sebep;
     _kilitli = true;
     notifyListeners();
     await _kaydet();
-    try {
-      await SupabaseService.cikisYap().timeout(const Duration(seconds: 8));
-    } catch (e) {
-      debugPrint('Sunucudan çıkış yapılamadı (kilit yine de aktif): $e');
-    }
   }
 
   /// Başarılı girişten sonra çağrılır.

@@ -1,7 +1,7 @@
 name: depo_app
 description: Çok kullanıcılı, çoklu depo stok ve kullanım takip uygulaması (iOS / Android / Windows / Web)
 publish_to: 'none'
-version: 1.18.1+38
+version: 1.19.0+39
 
 environment:
   sdk: '>=3.3.0 <4.0.0'
@@ -32,6 +32,9 @@ dependencies:
 
   # Barkod / QR okuma
   mobile_scanner: ^5.1.1
+  # Bildirimler (Android) ve uygulama kapalıyken arka plan kontrolü
+  flutter_local_notifications: ^19.4.0
+  workmanager: ^0.10.0
 
   # Uyarı / onay sesleri (barkod okuma)
   audioplayers: ^6.0.0
