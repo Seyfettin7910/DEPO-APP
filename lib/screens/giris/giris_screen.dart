@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../services/supabase_service.dart';
@@ -18,6 +20,35 @@ class _GirisScreenState extends State<GirisScreen> {
   bool _yukleniyor = false;
   bool _gizli = true;
   String? _hata;
+
+  static const _sonEmailAnahtari = 'son_giris_email';
+
+  @override
+  void initState() {
+    super.initState();
+    _sonEmailiYukle();
+  }
+
+  /// Son başarılı girişteki e-postayı kutuya yazar; böylece yalnızca şifre
+  /// girilir (şifreyi de telefonun/tarayıcının şifre kaydedicisi doldurabilir).
+  Future<void> _sonEmailiYukle() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final email = prefs.getString(_sonEmailAnahtari);
+      if (email != null && mounted && _emailCtrl.text.isEmpty) {
+        setState(() => _emailCtrl.text = email);
+      }
+    } catch (_) {
+      // Hatırlanamazsa sorun değil, kullanıcı yazar.
+    }
+  }
+
+  Future<void> _emailiHatirla(String email) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_sonEmailAnahtari, email);
+    } catch (_) {}
+  }
 
   @override
   void dispose() {
@@ -39,6 +70,9 @@ class _GirisScreenState extends State<GirisScreen> {
     });
     try {
       await SupabaseService.girisYap(email, sifre);
+      await _emailiHatirla(email);
+      // Telefona/tarayıcıya "şifreyi kaydet" teklifini göster.
+      TextInput.finishAutofillContext();
       // Başarılı girişte AuthGate oturum olayını yakalayıp ana ekrana geçer.
     } on AuthException catch (e) {
       final m = e.message.toLowerCase();
@@ -76,27 +110,34 @@ class _GirisScreenState extends State<GirisScreen> {
                       style:
                           TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 32),
-                  TextField(
-                    controller: _emailCtrl,
-                    keyboardType: TextInputType.emailAddress,
-                    autofillHints: const [AutofillHints.email],
-                    decoration: const InputDecoration(
-                        labelText: 'E-posta', border: OutlineInputBorder()),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _sifreCtrl,
-                    obscureText: _gizli,
-                    autofillHints: const [AutofillHints.password],
-                    onSubmitted: (_) => _giris(),
-                    decoration: InputDecoration(
-                      labelText: 'Şifre',
-                      border: const OutlineInputBorder(),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                            _gizli ? Icons.visibility : Icons.visibility_off),
-                        onPressed: () => setState(() => _gizli = !_gizli),
-                      ),
+                  AutofillGroup(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        TextField(
+                          controller: _emailCtrl,
+                          keyboardType: TextInputType.emailAddress,
+                          autofillHints: const [AutofillHints.email],
+                          decoration: const InputDecoration(
+                              labelText: 'E-posta', border: OutlineInputBorder()),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _sifreCtrl,
+                          obscureText: _gizli,
+                          autofillHints: const [AutofillHints.password],
+                          onSubmitted: (_) => _giris(),
+                          decoration: InputDecoration(
+                            labelText: 'Şifre',
+                            border: const OutlineInputBorder(),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                  _gizli ? Icons.visibility : Icons.visibility_off),
+                              onPressed: () => setState(() => _gizli = !_gizli),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   if (_hata != null)
@@ -116,7 +157,9 @@ class _GirisScreenState extends State<GirisScreen> {
                   ),
                   const SizedBox(height: 16),
                   const Text(
-                    'Hesap bilgilerini yöneticinizden alın.',
+                    'Hesap bilgilerini yöneticinizden alın.\n'
+                    'Bir kez giriş yaptıktan sonra uygulama sizi hatırlar; '
+                    'yalnızca "Çıkış yap" derseniz tekrar sorar.',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 12),
                   ),

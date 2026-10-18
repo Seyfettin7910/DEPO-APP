@@ -1,7 +1,7 @@
 name: depo_app
 description: Çok kullanıcılı, çoklu depo stok ve kullanım takip uygulaması (iOS / Android / Windows / Web)
 publish_to: 'none'
-version: 1.6.0+9
+version: 1.6.1+10
 
 environment:
   sdk: '>=3.3.0 <4.0.0'
@@ -24,6 +24,8 @@ dependencies:
   sqflite_common_ffi_web: '>=0.4.0 <2.0.0'
   path: ^1.9.0
   path_provider: ^2.1.3
+  # Son giriş e-postasını hatırlamak için
+  shared_preferences: ^2.2.0
 
   # Merkezi backend + senkronizasyon
   supabase_flutter: ^2.5.6

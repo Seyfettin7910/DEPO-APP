@@ -5,6 +5,12 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.6.1
+- Giriş ekranı son kullanılan e-postayı hatırlar; şifreyi telefonun/tarayıcının şifre
+  kaydedicisi doldurabilir (girişten sonra "şifreyi kaydet" teklifi gelir).
+- Oturum zaten saklanır: uygulama kapatılıp açıldığında giriş istenmez; yalnızca
+  "Çıkış yap" denince veya uygulama silinip yeniden kurulunca sorulur.
+
 ## Android APK'yı GitHub'da derleme
 
 `.github/workflows/android.yml` her yüklemede imzalı APK derler ve Releases'e koyar.
