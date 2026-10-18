@@ -205,7 +205,7 @@ class GuncellemeServisi {
       builder: (ctx) => AlertDialog(
         icon: const Icon(Icons.system_update),
         title: const Text('Yeni sürüm var'),
-        content: Text('Depo Takip $hedef yayınlandı (şu an: $mevcutSurum).\n'
+        content: Text('Yeni sürüm $hedef yayınlandı (şu an: $mevcutSurum).\n'
             'Sayfa güncellenmezse klavyede Ctrl + F5 yapın.'),
         actions: [
           TextButton(
@@ -280,7 +280,7 @@ class GuncellemeServisi {
           builder: (ctx) => AlertDialog(
             icon: const Icon(Icons.system_update),
             title: const Text('Yeni sürüm var'),
-            content: Text('Depo Takip $hedef hazır (telefondaki: $mevcutSurum).'
+            content: Text('Sürüm $hedef hazır (telefondaki: $mevcutSurum).'
                 '${_boyutEki()}\n\n'
                 'Wi-Fi\'ye bağlanınca kendiliğinden indirilir. Şimdi mobil '
                 'veriyle indirmek ister misiniz?'),
@@ -317,7 +317,7 @@ class GuncellemeServisi {
       builder: (ctx) => AlertDialog(
         icon: const Icon(Icons.system_update),
         title: const Text('Güncelleme hazır'),
-        content: Text('Depo Takip $hedef indirildi (telefondaki: $mevcutSurum).\n\n'
+        content: Text('Sürüm $hedef indirildi (telefondaki: $mevcutSurum).\n\n'
             'Kurulum birkaç saniye sürer; verileriniz silinmez. '
             'Gönderilmemiş işlemler varsa önce internet bağlantısını bekleyin.'),
         actions: [
@@ -390,7 +390,7 @@ class GuncellemeServisi {
       builder: (ctx) => PopScope(
         canPop: false,
         child: AlertDialog(
-          title: Text('Depo Takip $hedef indiriliyor'),
+          title: Text('Sürüm $hedef indiriliyor'),
           content: ValueListenableBuilder<(int, int?)>(
             valueListenable: durum,
             builder: (_, d, __) => Column(
@@ -445,7 +445,7 @@ class GuncellemeServisi {
             title: const Text('Güncelleme gerekli'),
             content: Text(
                 'Bu sürüm ($mevcutSurum) artık kullanılamıyor. Verilerin doğru '
-                'kaydedilmesi için Depo Takip $hedef sürümüne güncelleyin.'
+                'kaydedilmesi için $hedef sürümüne güncelleyin.'
                 '${_android ? _boyutEki() : ''}'),
             actions: [
               FilledButton.icon(

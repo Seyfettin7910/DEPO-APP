@@ -36,7 +36,7 @@ class PdfReportService {
           alignment: pw.Alignment.centerRight,
           margin: const pw.EdgeInsets.only(top: 6),
           child: pw.Text(
-            'Depo Takip · Sayfa ${context.pageNumber} / ${context.pagesCount}',
+            'DEPO OTOMASYON SİSTEMİ · Sayfa ${context.pageNumber} / ${context.pagesCount}',
             style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey600),
           ),
         ),

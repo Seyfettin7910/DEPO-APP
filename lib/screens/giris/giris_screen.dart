@@ -108,10 +108,12 @@ class _GirisScreenState extends State<GirisScreen> {
                   Icon(Icons.warehouse,
                       size: 72, color: Theme.of(context).colorScheme.primary),
                   const SizedBox(height: 12),
-                  const Text('Depo Takip',
+                  const Text('DEPO OTOMASYON SİSTEMİ',
                       textAlign: TextAlign.center,
-                      style:
-                          TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+                      style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5)),
                   const SizedBox(height: 24),
                   if (OturumKilidi.instance.sonSebep != null)
                     Container(

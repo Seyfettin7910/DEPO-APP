@@ -18,7 +18,7 @@
     </queries>
 
     <application
-        android:label="Depo Takip"
+        android:label="DEPO OTOMASYON SİSTEMİ"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

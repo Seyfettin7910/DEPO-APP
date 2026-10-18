@@ -38,7 +38,7 @@ class DepoApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Depo Takip',
+      title: 'DEPO OTOMASYON SİSTEMİ',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorSchemeSeed: const Color(0xFF2E6F40),
