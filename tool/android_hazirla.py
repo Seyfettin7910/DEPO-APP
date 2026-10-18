@@ -50,7 +50,15 @@ metin = metin.replace("    buildTypes {", imza, 1)
 
 eski = 'signingConfig = signingConfigs.getByName("debug")'
 assert eski in metin, "debug imza satırı bulunamadı"
-metin = metin.replace(eski, 'signingConfig = signingConfigs.getByName("release")')
+metin = metin.replace(
+    eski,
+    'signingConfig = signingConfigs.getByName("release")\n'
+    '            // JNI ile çağrılan eklenti metotları silinmesin (proguard-rules.pro)\n'
+    '            proguardFiles(\n'
+    '                getDefaultProguardFile("proguard-android-optimize.txt"),\n'
+    '                "proguard-rules.pro",\n'
+    '            )',
+)
 
 uygulama.write_text(metin, encoding="utf-8")
 print("Android Gradle dosyaları hazır, release imzası eklendi.")
