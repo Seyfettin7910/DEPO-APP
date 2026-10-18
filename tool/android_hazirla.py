@@ -53,7 +53,11 @@ assert eski in metin, "debug imza satırı bulunamadı"
 metin = metin.replace(
     eski,
     'signingConfig = signingConfigs.getByName("release")\n'
-    '            // JNI ile çağrılan eklenti metotları silinmesin (proguard-rules.pro)\n'
+    '            // Kod küçültme (R8) kapalı: eklentilerin JNI ile çağırdığı sınıfları\n'
+    '            // (shared_preferences, Kotlin coroutines vb.) silip açılışı bozuyordu.\n'
+    '            isMinifyEnabled = false\n'
+    '            isShrinkResources = false\n'
+    '            // Yine de küçültme açılırsa korunacaklar (proguard-rules.pro)\n'
     '            proguardFiles(\n'
     '                getDefaultProguardFile("proguard-android-optimize.txt"),\n'
     '                "proguard-rules.pro",\n'

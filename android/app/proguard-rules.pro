@@ -6,6 +6,8 @@
 -keep class io.flutter.plugin.** { *; }
 -keep class com.github.dart_lang.jni.** { *; }
 -keep class dev.fluttercommunity.** { *; }
--keep class kotlin.coroutines.Continuation { *; }
+-keep class kotlin.coroutines.** { *; }
+-keep class kotlinx.coroutines.** { *; }
+-keep class kotlin.Metadata { *; }
 -keepattributes Signature, *Annotation*, InnerClasses, EnclosingMethod
 -dontwarn io.flutter.embedding.**
