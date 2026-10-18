@@ -7,6 +7,7 @@ import '../database/models.dart';
 import '../providers/app_providers.dart';
 import '../services/ses_servisi.dart';
 import 'alim_bilgisi_alanlari.dart';
+import 'barkod_okuyucu_sayfasi.dart';
 import 'depo_secici.dart';
 import 'iade_sebebi.dart';
 
@@ -470,9 +471,25 @@ Future<void> servisSonucuAkisi(BuildContext context, WidgetRef ref,
                 TextField(
                   controller: yeniSeriCtrl,
                   textCapitalization: TextCapitalization.characters,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Yeni cihazın seri numarası',
-                    prefixIcon: Icon(Icons.qr_code_2),
+                    hintText: 'Yazın veya kamerayla okutun',
+                    prefixIcon: const Icon(Icons.qr_code_2),
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.photo_camera_outlined),
+                      tooltip: 'Kamerayla okut',
+                      onPressed: () async {
+                        final kod = await Navigator.of(ctx).push<String>(
+                          MaterialPageRoute(
+                              builder: (_) => const BarkodOkuyucuSayfasi()),
+                        );
+                        if (kod == null || kod.trim().isEmpty) return;
+                        setState(() {
+                          yeniSeriCtrl.text = kod.trim().toUpperCase();
+                          hata = null;
+                        });
+                      },
+                    ),
                   ),
                   onChanged: (_) {
                     if (hata != null) setState(() => hata = null);
@@ -541,7 +558,7 @@ Future<void> servisSonucuAkisi(BuildContext context, WidgetRef ref,
               onPressed: () => Navigator.pop(ctx, false),
               child: const Text('İptal')),
           FilledButton(
-            onPressed: () {
+            onPressed: () async {
               if (sonuc == null) {
                 setState(() => hata = 'Sonucu seçin');
                 return;
@@ -555,6 +572,27 @@ Future<void> servisSonucuAkisi(BuildContext context, WidgetRef ref,
                 setState(() => hata = 'Yeni cihazın seri numarasını yazın');
                 return;
               }
+              if (sonuc == 'degistirildi') {
+                // Yeni seri no sistemde kayıtlıysa kaydetmeden önce uyar.
+                final yeni = yeniSeriCtrl.text.trim().toUpperCase();
+                if (yeni == c.seriNo) {
+                  setState(() => hata = 'Yeni seri no eskisiyle aynı olamaz');
+                  return;
+                }
+                final kayitli = await ref
+                    .read(appDatabaseProvider)
+                    .seriNoIleCihazBilgi(yeni);
+                if (!ctx.mounted) return;
+                if (kayitli != null &&
+                    (kayitli.cihaz.durum == CihazDurumu.depoda ||
+                        kayitli.cihaz.urunId != c.urunId)) {
+                  setState(() => hata = kayitli.cihaz.urunId != c.urunId
+                      ? '$yeni başka bir modele kayıtlı (${kayitli.urunAdi})'
+                      : '$yeni zaten depoda kayıtlı');
+                  return;
+                }
+              }
+              if (!ctx.mounted) return;
               Navigator.pop(ctx, true);
             },
             child: const Text('Kaydet'),

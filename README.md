@@ -5,6 +5,9 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.17.1
+- Onarım sonucu "Yeni cihazla değiştirildi" seçilince yeni seri no kamerayla okutulabilir. Seri no sistemde depoda veya başka modelde kayıtlıysa kaydetmeden önce uyarır.
+
 ## 1.17.0 – Arıza / servis / hurda
 - **Sahadan geri almada arıza:** "Arıza" seçilince "Tamir gerekli" veya "Tamiri mümkün değil, değişim gerekli" sorulur. Cihaz depoya **arızalı** olarak girer; onarılana kadar transfer edilemez, kullanıma verilemez, sahada kullanılamaz, çıkışı yapılamaz ve stok/kritik stok sayılarına girmez.
 - **Servis akışı (cihaz kartında):** garanti durumu gösterilir → "Garanti (firma)" veya "Kendi bünyemiz" seçilir; firma, gönderim tarihi ve saati kaydedilir → "Servisten döndü" ile dönüş tarihi/saati, **onarım süresi** ve sonuç girilir: Onarıldı (depoya eklenir), Yeni cihazla değiştirildi (yeni seri no girer, eski stoktan düşer), Onarılamadı (hurda veya değişim için bekletme).
