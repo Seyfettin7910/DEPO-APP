@@ -11,7 +11,9 @@ import '../../widgets/hedefli_tarayici.dart';
 import '../../widgets/alim_bilgisi_alanlari.dart';
 
 /// Seri numaralarıyla depoya giriş: model ve depo seçilir, seri numaraları
-/// kamerayla okutulur veya elle yazılır, hepsi tek seferde kaydedilir.
+/// kamerayla tek tek okutulur, hepsi tek seferde kaydedilir. Hatalı girişi
+/// önlemek için telefonda elle yazma yoktur (bilgisayar tarayıcısında USB
+/// barkod okuyucu için yazma alanı vardır).
 class TopluGirisScreen extends ConsumerStatefulWidget {
   final String? onceSeciliUrunId;
   final String? onceSeciliDepoId;
@@ -228,13 +230,6 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Seri No ile Depoya Giriş'),
-        actions: [
-          IconButton(
-            icon: Icon(_kameraAcik ? Icons.videocam_off : Icons.videocam),
-            tooltip: _kameraAcik ? 'Kamerayı kapat' : 'Kamerayla okut',
-            onPressed: _kameraDegistir,
-          ),
-        ],
       ),
       body: Column(
         children: [
@@ -322,20 +317,39 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen> {
             ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: TextField(
-              controller: _seriCtrl,
-              textCapitalization: TextCapitalization.characters,
-              textInputAction: TextInputAction.done,
-              decoration: InputDecoration(
-                labelText: 'Seri numarası (elle yaz veya okut)',
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.add_circle),
-                  tooltip: 'Listeye ekle',
-                  onPressed: () => _ekle(_seriCtrl.text),
-                ),
-              ),
-              onSubmitted: _ekle,
-            ),
+            child: bilgisayarTarayicisi
+                // Bilgisayarda USB barkod okuyucu klavye gibi yazar.
+                ? TextField(
+                    controller: _seriCtrl,
+                    autofocus: true,
+                    textCapitalization: TextCapitalization.characters,
+                    textInputAction: TextInputAction.done,
+                    decoration: InputDecoration(
+                      labelText: 'Seri numarası (barkod okuyucuyla okutun)',
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.add_circle),
+                        tooltip: 'Listeye ekle',
+                        onPressed: () => _ekle(_seriCtrl.text),
+                      ),
+                    ),
+                    onSubmitted: _ekle,
+                  )
+                : SizedBox(
+                    width: double.infinity,
+                    child: _kameraAcik
+                        ? OutlinedButton.icon(
+                            onPressed: _kameraDegistir,
+                            icon: const Icon(Icons.videocam_off),
+                            label: const Text('Okutma bitti, kamerayı kapat'),
+                          )
+                        : FilledButton.tonalIcon(
+                            onPressed: _kameraDegistir,
+                            icon: const Icon(Icons.add_circle),
+                            label: Text(_seriler.isEmpty
+                                ? 'Seri no okut'
+                                : '${_seriler.length + 1}. seri noyu okut'),
+                          ),
+                  ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
@@ -358,8 +372,9 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen> {
                     child: Padding(
                       padding: EdgeInsets.all(24),
                       child: Text(
-                        'Kamerayı açıp seri numaralarını tek tek okutun\n'
-                        'veya elle yazıp + düğmesine basın.',
+                        '"Seri no okut" ile kamerayı açıp seri numaralarını '
+                        'tek tek okutun. Kamera açık kaldıkça okuttuğunuz her '
+                        'seri listeye eklenir.',
                         textAlign: TextAlign.center,
                       ),
                     ),

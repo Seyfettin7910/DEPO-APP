@@ -10,6 +10,7 @@ import 'alim_bilgisi_alanlari.dart';
 import 'barkod_okuyucu_sayfasi.dart';
 import 'depo_secici.dart';
 import 'iade_sebebi.dart';
+import 'kod_yardimci.dart';
 
 final _tarihSaat = DateFormat('dd.MM.yyyy HH:mm');
 
@@ -468,33 +469,43 @@ Future<void> servisSonucuAkisi(BuildContext context, WidgetRef ref,
             ),
             if (sonuc == 'onarildi' || sonuc == 'degistirildi') ...[
               if (sonuc == 'degistirildi')
-                TextField(
-                  controller: yeniSeriCtrl,
-                  textCapitalization: TextCapitalization.characters,
-                  decoration: InputDecoration(
-                    labelText: 'Yeni cihazın seri numarası',
-                    hintText: 'Yazın veya kamerayla okutun',
-                    prefixIcon: const Icon(Icons.qr_code_2),
-                    suffixIcon: IconButton(
-                      icon: const Icon(Icons.photo_camera_outlined),
-                      tooltip: 'Kamerayla okut',
-                      onPressed: () async {
-                        final kod = await Navigator.of(ctx).push<String>(
-                          MaterialPageRoute(
-                              builder: (_) => const BarkodOkuyucuSayfasi()),
-                        );
-                        if (kod == null || kod.trim().isEmpty) return;
-                        setState(() {
-                          yeniSeriCtrl.text = kod.trim().toUpperCase();
-                          hata = null;
-                        });
-                      },
+                Builder(builder: (_) {
+                  Future<void> kameraAc() async {
+                    final kod = await Navigator.of(ctx).push<String>(
+                      MaterialPageRoute(
+                          builder: (_) => const BarkodOkuyucuSayfasi()),
+                    );
+                    if (kod == null || kod.trim().isEmpty) return;
+                    setState(() {
+                      yeniSeriCtrl.text = kod.trim().toUpperCase();
+                      hata = null;
+                    });
+                  }
+
+                  // Telefonda hatalı girişi önlemek için yalnızca kamerayla
+                  // okutulur; bilgisayarda USB barkod okuyucu yazabilir.
+                  return TextField(
+                    controller: yeniSeriCtrl,
+                    readOnly: !bilgisayarTarayicisi,
+                    onTap: bilgisayarTarayicisi ? null : kameraAc,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: InputDecoration(
+                      labelText: 'Yeni cihazın seri numarası',
+                      hintText: bilgisayarTarayicisi
+                          ? 'Barkod okuyucuyla okutun'
+                          : 'Okutmak için dokunun',
+                      prefixIcon: const Icon(Icons.qr_code_2),
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.photo_camera_outlined),
+                        tooltip: 'Kamerayla okut',
+                        onPressed: kameraAc,
+                      ),
                     ),
-                  ),
-                  onChanged: (_) {
-                    if (hata != null) setState(() => hata = null);
-                  },
-                ),
+                    onChanged: (_) {
+                      if (hata != null) setState(() => hata = null);
+                    },
+                  );
+                }),
               DropdownButtonFormField<String>(
                 value: hedef,
                 isExpanded: true,
@@ -569,7 +580,7 @@ Future<void> servisSonucuAkisi(BuildContext context, WidgetRef ref,
               }
               if (sonuc == 'degistirildi' &&
                   yeniSeriCtrl.text.trim().isEmpty) {
-                setState(() => hata = 'Yeni cihazın seri numarasını yazın');
+                setState(() => hata = 'Yeni cihazın seri numarasını okutun');
                 return;
               }
               if (sonuc == 'degistirildi') {

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 /// Kamerada görünen barkod/QR kodların benzersiz, boş olmayan değerleri.
@@ -11,3 +12,11 @@ List<String> okunanKodlar(BarcodeCapture capture) {
   }
   return kodlar.toList();
 }
+
+/// Bilgisayar tarayıcısında (web, telefon dışı) kamera genelde yoktur; seri
+/// numarası USB barkod okuyucuyla (klavye gibi yazar) girilir. Telefonda
+/// hatalı girişi önlemek için seri no yalnızca kamerayla okutulur.
+bool get bilgisayarTarayicisi =>
+    kIsWeb &&
+    defaultTargetPlatform != TargetPlatform.android &&
+    defaultTargetPlatform != TargetPlatform.iOS;

@@ -24,8 +24,40 @@ class BarkodTaramaScreen extends ConsumerStatefulWidget {
   ConsumerState<BarkodTaramaScreen> createState() => _BarkodTaramaScreenState();
 }
 
-class _BarkodTaramaScreenState extends ConsumerState<BarkodTaramaScreen> {
+class _BarkodTaramaScreenState extends ConsumerState<BarkodTaramaScreen>
+    with WidgetsBindingObserver {
   final _controller = MobileScannerController();
+  bool _baskaSayfada = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  /// Uygulama arka plana gidince kamera bırakılır, dönünce yeniden açılır
+  /// (aksi halde bazı telefonlarda görüntü donuk kalıyor).
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      if (!_baskaSayfada) _baslat();
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
+      _durdur();
+    }
+  }
+
+  Future<void> _durdur() async {
+    try {
+      await _controller.stop();
+    } catch (_) {}
+  }
+
+  Future<void> _baslat() async {
+    try {
+      await _controller.start();
+    } catch (_) {}
+  }
   bool _mesgul = false;
   bool _coklu = false;
   String? _sonKod;
@@ -33,12 +65,32 @@ class _BarkodTaramaScreenState extends ConsumerState<BarkodTaramaScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _controller.dispose();
     super.dispose();
   }
 
+  /// Başka bir sayfa açarken arkadaki kamera durur (yoksa açılan sayfada
+  /// okutulan kodları bu ekran da yakalar ve uyarı / "Depoya ekle" çıkar);
+  /// geri dönünce yeniden başlar.
+  Future<void> _ac(Widget ekran) async {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    _baskaSayfada = true;
+    await _durdur();
+    if (!mounted) return;
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => ekran));
+    _baskaSayfada = false;
+    if (!mounted) return;
+    _sonZaman = DateTime.now(); // dönüşte aynı kodu hemen tekrar işlemesin
+    // Açılan sayfanın kamerası tamamen kapansın, sonra bu ekranınki açılsın.
+    await Future.delayed(const Duration(milliseconds: 300));
+    if (mounted) await _baslat();
+  }
+
   Future<void> _kodBulundu(String kod) async {
     if (_mesgul) return;
+    // Üstte başka sayfa açıksa (ör. depoya giriş) okunan kod bu ekranın değil.
+    if (!(ModalRoute.of(context)?.isCurrent ?? true)) return;
 
     // Aynı kod kamerada durduğu sürece sürekli alarm çalmasın.
     final simdi = DateTime.now();
@@ -67,11 +119,8 @@ class _BarkodTaramaScreenState extends ConsumerState<BarkodTaramaScreen> {
               action: SnackBarAction(
                 label: 'Depoya ekle',
                 textColor: Colors.white,
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => TopluGirisScreen(onceSeriNolari: [kod]),
-                  ),
-                ),
+                onPressed: () =>
+                    _ac(TopluGirisScreen(onceSeriNolari: [kod])),
               ),
             ),
           );
@@ -79,12 +128,7 @@ class _BarkodTaramaScreenState extends ConsumerState<BarkodTaramaScreen> {
       }
 
       SesServisi.basari();
-      await Navigator.of(context).push(
-        MaterialPageRoute(
-            builder: (_) => CihazDetayScreen(cihazId: bilgi.cihaz.id)),
-      );
-      // Geri dönünce aynı kodu hemen tekrar işlemesin.
-      _sonZaman = DateTime.now();
+      await _ac(CihazDetayScreen(cihazId: bilgi.cihaz.id));
     } finally {
       _mesgul = false;
     }
@@ -111,23 +155,17 @@ class _BarkodTaramaScreenState extends ConsumerState<BarkodTaramaScreen> {
           IconButton(
             icon: const Icon(Icons.keyboard),
             tooltip: 'Seri no yazarak ara',
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const CihazAraScreen()),
-            ),
+            onPressed: () => _ac(const CihazAraScreen()),
           ),
           IconButton(
             icon: const Icon(Icons.add_box_outlined),
             tooltip: 'Seri no ile depoya giriş',
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const TopluGirisScreen()),
-            ),
+            onPressed: () => _ac(const TopluGirisScreen()),
           ),
           IconButton(
             icon: const Icon(Icons.swap_horiz),
             tooltip: 'Toplu transfer',
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const TopluTransferScreen()),
-            ),
+            onPressed: () => _ac(const TopluTransferScreen()),
           ),
           IconButton(
             icon: const Icon(Icons.flash_on),
