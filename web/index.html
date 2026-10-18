@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <base href="$FLUTTER_BASE_HREF">
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Depo ve araç stok takibi (seri numarası ile)">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Depo Takip">
+  <meta name="theme-color" content="#2E6F40">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <link rel="icon" type="image/png" href="favicon.png"/>
+  <link rel="manifest" href="manifest.json">
+  <title>Depo Takip</title>
+  <style>
+    body { margin: 0; background: #f6f8f6; font-family: sans-serif; }
+    #yukleniyor { position: fixed; inset: 0; display: flex; align-items: center;
+      justify-content: center; color: #2E6F40; font-size: 18px; }
+  </style>
+</head>
+<body>
+  <div id="yukleniyor">Depo Takip yükleniyor…</div>
+  <script>
+    window.addEventListener('flutter-first-frame', function () {
+      var el = document.getElementById('yukleniyor');
+      if (el) el.remove();
+    });
+  </script>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>

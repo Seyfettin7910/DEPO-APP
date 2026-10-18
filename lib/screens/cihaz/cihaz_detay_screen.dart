@@ -1,0 +1,521 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
+
+import '../../database/app_database.dart';
+import '../../database/models.dart';
+import '../../providers/app_providers.dart';
+import '../../services/ses_servisi.dart';
+import '../../widgets/depo_secici.dart';
+
+/// Cihazın şu anki konumunu tek satırda anlatır.
+String cihazKonumMetni(CihazBilgi b) {
+  switch (b.cihaz.durum) {
+    case CihazDurumu.depoda:
+      return '${b.depoArac ? 'Araçta' : 'Depoda'}: ${b.depoAdi ?? '-'}';
+    case CihazDurumu.kullanimda:
+      return 'Kullanımda: ${b.aracPlaka ?? b.cihaz.kullanimYeri ?? '-'}';
+    case CihazDurumu.cikti:
+      return 'Çıkış yapıldı';
+  }
+}
+
+Color cihazDurumRengi(CihazDurumu d) {
+  switch (d) {
+    case CihazDurumu.depoda:
+      return Colors.green.shade700;
+    case CihazDurumu.kullanimda:
+      return Colors.orange.shade800;
+    case CihazDurumu.cikti:
+      return Colors.red.shade700;
+  }
+}
+
+IconData cihazDurumIkonu(CihazDurumu d) {
+  switch (d) {
+    case CihazDurumu.depoda:
+      return Icons.warehouse;
+    case CihazDurumu.kullanimda:
+      return Icons.local_shipping_outlined;
+    case CihazDurumu.cikti:
+      return Icons.logout;
+  }
+}
+
+/// Bir seri numaralı cihazın kartı: hangi model, şu an nerede (depo / araç),
+/// ve cihaz üzerinde transfer / kullanıma verme / çıkış / iade işlemleri.
+class CihazDetayScreen extends ConsumerWidget {
+  final String cihazId;
+  const CihazDetayScreen({super.key, required this.cihazId});
+
+  static final _tarihFormat = DateFormat('dd.MM.yyyy HH:mm');
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final bilgiAsync = ref.watch(cihazBilgiProvider(cihazId));
+    final gecmisAsync = ref.watch(cihazGecmisiProvider(cihazId));
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Cihaz')),
+      body: bilgiAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Hata: $e')),
+        data: (bilgi) {
+          if (bilgi == null) {
+            return const Center(child: Text('Cihaz bulunamadı'));
+          }
+          final durum = bilgi.cihaz.durum;
+          final renk = cihazDurumRengi(durum);
+
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(bilgi.urunAdi,
+                          style: const TextStyle(
+                              fontSize: 20, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 4),
+                      SelectableText('Seri No: ${bilgi.cihaz.seriNo}',
+                          style: const TextStyle(fontSize: 16)),
+                      const Divider(height: 24),
+                      Row(
+                        children: [
+                          Icon(cihazDurumIkonu(durum), color: renk, size: 32),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              cihazKonumMetni(bilgi),
+                              style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: renk),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (durum == CihazDurumu.depoda)
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    FilledButton.icon(
+                      onPressed: () => _transfer(context, ref, bilgi),
+                      icon: const Icon(Icons.swap_horiz),
+                      label: const Text('Transfer'),
+                    ),
+                    FilledButton.tonalIcon(
+                      onPressed: () => _kullanima(context, ref, bilgi),
+                      icon: const Icon(Icons.local_shipping_outlined),
+                      label: const Text('Kullanıma ver'),
+                    ),
+                    FilledButton.icon(
+                      onPressed: () => _sahada(context, ref, bilgi),
+                      icon: const Icon(Icons.task_alt),
+                      label: const Text('Sahada kullanıldı'),
+                    ),
+                    if (bilgi.depoArac)
+                      FilledButton.tonalIcon(
+                        onPressed: () => _iadeEt(context, ref, bilgi),
+                        icon: const Icon(Icons.assignment_return_outlined),
+                        label: const Text('İade'),
+                      ),
+                    OutlinedButton.icon(
+                      onPressed: () => _cikis(context, ref, bilgi),
+                      icon: const Icon(Icons.logout),
+                      label: const Text('Çıkış'),
+                    ),
+                  ],
+                )
+              else
+                FilledButton.icon(
+                  onPressed: () => _iade(context, ref, bilgi),
+                  icon: const Icon(Icons.assignment_return_outlined),
+                  label: const Text('Depoya iade al'),
+                ),
+              const SizedBox(height: 20),
+              const Text('Geçmiş',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 4),
+              gecmisAsync.when(
+                loading: () => const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+                error: (e, _) => Text('Hata: $e'),
+                data: (liste) {
+                  if (liste.isEmpty) return const Text('Henüz hareket yok');
+                  return Column(
+                    children: [
+                      for (final h in liste)
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: Icon(_ikon(h.tip)),
+                          title: Text(_baslik(h)),
+                          subtitle: Text([
+                            _tarihFormat.format(h.tarih),
+                            if (h.kullaniciAdi != null) h.kullaniciAdi!,
+                            if (h.not_ != null && h.not_!.isNotEmpty) h.not_!,
+                          ].join(' · ')),
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  static IconData _ikon(HareketTipi t) {
+    switch (t) {
+      case HareketTipi.girisi:
+        return Icons.arrow_downward;
+      case HareketTipi.cikis:
+        return Icons.arrow_upward;
+      case HareketTipi.transfer:
+        return Icons.swap_horiz;
+      case HareketTipi.kullanim:
+        return Icons.local_shipping_outlined;
+      case HareketTipi.iade:
+        return Icons.assignment_return_outlined;
+    }
+  }
+
+  static String _baslik(CihazHareketSatiri h) {
+    switch (h.tip) {
+      case HareketTipi.girisi:
+        return 'Depoya giriş: ${h.depoAdi ?? '-'}';
+      case HareketTipi.cikis:
+        return 'Çıkış: ${h.depoAdi ?? '-'}';
+      case HareketTipi.transfer:
+        return 'Transfer: ${h.depoAdi ?? '-'} → ${h.hedefDepoAdi ?? '-'}';
+      case HareketTipi.iade:
+        return 'İade: ${h.depoAdi ?? '-'} → ${h.hedefDepoAdi ?? '-'}';
+      case HareketTipi.kullanim:
+        if (h.hedefDepoAdi != null) {
+          return 'Kullanıma verildi: ${h.depoAdi ?? '-'} → ${h.hedefDepoAdi}';
+        }
+        return 'Sahada kullanıldı: ${h.aracPlaka ?? h.kullanimYeri ?? '-'}'
+            ' (${h.depoAdi ?? '-'} stoğundan)';
+    }
+  }
+
+  // -------------------------------------------------------------------
+  // İşlemler
+  // -------------------------------------------------------------------
+  Future<void> _calistir(
+      BuildContext context, WidgetRef ref, Future<void> Function() islem,
+      String basariMesaji) async {
+    try {
+      await islem();
+      SesServisi.basari();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(basariMesaji)));
+      }
+    } catch (e) {
+      SesServisi.hata();
+      if (context.mounted) {
+        final mesaj = e is StateError ? e.message : 'İşlem başarısız: $e';
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(
+              content: Text(mesaj), backgroundColor: Colors.red.shade700));
+      }
+    }
+  }
+
+  String get _kullanici => 'demo-kullanici';
+
+  Future<void> _transfer(
+          BuildContext context, WidgetRef ref, CihazBilgi bilgi) =>
+      _hedefeTasi(context, ref, bilgi, HareketTipi.transfer);
+
+  Future<void> _kullanima(
+          BuildContext context, WidgetRef ref, CihazBilgi bilgi) =>
+      _hedefeTasi(context, ref, bilgi, HareketTipi.kullanim);
+
+  Future<void> _iadeEt(
+          BuildContext context, WidgetRef ref, CihazBilgi bilgi) =>
+      _hedefeTasi(context, ref, bilgi, HareketTipi.iade);
+
+  /// Transfer, "Kullanıma ver" ve "İade" aynı mantıkla çalışır: hedef bir depo veya
+  /// araç (seyyar depo) seçilir, cihaz oraya geçer.
+  Future<void> _hedefeTasi(BuildContext context, WidgetRef ref,
+      CihazBilgi bilgi, HareketTipi tip) async {
+    final kullanim = tip == HareketTipi.kullanim;
+    final iade = tip == HareketTipi.iade;
+    final hedefler = (ref.read(depolarStreamProvider).value ?? <Depo>[])
+        .where((d) => d.id != bilgi.cihaz.depoId)
+        .toList();
+    if (kullanim) {
+      // Kullanıma verirken araçlar öncelikli gösterilir.
+      hedefler.sort((a, b) => (a.arac ? 0 : 1).compareTo(b.arac ? 0 : 1));
+    }
+    if (iade) {
+      // İadede sabit depolar önde gösterilir.
+      hedefler.sort((a, b) => (a.arac ? 1 : 0).compareTo(b.arac ? 1 : 0));
+    }
+    if (hedefler.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Seçilebilecek başka depo veya araç yok')));
+      return;
+    }
+    String? hedef = hedefler.first.id;
+    if (iade) {
+      // Varsayılan: cihazın bu araca geldiği depo (geçmişteki kaynak).
+      final gecmis =
+          ref.read(cihazGecmisiProvider(bilgi.cihaz.id)).value ?? const [];
+      for (final h in gecmis) {
+        if (h.hedefDepoId == bilgi.cihaz.depoId &&
+            h.depoId != null &&
+            hedefler.any((d) => d.id == h.depoId)) {
+          hedef = h.depoId;
+          break;
+        }
+      }
+    }
+    final notCtrl = TextEditingController();
+
+    final onay = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: Text(kullanim
+              ? 'Kullanıma ver'
+              : (iade ? 'İade' : 'Başka yere transfer')),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                value: hedef,
+                isExpanded: true,
+                decoration: InputDecoration(
+                    labelText: kullanim
+                        ? 'Hangi depo / araca verilsin?'
+                        : (iade
+                            ? 'Hangi depoya iade edilsin?'
+                            : 'Hedef depo / araç')),
+                items: depoDropdownOgeleri(hedefler),
+                onChanged: (v) => setState(() => hedef = v),
+              ),
+              TextField(
+                controller: notCtrl,
+                decoration: const InputDecoration(labelText: 'Not (opsiyonel)'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('İptal')),
+            FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text(kullanim
+                    ? 'Kullanıma ver'
+                    : (iade ? 'İade et' : 'Transfer et'))),
+          ],
+        ),
+      ),
+    );
+    if (onay != true || hedef == null || !context.mounted) return;
+
+    final db = ref.read(appDatabaseProvider);
+    await _calistir(
+      context,
+      ref,
+      () => db.cihazlariTopluHareketKaydet(
+        cihazIdleri: [bilgi.cihaz.id],
+        tip: tip,
+        kullaniciId: ref.read(aktifKullaniciIdProvider) ?? _kullanici,
+        hedefDepoId: hedef,
+        not_: notCtrl.text.trim().isEmpty ? null : notCtrl.text.trim(),
+      ),
+      kullanim
+          ? 'Kullanıma verildi'
+          : (iade ? 'İade edildi' : 'Transfer edildi'),
+    );
+  }
+
+  /// Cihaz sahada kullanıldı (müşteriye takıldı vb.): bulunduğu depo veya
+  /// araç stoğundan düşer, kullanım yeri kaydedilir ve kullanım raporuna girer.
+  Future<void> _sahada(
+      BuildContext context, WidgetRef ref, CihazBilgi bilgi) async {
+    final yerCtrl = TextEditingController();
+    final notCtrl = TextEditingController();
+    String? hata;
+
+    final onay = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: const Text('Sahada kullanıldı'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('${bilgi.urunAdi}\nSN: ${bilgi.cihaz.seriNo}\n'
+                  '${bilgi.depoAdi ?? '-'} stoğundan düşülecek.'),
+              TextField(
+                controller: yerCtrl,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  labelText: 'Nerede kullanıldı?',
+                  hintText: 'Örn: Zabıta Müdürlüğü, Park Cad. 12',
+                ),
+              ),
+              TextField(
+                controller: notCtrl,
+                decoration: const InputDecoration(labelText: 'Not (opsiyonel)'),
+              ),
+              if (hata != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(hata!,
+                      style:
+                          TextStyle(color: Theme.of(ctx).colorScheme.error)),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('İptal')),
+            FilledButton(
+              onPressed: () {
+                if (yerCtrl.text.trim().isEmpty) {
+                  setState(() => hata = 'Kullanım yerini yazın');
+                  return;
+                }
+                Navigator.pop(ctx, true);
+              },
+              child: const Text('Kaydet'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (onay != true || !context.mounted) return;
+
+    final db = ref.read(appDatabaseProvider);
+    await _calistir(
+      context,
+      ref,
+      () => db.cihazlariTopluHareketKaydet(
+        cihazIdleri: [bilgi.cihaz.id],
+        tip: HareketTipi.kullanim,
+        kullaniciId: ref.read(aktifKullaniciIdProvider) ?? _kullanici,
+        kullanimYeri: yerCtrl.text.trim(),
+        not_: notCtrl.text.trim().isEmpty ? null : notCtrl.text.trim(),
+      ),
+      'Kullanım kaydedildi, stoktan düşüldü',
+    );
+  }
+
+  Future<void> _cikis(
+      BuildContext context, WidgetRef ref, CihazBilgi bilgi) async {
+    final notCtrl = TextEditingController();
+    final onay = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Çıkış yap'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('${bilgi.urunAdi}\nSN: ${bilgi.cihaz.seriNo}\n'
+                '${bilgi.depoAdi ?? '-'} deposundan çıkış yapılacak.'),
+            TextField(
+              controller: notCtrl,
+              decoration:
+                  const InputDecoration(labelText: 'Not (örn. kime verildi)'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('İptal')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Çıkış yap')),
+        ],
+      ),
+    );
+    if (onay != true || !context.mounted) return;
+
+    final db = ref.read(appDatabaseProvider);
+    await _calistir(
+      context,
+      ref,
+      () => db.cihazlariTopluHareketKaydet(
+        cihazIdleri: [bilgi.cihaz.id],
+        tip: HareketTipi.cikis,
+        kullaniciId: ref.read(aktifKullaniciIdProvider) ?? _kullanici,
+        not_: notCtrl.text.trim().isEmpty ? null : notCtrl.text.trim(),
+      ),
+      'Çıkış kaydedildi',
+    );
+  }
+
+  Future<void> _iade(
+      BuildContext context, WidgetRef ref, CihazBilgi bilgi) async {
+    final depolar = ref.read(depolarStreamProvider).value ?? <Depo>[];
+    if (depolar.isEmpty) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Önce depo ekleyin')));
+      return;
+    }
+    String? hedef = depolar.first.id;
+
+    final onay = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: const Text('Depoya iade al'),
+          content: DropdownButtonFormField<String>(
+            value: hedef,
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'Hangi depo / araca?'),
+            items: depoDropdownOgeleri(depolar),
+            onChanged: (v) => setState(() => hedef = v),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('İptal')),
+            FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('İade al')),
+          ],
+        ),
+      ),
+    );
+    if (onay != true || hedef == null || !context.mounted) return;
+
+    final db = ref.read(appDatabaseProvider);
+    await _calistir(
+      context,
+      ref,
+      () => db.cihazlariGirisYap(
+        urunId: bilgi.cihaz.urunId,
+        depoId: hedef!,
+        seriNolar: [bilgi.cihaz.seriNo],
+        kullaniciId: ref.read(aktifKullaniciIdProvider) ?? _kullanici,
+        not_: 'İade',
+      ),
+      'Depoya alındı',
+    );
+  }
+}

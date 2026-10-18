@@ -1,0 +1,137 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../database/models.dart';
+import '../../providers/app_providers.dart';
+import 'urun_form_dialog.dart';
+
+/// Ürünler (modeller), kategoriye göre gruplu; her başlıkta kategori toplamı,
+/// her satırda o modelin tüm depolardaki toplam adedi görünür.
+class UrunListScreen extends ConsumerWidget {
+  const UrunListScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final urunlerAsync = ref.watch(urunlerStreamProvider);
+    final toplamlar =
+        ref.watch(urunToplamStoklariProvider).value ?? <String, int>{};
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Ürünler')),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => urunFormDialog(context, ref),
+        child: const Icon(Icons.add),
+      ),
+      body: urunlerAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Hata: $e')),
+        data: (urunler) {
+          if (urunler.isEmpty) {
+            return const Center(child: Text('Henüz ürün eklenmedi'));
+          }
+
+          final gruplar = <String, List<Urun>>{};
+          for (final u in urunler) {
+            (gruplar[u.kategori ?? 'Kategorisiz'] ??= []).add(u);
+          }
+          final kategoriler = gruplar.keys.toList()
+            ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+          final genelToplam =
+              urunler.fold<int>(0, (t, u) => t + (toplamlar[u.id] ?? 0));
+
+          return ListView(
+            padding: const EdgeInsets.only(bottom: 88),
+            children: [
+              Card(
+                margin: const EdgeInsets.all(12),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _Kutu(etiket: 'Model', deger: '${urunler.length}'),
+                      _Kutu(etiket: 'Kategori', deger: '${kategoriler.length}'),
+                      _Kutu(etiket: 'Toplam adet', deger: '$genelToplam'),
+                    ],
+                  ),
+                ),
+              ),
+              for (final kategori in kategoriler) ...[
+                _KategoriBasligi(
+                  ad: kategori,
+                  toplam: gruplar[kategori]!
+                      .fold<int>(0, (t, u) => t + (toplamlar[u.id] ?? 0)),
+                ),
+                for (final urun in gruplar[kategori]!)
+                  ListTile(
+                    leading: const Icon(Icons.qr_code_2),
+                    title: Text(urun.ad),
+                    subtitle: urun.barkod == null
+                        ? null
+                        : Text('Model barkodu: ${urun.barkod}'),
+                    trailing: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          '${toplamlar[urun.id] ?? 0}',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 18),
+                        ),
+                        const Text('depoda', style: TextStyle(fontSize: 11)),
+                      ],
+                    ),
+                    onTap: () => urunFormDialog(context, ref, mevcut: urun),
+                  ),
+              ],
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _Kutu extends StatelessWidget {
+  final String etiket;
+  final String deger;
+  const _Kutu({required this.etiket, required this.deger});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(deger,
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 2),
+        Text(etiket, style: const TextStyle(fontSize: 12)),
+      ],
+    );
+  }
+}
+
+class _KategoriBasligi extends StatelessWidget {
+  final String ad;
+  final int toplam;
+  const _KategoriBasligi({required this.ad, required this.toplam});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Theme.of(context).colorScheme.primary.withOpacity(0.08),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              ad.toUpperCase(),
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+          Text('$toplam adet',
+              style: const TextStyle(fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+}

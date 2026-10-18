@@ -1,0 +1,15 @@
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.iml
+.idea/
+.vscode/
+local.properties
+android/.gradle/
+android/key.properties
+*.jks
+*.keystore
+web/sqlite3.wasm
+web/sqflite_sw.js
