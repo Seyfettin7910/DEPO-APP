@@ -7,6 +7,7 @@ import '../../database/models.dart';
 import '../../providers/app_providers.dart';
 import '../../services/ses_servisi.dart';
 import '../../widgets/depo_secici.dart';
+import '../../widgets/alim_bilgisi_alanlari.dart';
 
 /// Cihazın şu anki konumunu tek satırda anlatır.
 String cihazKonumMetni(CihazBilgi b) {
@@ -102,6 +103,7 @@ class CihazDetayScreen extends ConsumerWidget {
                   ),
                 ),
               ),
+              _alimKarti(context, ref, bilgi),
               const SizedBox(height: 12),
               if (durum == CihazDurumu.depoda)
                 Wrap(
@@ -421,6 +423,94 @@ class CihazDetayScreen extends ConsumerWidget {
         not_: notCtrl.text.trim().isEmpty ? null : notCtrl.text.trim(),
       ),
       'Kullanım kaydedildi, stoktan düşüldü',
+    );
+  }
+
+  /// Alım tarihi, firma, ihale ve garanti bilgisi kartı (düzenlenebilir).
+  Widget _alimKarti(BuildContext context, WidgetRef ref, CihazBilgi bilgi) {
+    final c = bilgi.cihaz;
+    final gun = DateFormat('dd.MM.yyyy');
+    final bos = c.alimTarihi == null &&
+        c.firma == null &&
+        c.ihale == null &&
+        c.garantiBitis == null;
+    Widget satir(IconData ikon, String etiket, String deger, {Color? renk}) =>
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 3),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(ikon, size: 18, color: renk ?? Colors.grey.shade700),
+              const SizedBox(width: 8),
+              SizedBox(
+                  width: 92,
+                  child: Text(etiket,
+                      style: TextStyle(color: Colors.grey.shade700))),
+              Expanded(
+                  child: Text(deger,
+                      style: TextStyle(
+                          color: renk, fontWeight: FontWeight.w500))),
+            ],
+          ),
+        );
+
+    return Card(
+      margin: const EdgeInsets.only(top: 12),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 8, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Text('Alım / garanti',
+                      style: TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.bold)),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined),
+                  tooltip: 'Düzenle',
+                  onPressed: () => _alimDuzenle(context, ref, bilgi),
+                ),
+              ],
+            ),
+            if (bos)
+              const Text('Alım bilgisi girilmemiş. Düzenle ile ekleyebilirsiniz.')
+            else ...[
+              satir(Icons.event, 'Alım tarihi',
+                  c.alimTarihi == null ? '-' : gun.format(c.alimTarihi!)),
+              satir(Icons.store_outlined, 'Firma', c.firma ?? '-'),
+              satir(Icons.gavel_outlined, 'İhale / sipariş', c.ihale ?? '-'),
+              satir(Icons.verified_user_outlined, 'Garanti',
+                  garantiDurumMetni(c.garantiBitis),
+                  renk: garantiRengi(c.garantiBitis)),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _alimDuzenle(
+      BuildContext context, WidgetRef ref, CihazBilgi bilgi) async {
+    final db = ref.read(appDatabaseProvider);
+    final firmalar = await db.oncekiAlimDegerleri('firma');
+    final ihaleler = await db.oncekiAlimDegerleri('ihale');
+    if (!context.mounted) return;
+    final yeni = await alimBilgisiPenceresi(
+      context,
+      mevcut: AlimBilgisi.cihazdan(bilgi.cihaz),
+      firmalar: firmalar,
+      ihaleler: ihaleler,
+      aciklama: 'SN: ${bilgi.cihaz.seriNo}',
+    );
+    if (yeni == null || !context.mounted) return;
+    await _calistir(
+      context,
+      ref,
+      () => db.cihazAlimGuncelle(bilgi.cihaz.id, yeni),
+      'Alım bilgileri kaydedildi',
     );
   }
 

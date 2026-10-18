@@ -135,6 +135,10 @@ CREATE TABLE cihazlar (
   durum TEXT NOT NULL,
   arac_id TEXT,
   kullanim_yeri TEXT,
+  alim_tarihi INTEGER,
+  firma TEXT,
+  ihale TEXT,
+  garanti_bitis INTEGER,
   updated_at INTEGER NOT NULL,
   dirty INTEGER NOT NULL DEFAULT 1,
   deleted INTEGER NOT NULL DEFAULT 0
@@ -230,7 +234,7 @@ class AppDatabase {
         : p.join(await getDatabasesPath(), 'depo_app.sqlite');
     _db = await openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: (db, version) async {
         for (final stmt in _createTablesSql.split(';')) {
           final trimmed = stmt.trim();
@@ -254,6 +258,14 @@ class AppDatabase {
           // için (henüz hiç gönderilmedi) giriş yapınca sunucuya yüklenir.
           await db.execute(_syncMetaSql);
           await db.execute('UPDATE cihazlar SET dirty = 1');
+        }
+        if (oldVersion >= 2 && oldVersion < 5) {
+          // 1.11.0: alım / garanti bilgileri. (v2'den önce cihazlar tablosu
+          // yeni oluşturulduğu için bu sütunlar zaten içinde gelir.)
+          await db.execute('ALTER TABLE cihazlar ADD COLUMN alim_tarihi INTEGER');
+          await db.execute('ALTER TABLE cihazlar ADD COLUMN firma TEXT');
+          await db.execute('ALTER TABLE cihazlar ADD COLUMN ihale TEXT');
+          await db.execute('ALTER TABLE cihazlar ADD COLUMN garanti_bitis INTEGER');
         }
         if (oldVersion < 4) {
           // 1.4.0: araçlar seyyar depo olarak depolar tablosunda tutulur.
@@ -547,6 +559,8 @@ class AppDatabase {
       SELECT c.seri_no AS seri_no, c.urun_id AS urun_id, u.ad AS urun_adi,
              u.kategori AS kategori, c.durum AS durum, d.ad AS depo_adi,
              d.tur AS depo_tur, c.kullanim_yeri AS kullanim_yeri,
+             c.alim_tarihi AS alim_tarihi, c.firma AS firma,
+             c.ihale AS ihale, c.garanti_bitis AS garanti_bitis,
              c.updated_at AS guncelleme
       FROM cihazlar c
       JOIN urunler u ON u.id = c.urun_id
@@ -712,6 +726,8 @@ class AppDatabase {
       SELECT c.id AS id, c.urun_id AS urun_id, c.seri_no AS seri_no,
              c.depo_id AS depo_id, c.durum AS durum, c.arac_id AS arac_id,
              c.kullanim_yeri AS kullanim_yeri, c.updated_at AS updated_at,
+             c.alim_tarihi AS alim_tarihi, c.firma AS firma, c.ihale AS ihale,
+             c.garanti_bitis AS garanti_bitis,
              c.dirty AS dirty, c.deleted AS deleted,
              u.ad AS urun_adi, d.ad AS depo_adi, d.tur AS depo_tur,
              a.plaka AS arac_plaka
@@ -803,6 +819,7 @@ class AppDatabase {
     required List<String> seriNolar,
     required String kullaniciId,
     String? not_,
+    AlimBilgisi? alim,
   }) async {
     if (seriNolar.every((x) => _normSeri(x).isEmpty)) {
       throw StateError('Hiç seri numarası eklenmedi');
@@ -835,6 +852,10 @@ class AppDatabase {
               seriNo: seri,
               depoId: depoId,
               durum: CihazDurumu.depoda,
+              alimTarihi: alim?.alimTarihi,
+              firma: alim?.firmaVeyaNull,
+              ihale: alim?.ihaleVeyaNull,
+              garantiBitis: alim?.garantiBitis,
               updatedAt: simdi,
             ).toMap(),
           );
@@ -857,6 +878,10 @@ class AppDatabase {
               'deleted': 0,
               'updated_at': simdi.millisecondsSinceEpoch,
               'dirty': 1,
+              // Yeniden girişte yalnızca doldurulan alım bilgileri yazılır.
+              if (alim != null)
+                for (final e in alim.kolonlar().entries)
+                  if (e.value != null) e.key: e.value,
             },
             where: 'id = ?',
             whereArgs: [cihazId],
@@ -882,6 +907,33 @@ class AppDatabase {
     });
 
     _notify();
+  }
+
+  /// Cihazın alım / garanti bilgilerini değiştirir (boş bırakılanlar silinir).
+  Future<void> cihazAlimGuncelle(String cihazId, AlimBilgisi alim) async {
+    final db = await _database;
+    await db.update(
+      'cihazlar',
+      {
+        ...alim.kolonlar(),
+        'updated_at': DateTime.now().millisecondsSinceEpoch,
+        'dirty': 1,
+      },
+      where: 'id = ?',
+      whereArgs: [cihazId],
+    );
+    _notify();
+  }
+
+  /// Daha önce girilmiş firma veya ihale adları (yazarken öneri için).
+  Future<List<String>> oncekiAlimDegerleri(String kolon) async {
+    if (kolon != 'firma' && kolon != 'ihale') return [];
+    final db = await _database;
+    final rows = await db.rawQuery(
+        "SELECT DISTINCT $kolon AS v FROM cihazlar "
+        "WHERE $kolon IS NOT NULL AND $kolon <> '' AND deleted = 0 "
+        'ORDER BY $kolon COLLATE NOCASE LIMIT 300');
+    return [for (final r in rows) r['v'] as String];
   }
 
   /// Okutulan seri numarasının cihaz bilgisini (model, depo, araç) getirir.
@@ -1094,7 +1146,8 @@ class AppDatabase {
     'kullanicilar': ['id', 'ad', 'email', 'rol', 'updated_at', 'deleted'],
     'cihazlar': [
       'id', 'urun_id', 'seri_no', 'depo_id', 'durum', 'arac_id',
-      'kullanim_yeri', 'updated_at', 'deleted'
+      'kullanim_yeri', 'alim_tarihi', 'firma', 'ihale', 'garanti_bitis',
+      'updated_at', 'deleted'
     ],
     'stok_hareketleri': [
       'id', 'urun_id', 'depo_id', 'hedef_depo_id', 'tip', 'miktar',

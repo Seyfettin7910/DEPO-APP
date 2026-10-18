@@ -44,18 +44,42 @@ class RaporOlusturucu {
     'iade': 'İade',
   };
 
+  static String _gunMs(Object? ms) => ms == null
+      ? ''
+      : _gun.format(DateTime.fromMillisecondsSinceEpoch((ms as num).toInt()));
+
+  /// Garanti bitişine kalan gün (geçmişse negatif); bilgi yoksa null.
+  static int? _kalanGun(Object? ms) {
+    if (ms == null) return null;
+    final bitis = DateTime.fromMillisecondsSinceEpoch((ms as num).toInt());
+    final bugun = DateTime.now();
+    return DateTime(bitis.year, bitis.month, bitis.day)
+        .difference(DateTime(bugun.year, bugun.month, bugun.day))
+        .inDays;
+  }
+
+  static String _konum(Map<String, Object?> r) => r['durum'] == 'depoda'
+      ? (r['depo_adi'] as String? ?? '')
+      : (r['kullanim_yeri'] as String? ?? '');
+
   // Cihaz satırları için ortak sütunlar
   static const _cihazSutunlari = [
-    'Seri No', 'Durum', 'Konum', 'Kullanım yeri', 'Son değişiklik'
+    'Seri No', 'Durum', 'Konum', 'Kullanım yeri', 'Firma', 'İhale',
+    'Alım tarihi', 'Garanti bitiş'
   ];
-  static const _cihazGenislik = [22.0, 16.0, 22.0, 26.0, 17.0];
+  static const _cihazGenislik = [
+    20.0, 13.0, 18.0, 20.0, 18.0, 15.0, 11.0, 11.0
+  ];
 
   static List<Object?> _cihazSatiri(Map<String, Object?> r) => [
         r['seri_no'] ?? '',
         durumEtiketi(r['durum'] as String?, r['depo_tur'] as String?),
         r['depo_adi'] ?? '',
         r['kullanim_yeri'] ?? '',
-        _tarihMs(r['guncelleme']),
+        r['firma'] ?? '',
+        r['ihale'] ?? '',
+        _gunMs(r['alim_tarihi']),
+        _gunMs(r['garanti_bitis']),
       ];
 
   // ------------------------------------------------------------------
@@ -253,6 +277,195 @@ class RaporOlusturucu {
             baslik: 'Bu ürüne ait kayıtlı cihaz yok',
             satirlar: [],
           ),
+      ],
+    );
+  }
+
+  // ------------------------------------------------------------------
+  // Garanti durumu
+  // ------------------------------------------------------------------
+  static Future<Rapor> garanti(AppDatabase db, {int yakinGun = 90}) async {
+    final rows = (await db.cihazListesiRaporu())
+        .where((r) => r['durum'] != 'cikti') // çıkışı yapılanlar hariç
+        .toList();
+
+    final biten = <Map<String, Object?>>[];
+    final yakin = <Map<String, Object?>>[];
+    final devam = <Map<String, Object?>>[];
+    final bilgisiz = <Map<String, Object?>>[];
+    for (final r in rows) {
+      final k = _kalanGun(r['garanti_bitis']);
+      if (k == null) {
+        bilgisiz.add(r);
+      } else if (k < 0) {
+        biten.add(r);
+      } else if (k <= yakinGun) {
+        yakin.add(r);
+      } else {
+        devam.add(r);
+      }
+    }
+    int kalan(Map<String, Object?> r) => _kalanGun(r['garanti_bitis']) ?? 0;
+    yakin.sort((a, b) => kalan(a).compareTo(kalan(b)));
+    biten.sort((a, b) => kalan(b).compareTo(kalan(a)));
+    devam.sort((a, b) => kalan(a).compareTo(kalan(b)));
+
+    List<Object?> satir(Map<String, Object?> r) => [
+          r['seri_no'] ?? '',
+          r['urun_adi'] ?? '',
+          r['firma'] ?? '',
+          r['ihale'] ?? '',
+          _gunMs(r['alim_tarihi']),
+          _gunMs(r['garanti_bitis']),
+          _kalanGun(r['garanti_bitis']) ?? '',
+          durumEtiketi(r['durum'] as String?, r['depo_tur'] as String?),
+          _konum(r),
+        ];
+
+    RaporBolumu? bolum(String baslik, String aciklama,
+            List<Map<String, Object?>> liste) =>
+        liste.isEmpty
+            ? null
+            : RaporBolumu(
+                baslik: '$baslik (${liste.length})',
+                aciklama: aciklama,
+                satirlar: [for (final r in liste) satir(r)],
+              );
+
+    return Rapor(
+      baslik: 'Garanti Durumu',
+      altBaslik: 'Çıkışı yapılmamış cihazlar · ${_olusturma()}',
+      dosyaOn: 'garanti_durumu',
+      ozet: [
+        MapEntry('Garantisi bitmiş', '${biten.length}'),
+        MapEntry('$yakinGun gün içinde bitecek', '${yakin.length}'),
+        MapEntry('Garantide', '${devam.length}'),
+        MapEntry('Garanti bilgisi yok', '${bilgisiz.length}'),
+      ],
+      sutunlar: const [
+        'Seri No', 'Ürün', 'Firma', 'İhale', 'Alım tarihi', 'Garanti bitiş',
+        'Kalan gün', 'Durum', 'Konum / kullanım yeri'
+      ],
+      genislikler: const [18, 22, 16, 14, 11, 11, 8, 12, 18],
+      bolumler: [
+        ...[
+          bolum('$yakinGun gün içinde bitecek',
+              'En yakın tarihli üstte.', yakin),
+          bolum('Garantisi bitmiş', 'En yeni biten üstte.', biten),
+          bolum('Garantide', 'Bitiş tarihine göre.', devam),
+          bolum('Garanti bilgisi yok',
+              'Cihaz kartından veya girişte garanti eklenebilir.', bilgisiz),
+        ].whereType<RaporBolumu>(),
+        if (rows.isEmpty)
+          const RaporBolumu(baslik: 'Kayıtlı cihaz yok', satirlar: []),
+      ],
+    );
+  }
+
+  // ------------------------------------------------------------------
+  // Alımlar: ihale / firma bazlı
+  // ------------------------------------------------------------------
+  static Future<Rapor> alimlar(AppDatabase db) async {
+    final rows = await db.cihazListesiRaporu();
+
+    final gruplar = <String, List<Map<String, Object?>>>{};
+    for (final r in rows) {
+      final ihale = (r['ihale'] as String?)?.trim() ?? '';
+      final firma = (r['firma'] as String?)?.trim() ?? '';
+      gruplar.putIfAbsent('$ihale|$firma', () => []).add(r);
+    }
+    final anahtarlar = gruplar.keys.toList()
+      ..sort((a, b) {
+        // Bilgisi olmayanlar en sona
+        if (a == '|') return 1;
+        if (b == '|') return -1;
+        return a.toLowerCase().compareTo(b.toLowerCase());
+      });
+
+    final firmalar = <String>{};
+    final ihaleler = <String>{};
+    final ozetSatirlari = <List<Object?>>[];
+    final detaylar = <RaporBolumu>[];
+
+    for (final k in anahtarlar) {
+      final liste = gruplar[k]!;
+      final parca = k.split('|');
+      final ihale = parca[0];
+      final firma = parca.length > 1 ? parca[1] : '';
+      if (ihale.isNotEmpty) ihaleler.add(ihale);
+      if (firma.isNotEmpty) firmalar.add(firma);
+
+      final tarihler = liste
+          .map((r) => r['alim_tarihi'])
+          .whereType<num>()
+          .map((n) => n.toInt())
+          .toList()
+        ..sort();
+      final s = _Sayac()..ekle(liste);
+      final urunSayisi = {for (final r in liste) r['urun_id']}.length;
+
+      final baslik = ihale.isEmpty && firma.isEmpty
+          ? 'Alım bilgisi girilmemiş'
+          : [
+              if (ihale.isNotEmpty) 'İhale: $ihale',
+              if (firma.isNotEmpty) 'Firma: $firma',
+            ].join(' · ');
+      ozetSatirlari.add([
+        ihale.isEmpty ? '-' : ihale,
+        firma.isEmpty ? '-' : firma,
+        tarihler.isEmpty ? '' : _gunMs(tarihler.first),
+        urunSayisi,
+        s.toplam,
+        s.depoda + s.aracta,
+        s.sahada,
+      ]);
+      detaylar.add(RaporBolumu(
+        baslik: baslik,
+        aciklama: [
+          if (tarihler.isNotEmpty) 'Alım: ${_gunMs(tarihler.first)}'
+              '${tarihler.last != tarihler.first ? ' - ${_gunMs(tarihler.last)}' : ''}',
+          'Toplam ${s.toplam}',
+          'Stokta ${s.depoda + s.aracta}',
+          'Sahada ${s.sahada}',
+          'Çıkış ${s.cikti}',
+        ].join(' · '),
+        sutunlar: const [
+          'Seri No', 'Ürün', 'Alım tarihi', 'Garanti bitiş', 'Durum',
+          'Konum / kullanım yeri'
+        ],
+        genislikler: const [20, 26, 11, 11, 14, 22],
+        satirlar: [
+          for (final r in liste)
+            [
+              r['seri_no'] ?? '',
+              r['urun_adi'] ?? '',
+              _gunMs(r['alim_tarihi']),
+              _gunMs(r['garanti_bitis']),
+              durumEtiketi(r['durum'] as String?, r['depo_tur'] as String?),
+              _konum(r),
+            ],
+        ],
+      ));
+    }
+
+    return Rapor(
+      baslik: 'Alımlar (İhale / Firma)',
+      altBaslik: _olusturma(),
+      dosyaOn: 'alimlar_raporu',
+      ozet: [
+        MapEntry('İhale', '${ihaleler.length}'),
+        MapEntry('Firma', '${firmalar.length}'),
+        MapEntry('Toplam cihaz', '${rows.length}'),
+      ],
+      sutunlar: const [
+        'İhale / sipariş', 'Firma', 'İlk alım', 'Ürün çeşidi', 'Cihaz',
+        'Stokta', 'Sahada'
+      ],
+      genislikler: const [20, 22, 11, 9, 8, 8, 8],
+      bolumler: [
+        if (ozetSatirlari.isNotEmpty)
+          RaporBolumu(baslik: 'Özet', satirlar: ozetSatirlari),
+        ...detaylar,
       ],
     );
   }

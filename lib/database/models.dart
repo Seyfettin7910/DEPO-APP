@@ -9,6 +9,8 @@ enum HareketTipi { girisi, cikis, transfer, kullanim, iade }
 enum CihazDurumu { depoda, kullanimda, cikti }
 
 DateTime _epochToDate(int ms) => DateTime.fromMillisecondsSinceEpoch(ms);
+DateTime? _epochOrNull(Object? ms) =>
+    ms == null ? null : DateTime.fromMillisecondsSinceEpoch((ms as num).toInt());
 int _dateToEpoch(DateTime d) => d.millisecondsSinceEpoch;
 bool _intToBool(int i) => i == 1;
 int _boolToInt(bool b) => b ? 1 : 0;
@@ -344,6 +346,11 @@ class Cihaz {
   final CihazDurumu durum;
   final String? aracId;
   final String? kullanimYeri;
+  // Alım / garanti bilgileri (opsiyonel)
+  final DateTime? alimTarihi;
+  final String? firma;
+  final String? ihale;
+  final DateTime? garantiBitis;
   final DateTime updatedAt;
   final bool dirty;
   final bool deleted;
@@ -356,6 +363,10 @@ class Cihaz {
     required this.durum,
     this.aracId,
     this.kullanimYeri,
+    this.alimTarihi,
+    this.firma,
+    this.ihale,
+    this.garantiBitis,
     required this.updatedAt,
     this.dirty = true,
     this.deleted = false,
@@ -369,6 +380,10 @@ class Cihaz {
         durum: CihazDurumu.values.firstWhere((d) => d.name == m['durum']),
         aracId: m['arac_id'] as String?,
         kullanimYeri: m['kullanim_yeri'] as String?,
+        alimTarihi: _epochOrNull(m['alim_tarihi']),
+        firma: m['firma'] as String?,
+        ihale: m['ihale'] as String?,
+        garantiBitis: _epochOrNull(m['garanti_bitis']),
         updatedAt: _epochToDate(m['updated_at'] as int),
         dirty: _intToBool(m['dirty'] as int),
         deleted: _intToBool(m['deleted'] as int),
@@ -382,8 +397,53 @@ class Cihaz {
         'durum': durum.name,
         'arac_id': aracId,
         'kullanim_yeri': kullanimYeri,
+        'alim_tarihi': alimTarihi?.millisecondsSinceEpoch,
+        'firma': firma,
+        'ihale': ihale,
+        'garanti_bitis': garantiBitis?.millisecondsSinceEpoch,
         'updated_at': _dateToEpoch(updatedAt),
         'dirty': _boolToInt(dirty),
         'deleted': _boolToInt(deleted),
+      };
+}
+
+
+/// Cihazın alım / garanti bilgileri (giriş ekranında ve cihaz kartında
+/// düzenlenir). Boş metinler veritabanına null olarak yazılır.
+class AlimBilgisi {
+  AlimBilgisi({
+    this.alimTarihi,
+    this.firma = '',
+    this.ihale = '',
+    this.garantiBitis,
+  });
+
+  factory AlimBilgisi.cihazdan(Cihaz c) => AlimBilgisi(
+        alimTarihi: c.alimTarihi,
+        firma: c.firma ?? '',
+        ihale: c.ihale ?? '',
+        garantiBitis: c.garantiBitis,
+      );
+
+  DateTime? alimTarihi;
+  String firma;
+  String ihale;
+  DateTime? garantiBitis;
+
+  String? get firmaVeyaNull => firma.trim().isEmpty ? null : firma.trim();
+  String? get ihaleVeyaNull => ihale.trim().isEmpty ? null : ihale.trim();
+
+  bool get bos =>
+      alimTarihi == null &&
+      firmaVeyaNull == null &&
+      ihaleVeyaNull == null &&
+      garantiBitis == null;
+
+  /// Veritabanı sütunları (null değerler dahil).
+  Map<String, Object?> kolonlar() => {
+        'alim_tarihi': alimTarihi?.millisecondsSinceEpoch,
+        'firma': firmaVeyaNull,
+        'ihale': ihaleVeyaNull,
+        'garanti_bitis': garantiBitis?.millisecondsSinceEpoch,
       };
 }

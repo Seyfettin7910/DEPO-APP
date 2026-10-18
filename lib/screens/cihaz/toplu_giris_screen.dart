@@ -8,6 +8,7 @@ import '../../services/ses_servisi.dart';
 import '../../widgets/depo_secici.dart';
 import '../../widgets/kod_yardimci.dart';
 import '../../widgets/hedefli_tarayici.dart';
+import '../../widgets/alim_bilgisi_alanlari.dart';
 
 /// Seri numaralarıyla depoya giriş: model ve depo seçilir, seri numaraları
 /// kamerayla okutulur veya elle yazılır, hepsi tek seferde kaydedilir.
@@ -42,9 +43,15 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen> {
   DateTime _sonZaman = DateTime.fromMillisecondsSinceEpoch(0);
   bool _mesgul = false;
 
+  /// Bu girişteki tüm cihazlara uygulanacak alım / garanti bilgisi.
+  AlimBilgisi _alim = AlimBilgisi();
+  List<String> _firmalar = const [];
+  List<String> _ihaleler = const [];
+
   @override
   void initState() {
     super.initState();
+    _onerileriYukle();
     _urunId = widget.onceSeciliUrunId;
     _depoId = widget.onceSeciliDepoId;
     _seriler.addAll(widget.onceSeriNolari.map(_norm));
@@ -59,6 +66,30 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen> {
   }
 
   String _norm(String s) => s.trim().toUpperCase();
+
+  Future<void> _onerileriYukle() async {
+    final db = ref.read(appDatabaseProvider);
+    final f = await db.oncekiAlimDegerleri('firma');
+    final i = await db.oncekiAlimDegerleri('ihale');
+    if (mounted) {
+      setState(() {
+        _firmalar = f;
+        _ihaleler = i;
+      });
+    }
+  }
+
+  Future<void> _alimDuzenle() async {
+    final yeni = await alimBilgisiPenceresi(
+      context,
+      mevcut: _alim,
+      firmalar: _firmalar,
+      ihaleler: _ihaleler,
+      aciklama: 'Bu girişteki tüm cihazlara uygulanır. '
+          'Sonradan cihaz kartından tek tek de değiştirilebilir.',
+    );
+    if (yeni != null) setState(() => _alim = yeni);
+  }
 
   void _mesaj(String metin, {bool hata = false}) {
     if (!mounted) return;
@@ -174,6 +205,7 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen> {
             seriNolar: List.of(_seriler),
             kullaniciId: ref.read(aktifKullaniciIdProvider) ?? 'demo-kullanici',
             not_: _notCtrl.text.trim().isEmpty ? null : _notCtrl.text.trim(),
+            alim: _alim.bos ? null : _alim,
           );
       SesServisi.basari();
       if (!mounted) return;
@@ -236,6 +268,21 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen> {
                   decoration: const InputDecoration(labelText: 'Depo / araç'),
                   items: depoDropdownOgeleri(depolar),
                   onChanged: (v) => setState(() => _depoId = v),
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                  leading: const Icon(Icons.receipt_long_outlined),
+                  title: const Text('Alım / garanti bilgileri'),
+                  subtitle: Text(
+                    _alim.bos
+                        ? 'Opsiyonel: alım tarihi, firma, ihale, garanti'
+                        : alimOzeti(_alim),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing: const Icon(Icons.edit_outlined),
+                  onTap: _alimDuzenle,
                 ),
                 if (urunler.isEmpty || depolar.isEmpty)
                   Padding(

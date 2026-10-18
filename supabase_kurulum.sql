@@ -21,7 +21,13 @@ create table if not exists kullanicilar (
 
 create table if not exists cihazlar (
   id text primary key, urun_id text not null, seri_no text not null unique,
-  depo_id text, durum text not null, arac_id text, kullanim_yeri text);
+  depo_id text, durum text not null, arac_id text, kullanim_yeri text,
+  alim_tarihi bigint, firma text, ihale text, garanti_bitis bigint);
+-- (eski kurulumlar için) alım / garanti sütunları
+alter table cihazlar add column if not exists alim_tarihi bigint;
+alter table cihazlar add column if not exists firma text;
+alter table cihazlar add column if not exists ihale text;
+alter table cihazlar add column if not exists garanti_bitis bigint;
 
 create table if not exists stok_hareketleri (
   id text primary key, urun_id text not null, depo_id text not null,

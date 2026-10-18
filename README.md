@@ -5,6 +5,21 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.11.0 – Alım ve garanti bilgileri
+> **Önce Supabase'de `supabase_guncelleme_1_11_0.sql` çalıştırılmalı** (cihazlar tablosuna
+> 4 sütun ekler). Çalıştırılmazsa yeni sürümde cihaz senkronizasyonu hata verir.
+
+- Her cihaza **alım tarihi, alınan firma, ihale / sipariş no, garanti bitişi** eklenebilir.
+  - Seri no ile girişte "Alım / garanti bilgileri" satırından bir kez girilir, listedeki
+    tüm cihazlara uygulanır. Firma ve ihale yazarken daha önce girilenler önerilir.
+  - Garanti: 12/24/36/60 ay düğmeleri (alım tarihinden hesaplanır) veya tarih seçimi.
+  - Cihaz kartında "Alım / garanti" bölümünde görünür ve düzenlenir; garanti durumu
+    renkli gösterilir (yeşil: devam, turuncu: 90 gün içinde bitiyor, kırmızı: bitti).
+- Raporlar: Ürünler ve Ürün stok durumu raporlarına Firma, İhale, Alım tarihi, Garanti
+  bitiş sütunları eklendi. Yeni raporlar:
+  - **Garanti durumu:** bitmiş / 90 gün içinde bitecek / devam eden / bilgisi olmayan
+  - **Alımlar (ihale / firma):** her ihale-firma için cihaz listesi ve özet
+
 ## 1.10.0 – Raporlar ve sayım
 - **Tek rapor yapısı:** Raporlar sekmesinde sağ üstteki "Rapor oluştur" ile rapor seçilir,
   önce uygulamada önizlenir; PDF ve Excel aynı başlık/sütunlarla oradan alınır.

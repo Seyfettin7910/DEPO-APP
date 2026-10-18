@@ -61,8 +61,10 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
     final tur = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
+      isScrollControlled: true,
       builder: (ctx) => SafeArea(
-        child: Column(
+        child: SingleChildScrollView(
+         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const Padding(
@@ -84,6 +86,19 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
               onTap: () => Navigator.pop(ctx, 'stok'),
             ),
             ListTile(
+              leading: const Icon(Icons.verified_user_outlined),
+              title: const Text('Garanti durumu'),
+              subtitle: const Text(
+                  'Garantisi biten, yakında bitecek ve devam eden cihazlar'),
+              onTap: () => Navigator.pop(ctx, 'garanti'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.receipt_long_outlined),
+              title: const Text('Alımlar (ihale / firma)'),
+              subtitle: const Text('İhale ve firmaya göre ayrılmış cihazlar'),
+              onTap: () => Navigator.pop(ctx, 'alimlar'),
+            ),
+            ListTile(
               leading: const Icon(Icons.local_shipping_outlined),
               title: const Text('Kullanım raporu'),
               subtitle: Text('Sahada kullanılanlar · $aralik'),
@@ -96,6 +111,7 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
               onTap: () => Navigator.pop(ctx, 'hareketler'),
             ),
           ],
+         ),
         ),
       ),
     );
@@ -118,6 +134,12 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
           break;
         case 'stok':
           rapor = await RaporOlusturucu.urunStokDurumu(db, urun!);
+          break;
+        case 'garanti':
+          rapor = await RaporOlusturucu.garanti(db);
+          break;
+        case 'alimlar':
+          rapor = await RaporOlusturucu.alimlar(db);
           break;
         case 'hareketler':
           rapor = await RaporOlusturucu.hareketler(db,
