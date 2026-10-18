@@ -9,7 +9,6 @@ import '../services/ses_servisi.dart';
 const cihazSilmeSebepleri = [
   'Yanlış kayıt / hatalı okutma',
   'Mükerrer kayıt',
-  'Hurdaya ayrıldı',
   'Kayıp / çalıntı',
   'Diğer',
 ];

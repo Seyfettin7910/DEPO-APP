@@ -82,7 +82,7 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
               leading: const Icon(Icons.inventory_outlined),
               title: const Text('Ürün stok durumu'),
               subtitle: const Text(
-                  'Seçilen ürün: depoda, araçta, sahada kullanılan, çıkan'),
+                  'Seçilen ürün: depoda, araçta, sahada, arızalı, hurda'),
               onTap: () => Navigator.pop(ctx, 'stok'),
             ),
             ListTile(
@@ -112,6 +112,19 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
               onTap: () => Navigator.pop(ctx, 'alimlar'),
             ),
             ListTile(
+              leading: const Icon(Icons.build_outlined),
+              title: const Text('Arıza / servis'),
+              subtitle: Text('Arızalı, serviste, onarım süreleri ve sonuçları · '
+                  '$aralik'),
+              onTap: () => Navigator.pop(ctx, 'servis'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.recycling),
+              title: const Text('Hurda'),
+              subtitle: Text('Hurdaya ayrılan cihazlar ve nedenleri · $aralik'),
+              onTap: () => Navigator.pop(ctx, 'hurda'),
+            ),
+            ListTile(
               leading: const Icon(Icons.local_shipping_outlined),
               title: const Text('Kullanım raporu'),
               subtitle: Text('Sahada kullanılanlar · $aralik'),
@@ -120,7 +133,8 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
             ListTile(
               leading: const Icon(Icons.history),
               title: const Text('Hareket geçmişi'),
-              subtitle: Text('Giriş, transfer, kullanım, iade, çıkış · $aralik'),
+              subtitle: Text(
+                  'Giriş, transfer, kullanım, iade, servis, hurda · $aralik'),
               onTap: () => Navigator.pop(ctx, 'hareketler'),
             ),
           ],
@@ -188,6 +202,14 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
           break;
         case 'alimlar':
           rapor = await RaporOlusturucu.alimlar(db);
+          break;
+        case 'servis':
+          rapor = await RaporOlusturucu.servis(db,
+              baslangic: _tarihAraligi?.start, bitis: _bitisGunSonu());
+          break;
+        case 'hurda':
+          rapor = await RaporOlusturucu.hurda(db,
+              baslangic: _tarihAraligi?.start, bitis: _bitisGunSonu());
           break;
         case 'hareketler':
           rapor = await RaporOlusturucu.hareketler(db,

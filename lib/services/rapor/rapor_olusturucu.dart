@@ -25,7 +25,9 @@ class RaporOlusturucu {
       : _tarih.format(DateTime.fromMillisecondsSinceEpoch((ms as num).toInt()));
 
   /// Cihazın durumu, bulunduğu yerin türüyle birlikte.
-  static String durumEtiketi(String? durum, String? depoTur) {
+  static String durumEtiketi(String? durum, String? depoTur, [Object? servis]) {
+    final sd = servisDurumuCoz(servis);
+    if (sd != null) return sd.kisa;
     switch (durum) {
       case 'depoda':
         return depoTur == 'arac' ? 'Araçta' : 'Depoda';
@@ -45,6 +47,8 @@ class RaporOlusturucu {
     'kullanim': 'Kullanım',
     'iade': 'İade',
     'silme': 'Silme',
+    'servis': 'Servis',
+    'hurda': 'Hurda',
   };
 
   static String _gunMs(Object? ms) => ms == null
@@ -96,7 +100,8 @@ class RaporOlusturucu {
 
   static List<Object?> _cihazSatiri(Map<String, Object?> r) => [
         r['seri_no'] ?? '',
-        durumEtiketi(r['durum'] as String?, r['depo_tur'] as String?),
+        durumEtiketi(r['durum'] as String?, r['depo_tur'] as String?,
+            r['servis_durumu']),
         r['depo_adi'] ?? '',
         _kullanimYeriHucresi(r),
         r['firma'] ?? '',
@@ -186,7 +191,8 @@ class RaporOlusturucu {
       final ad = liste.first['urun_adi'] as String;
       final kategori = (liste.first['kategori'] as String?) ?? '';
       ozetSatirlari.add([
-        ad, kategori, s.toplam, s.depoda, s.aracta, s.sahada, s.cikti
+        ad, kategori, s.toplam, s.depoda, s.aracta, s.sahada, s.arizali,
+        s.hurda, s.cikti
       ]);
       detaylar.add(RaporBolumu(
         baslik: ad,
@@ -196,6 +202,8 @@ class RaporOlusturucu {
           'Depoda ${s.depoda}',
           'Araçta ${s.aracta}',
           'Sahada ${s.sahada}',
+          if (s.arizali > 0) 'Arızalı / serviste ${s.arizali}',
+          if (s.hurda > 0) 'Hurda ${s.hurda}',
           'Çıkış ${s.cikti}',
         ].join(' · '),
         satirlar: [for (final r in liste) _cihazSatiri(r)],
@@ -212,6 +220,8 @@ class RaporOlusturucu {
         MapEntry('Depoda', '${sayac.depoda}'),
         MapEntry('Araçta', '${sayac.aracta}'),
         MapEntry('Sahada kullanıldı', '${sayac.sahada}'),
+        MapEntry('Arızalı / serviste', '${sayac.arizali}'),
+        MapEntry('Hurda', '${sayac.hurda}'),
         MapEntry('Çıkış yapıldı', '${sayac.cikti}'),
       ],
       sutunlar: _cihazSutunlari,
@@ -222,9 +232,9 @@ class RaporOlusturucu {
             baslik: 'Ürün özeti',
             sutunlar: const [
               'Ürün', 'Kategori', 'Toplam', 'Depoda', 'Araçta', 'Sahada',
-              'Çıkış'
+              'Arızalı', 'Hurda', 'Çıkış'
             ],
-            genislikler: const [28, 16, 9, 9, 9, 9, 9],
+            genislikler: const [26, 15, 8, 8, 8, 8, 8, 8, 8],
             satirlar: ozetSatirlari,
           ),
         ...detaylar,
@@ -239,9 +249,13 @@ class RaporOlusturucu {
     final rows = await db.cihazListesiRaporu(urunId: urun.id);
     final s = _Sayac()..ekle(rows);
 
+    ServisDurumu? sd(Map<String, Object?> r) =>
+        servisDurumuCoz(r['servis_durumu']);
     List<Map<String, Object?>> filtre(String durum, {String? tur}) => rows
         .where((r) =>
             r['durum'] == durum &&
+            !(sd(r)?.arizali ?? false) &&
+            sd(r) != ServisDurumu.hurda &&
             (tur == null ||
                 (tur == 'arac') == (r['depo_tur'] == 'arac')))
         .toList();
@@ -250,6 +264,8 @@ class RaporOlusturucu {
     final araclarda = filtre('depoda', tur: 'arac');
     final sahada = filtre('kullanimda');
     final cikti = filtre('cikti');
+    final arizalilar = rows.where((r) => sd(r)?.arizali ?? false).toList();
+    final hurdalar = rows.where((r) => sd(r) == ServisDurumu.hurda).toList();
 
     // Konumlara göre dağılım (depo ve araçlar)
     final dagilim = <String, List<Object?>>{};
@@ -281,6 +297,8 @@ class RaporOlusturucu {
         MapEntry('Depolarda', '${s.depoda}'),
         MapEntry('Araçlarda', '${s.aracta}'),
         MapEntry('Sahada kullanıldı', '${s.sahada}'),
+        MapEntry('Arızalı / serviste', '${s.arizali}'),
+        MapEntry('Hurda', '${s.hurda}'),
         MapEntry('Çıkış yapıldı', '${s.cikti}'),
       ],
       sutunlar: _cihazSutunlari,
@@ -298,6 +316,8 @@ class RaporOlusturucu {
           bolum('Depolarda', depolarda),
           bolum('Araçlarda', araclarda),
           bolum('Sahada kullanıldı', sahada),
+          bolum('Arızalı / serviste', arizalilar),
+          bolum('Hurdaya ayrılan', hurdalar),
           bolum('Çıkış yapıldı', cikti),
         ].whereType<RaporBolumu>(),
         if (rows.isEmpty)
@@ -316,7 +336,7 @@ class RaporOlusturucu {
     final liste = await db.kritikStoklar();
     return Rapor(
       baslik: 'Kritik Stok',
-      altBaslik: 'Depolar ve araçlardaki (seyyar depo) toplam adet, ürünün '
+      altBaslik: 'Depolar ve araçlardaki (seyyar depo) sağlam cihaz adedi, ürünün '
           'minimum adediyle karşılaştırılır · ${_olusturma()}',
       dosyaOn: 'kritik_stok',
       ozet: [
@@ -390,7 +410,8 @@ class RaporOlusturucu {
           _gunMs(r['alim_tarihi']),
           _gunMs(r['garanti_bitis']),
           _kalanGun(r['garanti_bitis']) ?? '',
-          durumEtiketi(r['durum'] as String?, r['depo_tur'] as String?),
+          durumEtiketi(r['durum'] as String?, r['depo_tur'] as String?,
+            r['servis_durumu']),
           _konum(r),
         ];
 
@@ -513,7 +534,8 @@ class RaporOlusturucu {
               r['urun_adi'] ?? '',
               _gunMs(r['alim_tarihi']),
               _gunMs(r['garanti_bitis']),
-              durumEtiketi(r['durum'] as String?, r['depo_tur'] as String?),
+              durumEtiketi(r['durum'] as String?, r['depo_tur'] as String?,
+            r['servis_durumu']),
               _konum(r),
             ],
         ],
@@ -641,6 +663,226 @@ class RaporOlusturucu {
   }
 
   // ------------------------------------------------------------------
+  // Arıza / servis
+  // ------------------------------------------------------------------
+  static Future<Rapor> servis(AppDatabase db,
+      {DateTime? baslangic, DateTime? bitis}) async {
+    final rows = await db.servisRaporu(baslangic: baslangic, bitis: bitis);
+
+    DateTime? t(Object? ms) => ms == null
+        ? null
+        : DateTime.fromMillisecondsSinceEpoch((ms as num).toInt());
+    Duration? sure(Map<String, Object?> r) {
+      final g = t(r['gonderim_tarihi']);
+      if (g == null) return null;
+      return (t(r['donus_tarihi']) ?? DateTime.now()).difference(g);
+    }
+
+    String yer(Object? v) => onarimYeriAdlari[v] ?? '';
+    String karar(Object? v) => servisKararAdlari[v] ?? '${v ?? ''}';
+
+    final acik = rows.where((r) => r['kapanis'] == null).toList();
+    final kapanan = rows.where((r) => r['kapanis'] != null).toList();
+    final serviste = acik.where((r) => r['gonderim_tarihi'] != null).length;
+    int sonucSay(String s) => kapanan.where((r) => r['sonuc'] == s).length;
+
+    // Tamamlanan onarımların ortalama süresi
+    final sureler = [
+      for (final r in kapanan)
+        if (r['gonderim_tarihi'] != null && r['donus_tarihi'] != null) sure(r)!
+    ];
+    final ortalama = sureler.isEmpty
+        ? null
+        : Duration(
+            milliseconds: sureler.fold<int>(0, (a, d) => a + d.inMilliseconds) ~/
+                sureler.length);
+
+    // Firma bazlı özet (garanti ve iç onarım ayrı)
+    final firmalar = <String, List<Map<String, Object?>>>{};
+    for (final r in rows.where((r) => r['gonderim_tarihi'] != null)) {
+      final f = (r['firma'] as String?)?.trim();
+      final ad = '${yer(r['onarim_yeri'])}|${(f == null || f.isEmpty) ? '-' : f}';
+      firmalar.putIfAbsent(ad, () => []).add(r);
+    }
+    final firmaSatirlari = <List<Object?>>[];
+    for (final e in firmalar.entries) {
+      final p = e.key.split('|');
+      final liste = e.value;
+      final biten = liste
+          .where((r) => r['donus_tarihi'] != null)
+          .map((r) => sure(r)!)
+          .toList();
+      firmaSatirlari.add([
+        p[1],
+        p[0],
+        liste.length,
+        liste.where((r) => r['kapanis'] == null).length,
+        liste.where((r) => r['sonuc'] == 'onarildi').length,
+        liste.where((r) => r['sonuc'] == 'degistirildi').length,
+        liste.where((r) => r['sonuc'] == 'onarilamadi').length,
+        biten.isEmpty
+            ? ''
+            : sureMetni(Duration(
+                milliseconds:
+                    biten.fold<int>(0, (a, d) => a + d.inMilliseconds) ~/
+                        biten.length)),
+      ]);
+    }
+    firmaSatirlari.sort((a, b) => (b[2] as int).compareTo(a[2] as int));
+
+    return Rapor(
+      baslik: 'Arıza / Servis Raporu',
+      altBaslik: '${_aralik(baslangic, bitis)} (arıza kaydı tarihine göre) · '
+          '${_olusturma()}',
+      dosyaOn: 'ariza_servis_raporu',
+      ozet: [
+        MapEntry('Toplam arıza', '${rows.length}'),
+        MapEntry('Açık', '${acik.length}'),
+        MapEntry('Serviste', '$serviste'),
+        MapEntry('Onarıldı', '${sonucSay('onarildi')}'),
+        MapEntry('Değiştirildi', '${sonucSay('degistirildi')}'),
+        MapEntry('Hurdaya ayrıldı',
+            '${kapanan.where((r) => r['kapanis'] == 'hurda').length}'),
+        if (ortalama != null) MapEntry('Ort. onarım süresi', sureMetni(ortalama)),
+      ],
+      sutunlar: const [
+        'Seri No', 'Ürün', 'Arıza kaydı', 'Karar', 'Onarım yeri', 'Firma',
+        'Gönderim', 'Dönüş', 'Onarım süresi', 'Sonuç', 'Kapanış', 'Açıklama'
+      ],
+      genislikler: const [15, 16, 12, 14, 13, 14, 12, 12, 10, 12, 13, 20],
+      bolumler: [
+        RaporBolumu(
+          baslik: 'Açık dosyalar (${acik.length})',
+          aciklama: 'Arızalı bekleyen veya serviste olan cihazlar. '
+              'Süre: gönderimden bugüne.',
+          sutunlar: const [
+            'Seri No', 'Ürün', 'Arıza kaydı', 'Karar', 'Durum', 'Onarım yeri',
+            'Firma', 'Gönderim', 'Geçen süre', 'Depo', 'Arıza açıklaması'
+          ],
+          genislikler: const [15, 16, 12, 16, 13, 13, 14, 12, 10, 12, 20],
+          satirlar: [
+            for (final r in acik)
+              [
+                r['seri_no'] ?? '',
+                r['urun_adi'] ?? '',
+                _tarihMs(r['acilis_tarihi']),
+                karar(r['karar']),
+                servisDurumuCoz(r['servis_durumu'])?.kisa ?? '',
+                yer(r['onarim_yeri']),
+                r['firma'] ?? '',
+                _tarihMs(r['gonderim_tarihi']),
+                sure(r) == null ? '' : sureMetni(sure(r)!),
+                r['depo_adi'] ?? '',
+                r['ariza_aciklama'] ?? '',
+              ],
+          ],
+        ),
+        RaporBolumu(
+          baslik: 'Kapanan dosyalar (${kapanan.length})',
+          satirlar: [
+            for (final r in kapanan)
+              [
+                r['seri_no'] ?? '',
+                r['urun_adi'] ?? '',
+                _tarihMs(r['acilis_tarihi']),
+                karar(r['karar']),
+                yer(r['onarim_yeri']),
+                r['firma'] ?? '',
+                _tarihMs(r['gonderim_tarihi']),
+                _tarihMs(r['donus_tarihi']),
+                (r['gonderim_tarihi'] != null && r['donus_tarihi'] != null)
+                    ? sureMetni(sure(r)!)
+                    : '',
+                servisSonucAdlari[r['sonuc']] ?? '',
+                [
+                  servisKapanisAdlari[r['kapanis']] ?? '${r['kapanis']}',
+                  if (r['yeni_seri_no'] != null) 'Yeni SN: ${r['yeni_seri_no']}',
+                ].join(' · '),
+                [
+                  if (r['ariza_aciklama'] != null) 'Arıza: ${r['ariza_aciklama']}',
+                  if (r['sonuc_aciklama'] != null) '${r['sonuc_aciklama']}',
+                ].join(' · '),
+              ],
+          ],
+        ),
+        if (firmaSatirlari.isNotEmpty)
+          RaporBolumu(
+            baslik: 'Firma / onarım yeri bazında',
+            aciklama: 'Ortalama süre yalnızca dönüşü girilen dosyalardan hesaplanır.',
+            sutunlar: const [
+              'Firma / onaran', 'Onarım yeri', 'Gönderilen', 'Hâlâ serviste',
+              'Onarıldı', 'Değiştirildi', 'Onarılamadı', 'Ort. süre'
+            ],
+            genislikler: const [24, 18, 10, 10, 10, 10, 10, 12],
+            satirlar: firmaSatirlari,
+          ),
+      ],
+    );
+  }
+
+  // ------------------------------------------------------------------
+  // Hurda
+  // ------------------------------------------------------------------
+  static Future<Rapor> hurda(AppDatabase db,
+      {DateTime? baslangic, DateTime? bitis}) async {
+    final rows = await db.hurdaRaporu(baslangic: baslangic, bitis: bitis);
+
+    final nedenler = <String, int>{};
+    final urunler = <String, int>{};
+    for (final r in rows) {
+      final n = (r['sebep'] as String?) ?? 'Belirtilmedi';
+      nedenler[n] = (nedenler[n] ?? 0) + 1;
+      final u = (r['urun_adi'] as String?) ?? '-';
+      urunler[u] = (urunler[u] ?? 0) + 1;
+    }
+    final urunSatirlari = [
+      for (final e in urunler.entries) [e.key, e.value],
+    ]..sort((a, b) => (b[1] as int).compareTo(a[1] as int));
+
+    return Rapor(
+      baslik: 'Hurda Raporu',
+      altBaslik: '${_aralik(baslangic, bitis)} · ${_olusturma()}',
+      dosyaOn: 'hurda_raporu',
+      ozet: [
+        MapEntry('Hurdaya ayrılan', '${rows.length}'),
+        for (final e in nedenler.entries) MapEntry(e.key, '${e.value}'),
+      ],
+      sutunlar: const [
+        'Tarih', 'Seri No', 'Ürün', 'Ayrıldığı depo', 'Neden', 'Alım tarihi',
+        'Firma', 'İhale', 'Kullanıcı', 'Açıklama'
+      ],
+      genislikler: const [14, 17, 20, 15, 18, 11, 15, 14, 12, 20],
+      bolumler: [
+        if (urunSatirlari.isNotEmpty)
+          RaporBolumu(
+            baslik: 'Ürün bazında',
+            sutunlar: const ['Ürün', 'Adet'],
+            genislikler: const [40, 10],
+            satirlar: urunSatirlari,
+          ),
+        RaporBolumu(
+          baslik: 'Hurdaya ayrılan cihazlar (${rows.length})',
+          satirlar: [
+            for (final r in rows)
+              [
+                _tarihMs(r['tarih']),
+                r['seri_no'] ?? '',
+                r['urun_adi'] ?? '',
+                r['depo_adi'] ?? '',
+                r['sebep'] ?? '',
+                _gunMs(r['alim_tarihi']),
+                r['firma'] ?? '',
+                r['ihale'] ?? '',
+                r['kullanici'] ?? '',
+                r['not_'] ?? '',
+              ],
+          ],
+        ),
+      ],
+    );
+  }
+
+  // ------------------------------------------------------------------
   // Hareket geçmişi
   // ------------------------------------------------------------------
   static Future<Rapor> hareketler(AppDatabase db,
@@ -653,7 +895,9 @@ class RaporOlusturucu {
       final t = _tipAdlari[r['tip']] ?? '${r['tip']}';
       tipSayilari[t] = (tipSayilari[t] ?? 0) + 1;
       final sb = r['sebep'] as String?;
-      if (sb != null) sebepSayilari[sb] = (sebepSayilari[sb] ?? 0) + 1;
+      if (sb != null && r['tip'] == 'girisi') {
+        sebepSayilari[sb] = (sebepSayilari[sb] ?? 0) + 1;
+      }
     }
 
     return Rapor(
@@ -754,14 +998,23 @@ class RaporOlusturucu {
   /// Sayımda "fazla" çıkan cihazın sistemde nerede göründüğü.
   static String sistemdekiYer(CihazBilgi? b) {
     if (b == null) return 'Sistemde kayıtlı değil';
+    final sd = b.cihaz.servisDurumu;
     switch (b.cihaz.durum) {
       case CihazDurumu.depoda:
+        if (sd == ServisDurumu.garantide) {
+          return 'Sistemde: garanti servisinde (${b.depoAdi ?? '-'})';
+        }
         return 'Sistemde: ${b.depoAdi ?? '-'}'
-            '${b.depoArac ? ' (araç)' : ''}';
+            '${b.depoArac ? ' (araç)' : ''}'
+            '${sd == null ? '' : ' · ${sd.kisa.toLowerCase()}'}';
       case CihazDurumu.kullanimda:
         return 'Sistemde: sahada kullanıldı'
             '${b.cihaz.kullanimYeri == null ? '' : ' (${b.cihaz.kullanimYeri})'}';
       case CihazDurumu.cikti:
+        if (sd == ServisDurumu.hurda) return 'Sistemde: hurdaya ayrılmış';
+        if (sd == ServisDurumu.degistirildi) {
+          return 'Sistemde: değiştirildi (firmaya teslim)';
+        }
         return 'Sistemde: çıkış yapılmış';
     }
   }
@@ -769,10 +1022,20 @@ class RaporOlusturucu {
 
 class _Sayac {
   int toplam = 0, depoda = 0, aracta = 0, sahada = 0, cikti = 0;
+  int arizali = 0, hurda = 0;
 
   void ekle(List<Map<String, Object?>> rows) {
     for (final r in rows) {
       toplam++;
+      final sd = servisDurumuCoz(r['servis_durumu']);
+      if (sd != null && sd.arizali) {
+        arizali++;
+        continue;
+      }
+      if (sd == ServisDurumu.hurda) {
+        hurda++;
+        continue;
+      }
       switch (r['durum']) {
         case 'depoda':
           if (r['depo_tur'] == 'arac') {
@@ -797,5 +1060,7 @@ class _Sayac {
     aracta += s.aracta;
     sahada += s.sahada;
     cikti += s.cikti;
+    arizali += s.arizali;
+    hurda += s.hurda;
   }
 }

@@ -10,6 +10,7 @@ import '../cihaz/toplu_giris_screen.dart';
 import '../cihaz/toplu_transfer_screen.dart';
 import '../rapor/sayim_screen.dart';
 import '../../widgets/silme_islemleri.dart';
+import '../../widgets/servis_islemleri.dart';
 
 /// Bir deponun detayı: "Stok" sekmesinde ürünlerin güncel adedi,
 /// "Hareketler" sekmesinde giren/çıkan her işlem görünür.
@@ -112,6 +113,9 @@ class _StokListesi extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final sayilarAsync = ref.watch(depoUrunSayilariProvider(depoId));
+    final arizali = (ref.watch(depoCihazlariProvider(depoId)).value ?? const [])
+        .where((b) => b.cihaz.arizali)
+        .length;
     final urunlerAsync = ref.watch(urunlerStreamProvider);
     final kritikler = {
       for (final k in ref.watch(kritikStoklarProvider).value ?? const [])
@@ -132,7 +136,7 @@ class _StokListesi extends ConsumerWidget {
             return an.toLowerCase().compareTo(bn.toLowerCase());
           });
 
-        if (girdiler.isEmpty) {
+        if (girdiler.isEmpty && arizali == 0) {
           return const Center(
             child: Padding(
               padding: EdgeInsets.all(24),
@@ -159,7 +163,10 @@ class _StokListesi extends ConsumerWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     _OzetKutusu(etiket: 'Çeşit ürün', deger: '${girdiler.length}'),
-                    _OzetKutusu(etiket: 'Toplam adet', deger: '$toplam'),
+                    _OzetKutusu(etiket: 'Kullanılabilir', deger: '$toplam'),
+                    if (arizali > 0)
+                      _OzetKutusu(
+                          etiket: 'Arızalı / serviste', deger: '$arizali'),
                   ],
                 ),
               ),
@@ -236,10 +243,23 @@ class _CihazListesiState extends ConsumerState<_CihazListesi> {
                         final b = gorunen[i];
                         return ListTile(
                           dense: true,
-                          leading: const Icon(Icons.qr_code_2),
+                          leading: Icon(
+                              b.cihaz.servisDurumu == null
+                                  ? Icons.qr_code_2
+                                  : servisIkonu(b.cihaz.servisDurumu!),
+                              color: b.cihaz.servisDurumu == null
+                                  ? null
+                                  : servisRengi(b.cihaz.servisDurumu!)),
                           title: Text(b.urunAdi),
                           subtitle: Text('SN: ${b.cihaz.seriNo}'),
-                          trailing: const Icon(Icons.chevron_right),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (b.cihaz.servisDurumu != null)
+                                ServisRozeti(b.cihaz.servisDurumu!),
+                              const Icon(Icons.chevron_right),
+                            ],
+                          ),
                           onTap: () => Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (_) =>
@@ -346,7 +366,9 @@ class _HareketListesi extends ConsumerWidget {
           itemBuilder: (context, i) {
             final h = hareketler[i];
             final artis = h.miktar > 0;
-            final renk = artis ? Colors.green.shade700 : Colors.red.shade700;
+            final renk = h.miktar == 0
+                ? Colors.blueGrey
+                : (artis ? Colors.green.shade700 : Colors.red.shade700);
 
             return ListTile(
               leading: Icon(_ikon(h), color: renk),
@@ -359,7 +381,7 @@ class _HareketListesi extends ConsumerWidget {
                 if (h.not_ != null && h.not_!.isNotEmpty) h.not_!,
               ].join(' · ')),
               trailing: Text(
-                '${artis ? '+' : ''}${h.miktar}',
+                h.miktar == 0 ? '•' : '${artis ? '+' : ''}${h.miktar}',
                 style: TextStyle(
                     fontWeight: FontWeight.bold, fontSize: 18, color: renk),
               ),
@@ -372,6 +394,10 @@ class _HareketListesi extends ConsumerWidget {
 
   IconData _ikon(HareketSatiri h) {
     switch (h.tip) {
+      case HareketTipi.servis:
+        return Icons.build_outlined;
+      case HareketTipi.hurda:
+        return Icons.recycling;
       case HareketTipi.silme:
         return Icons.delete_outline;
       case HareketTipi.girisi:
@@ -389,6 +415,13 @@ class _HareketListesi extends ConsumerWidget {
 
   String _etiket(HareketSatiri h) {
     switch (h.tip) {
+      case HareketTipi.servis:
+        if (h.karsiDepoAdi != null) {
+          return '${h.sebep ?? 'Servis'} ${h.miktar > 0 ? '←' : '→'} ${h.karsiDepoAdi}';
+        }
+        return h.sebep ?? 'Servis işlemi';
+      case HareketTipi.hurda:
+        return 'Hurdaya ayrıldı${h.sebep == null ? '' : ' (${h.sebep})'}';
       case HareketTipi.silme:
         return 'Silindi';
       case HareketTipi.girisi:
@@ -415,12 +448,20 @@ Future<void> _cihazMenusu(
     BuildContext context, WidgetRef ref, CihazBilgi b) async {
   final secim = await secenekMenusu(context,
       baslik: '${b.urunAdi}\nSN: ${b.cihaz.seriNo}',
-      secenekler: const [
+      secenekler: [
         ('ac', Icons.open_in_new, 'Cihaz kartını aç'),
+        if (!b.cihaz.arizali)
+          ('ariza', Icons.build_outlined, 'Arızalı olarak işaretle'),
+        if (b.cihaz.servisDurumu != ServisDurumu.garantide)
+          ('hurda', Icons.recycling, 'Hurdaya ayır'),
         ('sil', Icons.delete_outline, 'Cihazı sil'),
       ]);
   if (!context.mounted) return;
-  if (secim == 'ac') {
+  if (secim == 'ariza') {
+    await arizaliIsaretleAkisi(context, ref, b);
+  } else if (secim == 'hurda') {
+    await hurdayaAyirAkisi(context, ref, b);
+  } else if (secim == 'ac') {
     Navigator.of(context).push(MaterialPageRoute(
         builder: (_) => CihazDetayScreen(cihazId: b.cihaz.id)));
   } else if (secim == 'sil') {

@@ -28,6 +28,7 @@ alter table cihazlar add column if not exists alim_tarihi bigint;
 alter table cihazlar add column if not exists firma text;
 alter table cihazlar add column if not exists ihale text;
 alter table cihazlar add column if not exists garanti_bitis bigint;
+alter table cihazlar add column if not exists servis_durumu text;
 
 create table if not exists stok_hareketleri (
   id text primary key, urun_id text not null, depo_id text not null,
@@ -47,6 +48,14 @@ alter table kullanim_kayitlari add column if not exists il text;
 alter table kullanim_kayitlari add column if not exists ilce text;
 alter table kullanim_kayitlari add column if not exists mahalle text;
 
+-- 1.17.0: arıza / servis dosyaları
+create table if not exists servis_kayitlari (
+  id text primary key, cihaz_id text not null, urun_id text not null,
+  acilis_tarihi bigint not null, ariza_aciklama text, karar text not null,
+  onarim_yeri text, firma text, gonderim_tarihi bigint, donus_tarihi bigint,
+  sonuc text, sonuc_aciklama text, yeni_seri_no text, kapanis text,
+  kapanis_tarihi bigint, kullanici_id text);
+
 -- 2) Senkron tetikleyicisi:
 --    * Eski bir telefondan gelen eski veri, daha yeni veriyi ezemez.
 --    * synced_at: sunucunun kendi saati (telefon saati yanlış olsa da değişiklikler kaçmaz).
@@ -65,7 +74,8 @@ do $$
 declare t text;
 begin
   foreach t in array array['depolar','urunler','araclar','kullanicilar',
-                           'cihazlar','stok_hareketleri','kullanim_kayitlari'] loop
+                           'cihazlar','stok_hareketleri','kullanim_kayitlari',
+                           'servis_kayitlari'] loop
     execute format('alter table %I add column if not exists updated_at bigint not null default 0', t);
     execute format('alter table %I add column if not exists deleted integer not null default 0', t);
     execute format('alter table %I add column if not exists synced_at bigint not null default 0', t);

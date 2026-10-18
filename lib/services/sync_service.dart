@@ -50,6 +50,7 @@ class SyncService {
     'cihazlar',
     'stok_hareketleri',
     'kullanim_kayitlari',
+    'servis_kayitlari',
   ];
   static const _sayfa = 500;
   // Commit sırası yüzünden kaçabilecek satırlar için geriye doğru pay (ms).
@@ -201,6 +202,20 @@ class SyncService {
   // -------------------------------------------------------------------
   Future<void> _cek(List<String> sorunlar) async {
     for (final tablo in _tablolar) {
+      try {
+        await _tabloCek(tablo, sorunlar);
+      } on PostgrestException catch (_) {
+        // Sunucuda henüz oluşturulmamış yeni tablo diğer tabloların
+        // senkronunu durdurmasın.
+        if (tablo != 'servis_kayitlari') rethrow;
+        sorunlar.add('Servis kayıtları sunucuda yok: Supabase güncelleme '
+            'SQL\'ini (1.17.0) çalıştırın');
+      }
+    }
+  }
+
+  Future<void> _tabloCek(String tablo, List<String> sorunlar) async {
+    {
       final imlec = await db.sonCekim(tablo);
       final baslangic = imlec > _binisme ? imlec - _binisme : 0;
       var enBuyuk = imlec;

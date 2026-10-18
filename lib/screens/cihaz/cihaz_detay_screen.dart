@@ -14,18 +14,32 @@ import '../../widgets/iade_sebebi.dart';
 import '../../services/konum_servisi.dart';
 import '../../services/adres_servisi.dart';
 import '../../widgets/silme_islemleri.dart';
+import '../../widgets/servis_islemleri.dart';
 
 /// Cihazın şu anki konumunu tek satırda anlatır.
 String cihazKonumMetni(CihazBilgi b) {
+  final s = b.cihaz.servisDurumu;
   switch (b.cihaz.durum) {
     case CihazDurumu.depoda:
+      if (s == ServisDurumu.garantide) {
+        return 'Garanti servisinde (${b.depoAdi ?? '-'} stoğundan)';
+      }
+      if (s != null) return '${s.kisa}: ${b.depoAdi ?? '-'}';
       return '${b.depoArac ? 'Araçta' : 'Depoda'}: ${b.depoAdi ?? '-'}';
     case CihazDurumu.kullanimda:
       return 'Kullanımda: ${b.aracPlaka ?? b.cihaz.kullanimYeri ?? '-'}';
     case CihazDurumu.cikti:
+      if (s == ServisDurumu.hurda) return 'Hurdaya ayrıldı';
+      if (s == ServisDurumu.degistirildi) return 'Değiştirildi (firmaya teslim)';
       return 'Çıkış yapıldı';
   }
 }
+
+Color cihazRengi(Cihaz c) =>
+    c.servisDurumu != null ? servisRengi(c.servisDurumu!) : cihazDurumRengi(c.durum);
+
+IconData cihazIkonu(Cihaz c) =>
+    c.servisDurumu != null ? servisIkonu(c.servisDurumu!) : cihazDurumIkonu(c.durum);
 
 Color cihazDurumRengi(CihazDurumu d) {
   switch (d) {
@@ -69,14 +83,37 @@ class CihazDetayScreen extends ConsumerWidget {
           if (bilgiAsync.value != null && !bilgiAsync.value!.cihaz.deleted)
             PopupMenuButton<String>(
               onSelected: (v) async {
+                final b = bilgiAsync.value!;
                 if (v == 'sil') {
-                  final silindi =
-                      await cihazSilAkisi(context, ref, bilgiAsync.value!);
+                  final silindi = await cihazSilAkisi(context, ref, b);
                   if (silindi && context.mounted) Navigator.of(context).pop();
+                } else if (v == 'ariza') {
+                  await arizaliIsaretleAkisi(context, ref, b);
+                } else if (v == 'hurda') {
+                  await hurdayaAyirAkisi(context, ref, b);
                 }
               },
-              itemBuilder: (_) => const [
-                PopupMenuItem(
+              itemBuilder: (_) => [
+                if (bilgiAsync.value!.cihaz.durum == CihazDurumu.depoda &&
+                    !bilgiAsync.value!.cihaz.arizali) ...[
+                  const PopupMenuItem(
+                    value: 'ariza',
+                    child: ListTile(
+                      leading: Icon(Icons.build_outlined),
+                      title: Text('Arızalı olarak işaretle'),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'hurda',
+                    child: ListTile(
+                      leading: Icon(Icons.recycling),
+                      title: Text('Hurdaya ayır'),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                ],
+                const PopupMenuItem(
                   value: 'sil',
                   child: ListTile(
                     leading: Icon(Icons.delete_outline),
@@ -96,7 +133,8 @@ class CihazDetayScreen extends ConsumerWidget {
             return const Center(child: Text('Cihaz bulunamadı'));
           }
           final durum = bilgi.cihaz.durum;
-          final renk = cihazDurumRengi(durum);
+          final renk = cihazRengi(bilgi.cihaz);
+          final servis = bilgi.cihaz.servisDurumu;
 
           return ListView(
             padding: const EdgeInsets.all(16),
@@ -116,7 +154,7 @@ class CihazDetayScreen extends ConsumerWidget {
                       const Divider(height: 24),
                       Row(
                         children: [
-                          Icon(cihazDurumIkonu(durum), color: renk, size: 32),
+                          Icon(cihazIkonu(bilgi.cihaz), color: renk, size: 32),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
@@ -159,6 +197,7 @@ class CihazDetayScreen extends ConsumerWidget {
                   ),
                 ),
               ),
+              ServisKarti(bilgi: bilgi),
               _alimKarti(context, ref, bilgi),
               const SizedBox(height: 12),
               if (bilgi.cihaz.deleted)
@@ -171,6 +210,11 @@ class CihazDetayScreen extends ConsumerWidget {
                         'Aynı seri no ile yeniden giriş yapılabilir.'),
                   ),
                 )
+              else if (servis == ServisDurumu.hurda ||
+                  servis == ServisDurumu.degistirildi)
+                const SizedBox.shrink()
+              else if (durum == CihazDurumu.depoda && bilgi.cihaz.arizali)
+                const SizedBox.shrink() // işlemler servis kartında
               else if (durum == CihazDurumu.depoda)
                 Wrap(
                   spacing: 8,
@@ -240,7 +284,10 @@ class CihazDetayScreen extends ConsumerWidget {
                           subtitle: Text([
                             _tarihFormat.format(h.tarih),
                             if (h.kullaniciAdi != null) h.kullaniciAdi!,
-                            if (h.sebep != null) 'Sebep: ${h.sebep}',
+                            if (h.sebep != null && h.tip != HareketTipi.servis)
+                              h.tip == HareketTipi.hurda
+                                  ? 'Neden: ${h.sebep}'
+                                  : 'Sebep: ${h.sebep}',
                             if (Adres(il: h.il, ilce: h.ilce, mahalle: h.mahalle)
                                 .ozet
                                 .isNotEmpty)
@@ -265,6 +312,10 @@ class CihazDetayScreen extends ConsumerWidget {
 
   static IconData _ikon(HareketTipi t) {
     switch (t) {
+      case HareketTipi.servis:
+        return Icons.build_outlined;
+      case HareketTipi.hurda:
+        return Icons.recycling;
       case HareketTipi.silme:
         return Icons.delete_outline;
       case HareketTipi.girisi:
@@ -282,6 +333,13 @@ class CihazDetayScreen extends ConsumerWidget {
 
   static String _baslik(CihazHareketSatiri h) {
     switch (h.tip) {
+      case HareketTipi.servis:
+        if (h.hedefDepoAdi != null && h.hedefDepoId != h.depoId) {
+          return '${h.sebep ?? 'Servis'}: ${h.hedefDepoAdi}';
+        }
+        return h.sebep ?? 'Servis işlemi';
+      case HareketTipi.hurda:
+        return 'Hurdaya ayrıldı${h.depoAdi == null ? '' : ' (${h.depoAdi})'}';
       case HareketTipi.silme:
         return 'Cihaz silindi${h.depoAdi == null ? '' : ' (${h.depoAdi})'}';
       case HareketTipi.girisi:
@@ -382,6 +440,7 @@ class CihazDetayScreen extends ConsumerWidget {
     }
     final notCtrl = TextEditingController();
     String? sebep;
+    String? arizaKarari;
     String? hata;
 
     final onay = await showDialog<bool>(
@@ -415,6 +474,11 @@ class CihazDetayScreen extends ConsumerWidget {
                     sebep = v;
                     hata = null;
                   }),
+                  arizaKarari: arizaKarari,
+                  onArizaKarari: (v) => setState(() {
+                    arizaKarari = v;
+                    hata = null;
+                  }),
                 ),
               TextField(
                 controller: notCtrl,
@@ -437,9 +501,17 @@ class CihazDetayScreen extends ConsumerWidget {
                 onPressed: () {
                   if (iade) {
                     final h = iadeSebebiHatasi(sebep, notCtrl.text,
-                        zorunlu: false);
+                        zorunlu: false,
+                        arizaKarari: arizaKarari,
+                        arizaSor: true);
                     if (h != null) {
                       setState(() => hata = h);
+                      return;
+                    }
+                    if (sebep == 'Arıza' &&
+                        hedefler.any((d) => d.id == hedef && d.arac)) {
+                      setState(() =>
+                          hata = 'Arızalı cihaz bir depoya iade edilmeli');
                       return;
                     }
                   }
@@ -465,6 +537,7 @@ class CihazDetayScreen extends ConsumerWidget {
         hedefDepoId: hedef,
         not_: notCtrl.text.trim().isEmpty ? null : notCtrl.text.trim(),
         sebep: iade ? sebep : null,
+        arizaKarari: iade && sebep == 'Arıza' ? arizaKarari : null,
       ),
       kullanim
           ? 'Kullanıma verildi'
@@ -811,7 +884,9 @@ class CihazDetayScreen extends ConsumerWidget {
   }
 
   /// Sahada kullanılmış veya çıkışı yapılmış cihazı depoya geri alır.
-  /// Geri alma sebebi (Arıza, Değişim...) sorulur ve geçmişe yazılır.
+  /// Geri alma sebebi sorulur ve geçmişe yazılır. Arızada tamir / değişim
+  /// kararı sorulur ve arıza kaydı açılır (cihaz kullanılamaz olur);
+  /// "Ömrünü doldurdu" seçilirse cihaz alınıp hurdaya ayrılır.
   Future<void> _iade(
       BuildContext context, WidgetRef ref, CihazBilgi bilgi) async {
     final depolar = ref.read(depolarStreamProvider).value ?? <Depo>[];
@@ -823,104 +898,128 @@ class CihazDetayScreen extends ConsumerWidget {
     // Sabit depolar önce
     final sirali = List<Depo>.of(depolar)
       ..sort((a, b) => (a.arac ? 1 : 0).compareTo(b.arac ? 1 : 0));
+    final sabitler = sirali.where((d) => !d.arac).toList();
     String? hedef = sirali.first.id;
     String? sebep;
+    String? arizaKarari;
     String? hata;
     final notCtrl = TextEditingController();
 
     final onay = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setState) => AlertDialog(
-          scrollable: true,
-          title: const Text('Depoya geri al'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                '${bilgi.urunAdi} · SN: ${bilgi.cihaz.seriNo}'
-                '${bilgi.cihaz.kullanimYeri == null ? '' : '\nKullanım yeri: ${bilgi.cihaz.kullanimYeri}'}',
-                style: Theme.of(ctx).textTheme.bodySmall,
-              ),
-              DropdownButtonFormField<String>(
-                value: hedef,
-                isExpanded: true,
-                decoration:
-                    const InputDecoration(labelText: 'Hangi depo / araca?'),
-                items: depoDropdownOgeleri(sirali),
-                onChanged: (v) => setState(() => hedef = v),
-              ),
-              IadeSebebiSecici(
-                secili: sebep,
-                onSecildi: (v) => setState(() {
-                  sebep = v;
-                  hata = null;
-                }),
-              ),
-              TextField(
-                controller: notCtrl,
-                decoration: InputDecoration(
-                  labelText: sebep == 'Diğer'
-                      ? 'Açıklama (zorunlu)'
-                      : 'Not (opsiyonel)',
-                  hintText: 'Örn: ekran kırık, yerine yenisi takıldı',
+        builder: (ctx, setState) {
+          // Arızalı ve hurda cihazlar araca alınmaz; sabit depoya girer.
+          final yalnizDepo = (sebep == 'Arıza' || sebep == omruDolduSebebi) &&
+              sabitler.isNotEmpty;
+          final secenekler = yalnizDepo ? sabitler : sirali;
+          if (!secenekler.any((d) => d.id == hedef)) {
+            hedef = secenekler.first.id;
+          }
+          return AlertDialog(
+            scrollable: true,
+            title: const Text('Depoya geri al'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  '${bilgi.urunAdi} · SN: ${bilgi.cihaz.seriNo}'
+                  '${bilgi.cihaz.kullanimYeri == null ? '' : '\nKullanım yeri: ${bilgi.cihaz.kullanimYeri}'}',
+                  style: Theme.of(ctx).textTheme.bodySmall,
                 ),
-                onChanged: (_) {
-                  if (hata != null) setState(() => hata = null);
-                },
-              ),
-              if (sebep == 'Arıza')
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    'İpucu: arızalı cihazlar için "Arızalı / Servis" adında '
-                    'bir depo açıp oraya alırsanız sağlam stokla karışmaz.',
-                    style: Theme.of(ctx).textTheme.bodySmall,
+                DropdownButtonFormField<String>(
+                  key: ValueKey(yalnizDepo),
+                  value: hedef,
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                      labelText:
+                          yalnizDepo ? 'Hangi depoya?' : 'Hangi depo / araca?'),
+                  items: depoDropdownOgeleri(secenekler),
+                  onChanged: (v) => setState(() => hedef = v),
+                ),
+                IadeSebebiSecici(
+                  secili: sebep,
+                  hurdaSecenegi: true,
+                  onSecildi: (v) => setState(() {
+                    sebep = v;
+                    hata = null;
+                  }),
+                  arizaKarari: arizaKarari,
+                  onArizaKarari: (v) => setState(() {
+                    arizaKarari = v;
+                    hata = null;
+                  }),
+                ),
+                TextField(
+                  controller: notCtrl,
+                  decoration: InputDecoration(
+                    labelText: sebep == 'Diğer'
+                        ? 'Açıklama (zorunlu)'
+                        : (sebep == 'Arıza'
+                            ? 'Arıza açıklaması (opsiyonel)'
+                            : 'Not (opsiyonel)'),
+                    hintText: sebep == 'Arıza'
+                        ? 'Örn: görüntü gelmiyor, açılmıyor'
+                        : 'Örn: yerine yenisi takıldı',
                   ),
+                  onChanged: (_) {
+                    if (hata != null) setState(() => hata = null);
+                  },
                 ),
-              if (hata != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(hata!,
-                      style:
-                          TextStyle(color: Theme.of(ctx).colorScheme.error)),
-                ),
+                if (hata != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(hata!,
+                        style: TextStyle(
+                            color: Theme.of(ctx).colorScheme.error)),
+                  ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('İptal')),
+              FilledButton(
+                  onPressed: () {
+                    final h = iadeSebebiHatasi(sebep, notCtrl.text,
+                        arizaKarari: arizaKarari, arizaSor: true);
+                    if (h != null) {
+                      setState(() => hata = h);
+                      return;
+                    }
+                    Navigator.pop(ctx, true);
+                  },
+                  child: Text(sebep == omruDolduSebebi
+                      ? 'Geri al ve hurdaya ayır'
+                      : 'Geri al')),
             ],
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('İptal')),
-            FilledButton(
-                onPressed: () {
-                  final h = iadeSebebiHatasi(sebep, notCtrl.text);
-                  if (h != null) {
-                    setState(() => hata = h);
-                    return;
-                  }
-                  Navigator.pop(ctx, true);
-                },
-                child: const Text('Geri al')),
-          ],
-        ),
+          );
+        },
       ),
     );
     if (onay != true || hedef == null || !context.mounted) return;
 
     final db = ref.read(appDatabaseProvider);
+    final hurda = sebep == omruDolduSebebi;
+    final ariza = sebep == 'Arıza';
     await _calistir(
       context,
       ref,
-      () => db.cihazlariGirisYap(
-        urunId: bilgi.cihaz.urunId,
+      () => db.sahadanGeriAl(
+        cihazId: bilgi.cihaz.id,
         depoId: hedef!,
-        seriNolar: [bilgi.cihaz.seriNo],
+        sebep: hurda ? 'Ömrünü doldurdu' : sebep!,
         kullaniciId: ref.read(aktifKullaniciIdProvider) ?? _kullanici,
         not_: notCtrl.text.trim().isEmpty ? null : notCtrl.text.trim(),
-        sebep: sebep,
+        arizaKarari: ariza ? arizaKarari : null,
+        hurda: hurda,
       ),
-      'Depoya geri alındı ($sebep)',
+      hurda
+          ? 'Geri alındı ve hurdaya ayrıldı'
+          : (ariza
+              ? 'Arızalı olarak depoya alındı (${servisKararAdlari[arizaKarari]})'
+              : 'Depoya geri alındı ($sebep)'),
     );
   }
 }

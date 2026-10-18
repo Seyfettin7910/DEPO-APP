@@ -35,6 +35,7 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen> {
   final _notCtrl = TextEditingController();
   final _liste = <CihazBilgi>[];
   String? _sebep; // toplu iadede opsiyonel geri alma sebebi
+  String? _arizaKarari; // iadede "Arıza" seçildiyse: tamir | degisim
 
   String? _hedefId;
   bool _kameraAcik = false;
@@ -98,6 +99,14 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen> {
     if (bilgi.cihaz.durum != CihazDurumu.depoda) {
       SesServisi.hata();
       _mesaj('$seri şu an depoda değil (${cihazKonumMetni(bilgi)})',
+          hata: true);
+      return;
+    }
+    if (bilgi.cihaz.arizali) {
+      SesServisi.hata();
+      _mesaj(
+          '$seri ${bilgi.cihaz.servisDurumu!.kisa.toLowerCase()}: '
+          'servis işlemi bitmeden taşınamaz',
           hata: true);
       return;
     }
@@ -167,6 +176,20 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen> {
       _mesaj('Önce seri numarası ekleyin', hata: true);
       return;
     }
+    if (_iade) {
+      final h = iadeSebebiHatasi(_sebep, _notCtrl.text,
+          zorunlu: false, arizaKarari: _arizaKarari, arizaSor: true);
+      if (h != null) {
+        _mesaj(h, hata: true);
+        return;
+      }
+      final hedefArac = (ref.read(depolarStreamProvider).value ?? <Depo>[])
+          .any((d) => d.id == _hedefId && d.arac);
+      if (_sebep == 'Arıza' && hedefArac) {
+        _mesaj('Arızalı cihazlar bir depoya iade edilmeli', hata: true);
+        return;
+      }
+    }
     setState(() => _kaydediliyor = true);
     try {
       final adet = _liste.length;
@@ -177,6 +200,7 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen> {
             hedefDepoId: _hedefId,
             not_: _notCtrl.text.trim().isEmpty ? null : _notCtrl.text.trim(),
             sebep: _iade ? _sebep : null,
+            arizaKarari: _iade && _sebep == 'Arıza' ? _arizaKarari : null,
           );
       SesServisi.basari();
       if (!mounted) return;
@@ -329,6 +353,8 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen> {
                       secili: _sebep,
                       zorunlu: false,
                       onSecildi: (v) => setState(() => _sebep = v),
+                      arizaKarari: _arizaKarari,
+                      onArizaKarari: (v) => setState(() => _arizaKarari = v),
                     ),
                   TextField(
                     controller: _notCtrl,

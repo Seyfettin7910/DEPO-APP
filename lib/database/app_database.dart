@@ -116,6 +116,7 @@ class HareketSatiri {
   final String? not_;
   final String? seriNo;
   final String? kullaniciAdi;
+  final String? sebep;
 
   const HareketSatiri({
     required this.urunAdi,
@@ -129,6 +130,7 @@ class HareketSatiri {
     this.not_,
     this.seriNo,
     this.kullaniciAdi,
+    this.sebep,
   });
 }
 
@@ -146,6 +148,32 @@ CREATE TABLE cihazlar (
   firma TEXT,
   ihale TEXT,
   garanti_bitis INTEGER,
+  servis_durumu TEXT,
+  updated_at INTEGER NOT NULL,
+  dirty INTEGER NOT NULL DEFAULT 1,
+  deleted INTEGER NOT NULL DEFAULT 0
+)
+''';
+
+/// Arıza / servis dosyaları (şema sürümü 9'da eklendi).
+const _servisTabloSql = '''
+CREATE TABLE servis_kayitlari (
+  id TEXT PRIMARY KEY,
+  cihaz_id TEXT NOT NULL,
+  urun_id TEXT NOT NULL,
+  acilis_tarihi INTEGER NOT NULL,
+  ariza_aciklama TEXT,
+  karar TEXT NOT NULL,
+  onarim_yeri TEXT,
+  firma TEXT,
+  gonderim_tarihi INTEGER,
+  donus_tarihi INTEGER,
+  sonuc TEXT,
+  sonuc_aciklama TEXT,
+  yeni_seri_no TEXT,
+  kapanis TEXT,
+  kapanis_tarihi INTEGER,
+  kullanici_id TEXT,
   updated_at INTEGER NOT NULL,
   dirty INTEGER NOT NULL DEFAULT 1,
   deleted INTEGER NOT NULL DEFAULT 0
@@ -293,13 +321,14 @@ class AppDatabase {
         : p.join(await getDatabasesPath(), 'depo_app.sqlite');
     _db = await openDatabase(
       path,
-      version: 8,
+      version: 9,
       onCreate: (db, version) async {
         for (final stmt in _createTablesSql.split(';')) {
           final trimmed = stmt.trim();
           if (trimmed.isNotEmpty) await db.execute(trimmed);
         }
         await db.execute(_cihazlarTabloSql);
+        await db.execute(_servisTabloSql);
         await db.execute(_syncMetaSql);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
@@ -342,6 +371,13 @@ class AppDatabase {
           await db.execute('ALTER TABLE kullanim_kayitlari ADD COLUMN il TEXT');
           await db.execute('ALTER TABLE kullanim_kayitlari ADD COLUMN ilce TEXT');
           await db.execute('ALTER TABLE kullanim_kayitlari ADD COLUMN mahalle TEXT');
+        }
+        if (oldVersion >= 2 && oldVersion < 9) {
+          // 1.17.0: arızalı / serviste / hurda durumu
+          await db.execute('ALTER TABLE cihazlar ADD COLUMN servis_durumu TEXT');
+        }
+        if (oldVersion < 9) {
+          await db.execute(_servisTabloSql);
         }
         if (oldVersion < 4) {
           // 1.4.0: araçlar seyyar depo olarak depolar tablosunda tutulur.
@@ -647,6 +683,7 @@ class AppDatabase {
              d.tur AS depo_tur, c.kullanim_yeri AS kullanim_yeri,
              c.alim_tarihi AS alim_tarihi, c.firma AS firma,
              c.ihale AS ihale, c.garanti_bitis AS garanti_bitis,
+             c.servis_durumu AS servis_durumu,
              c.updated_at AS guncelleme,
              (SELECT kk.enlem || ',' || kk.boylam FROM kullanim_kayitlari kk
                 JOIN stok_hareketleri sh ON sh.id = kk.stok_hareket_id
@@ -707,6 +744,7 @@ class AppDatabase {
              COUNT(*) AS toplam
       FROM cihazlar
       WHERE durum = 'depoda' AND deleted = 0 AND depo_id IS NOT NULL
+        AND servis_durumu IS NULL
       GROUP BY depo_id
     ''');
     return {
@@ -725,7 +763,7 @@ class AppDatabase {
     final rows = await db.rawQuery('''
       SELECT urun_id, COUNT(*) AS toplam
       FROM cihazlar
-      WHERE durum = 'depoda' AND deleted = 0
+      WHERE durum = 'depoda' AND deleted = 0 AND servis_durumu IS NULL
       GROUP BY urun_id
     ''');
     return {
@@ -734,7 +772,7 @@ class AppDatabase {
     };
   }
 
-  /// Minimum adet tanımlı ve depolar + araçlardaki toplamı minimuma eşit /
+  /// Minimum adet tanımlı ve depolar + araçlardaki (arızalılar hariç) toplamı minimuma eşit /
   /// altında olan ürünler (en kritik üstte).
   Future<List<KritikStok>> kritikStoklar() async {
     final db = await _database;
@@ -748,6 +786,7 @@ class AppDatabase {
       FROM urunler u
       LEFT JOIN cihazlar c
              ON c.urun_id = u.id AND c.deleted = 0 AND c.durum = 'depoda'
+                AND c.servis_durumu IS NULL
       LEFT JOIN depolar d ON d.id = c.depo_id AND d.deleted = 0
       WHERE u.deleted = 0 AND u.min_stok_seviyesi > 0
       GROUP BY u.id
@@ -784,7 +823,7 @@ class AppDatabase {
              u.ad AS urun_adi, u.birim AS birim,
              d.ad AS depo_adi, hd.ad AS hedef_depo_adi,
              a.plaka AS arac_plaka, kk.kullanim_yeri AS kullanim_yeri,
-             c.seri_no AS seri_no, k.ad AS kullanici_adi
+             c.seri_no AS seri_no, k.ad AS kullanici_adi, sh.sebep AS sebep
       FROM stok_hareketleri sh
       JOIN urunler u ON u.id = sh.urun_id
       JOIN depolar d ON d.id = sh.depo_id
@@ -810,7 +849,23 @@ class AppDatabase {
           break;
         case HareketTipi.cikis:
         case HareketTipi.silme:
+        case HareketTipi.hurda:
           isaretli = -miktar;
+          break;
+        case HareketTipi.servis:
+          // Servis adımları stoğu değiştirmez (miktar 0); onarım sonrası başka
+          // depoya konduysa transfer gibi, değişimde eski cihaz düşer.
+          if (r['hedef_depo_adi'] != null && miktar > 0) {
+            if (r['depo_id'] == depoId) {
+              isaretli = -miktar;
+              karsiDepo = r['hedef_depo_adi'] as String?;
+            } else {
+              isaretli = miktar;
+              karsiDepo = r['depo_adi'] as String?;
+            }
+          } else {
+            isaretli = -miktar;
+          }
           break;
         case HareketTipi.kullanim:
         case HareketTipi.iade:
@@ -840,6 +895,7 @@ class AppDatabase {
         not_: r['not_'] as String?,
         seriNo: r['seri_no'] as String?,
         kullaniciAdi: r['kullanici_adi'] as String?,
+        sebep: r['sebep'] as String?,
       );
     }).toList();
   }
@@ -857,7 +913,7 @@ class AppDatabase {
              c.depo_id AS depo_id, c.durum AS durum, c.arac_id AS arac_id,
              c.kullanim_yeri AS kullanim_yeri, c.updated_at AS updated_at,
              c.alim_tarihi AS alim_tarihi, c.firma AS firma, c.ihale AS ihale,
-             c.garanti_bitis AS garanti_bitis,
+             c.garanti_bitis AS garanti_bitis, c.servis_durumu AS servis_durumu,
              c.dirty AS dirty, c.deleted AS deleted,
              u.ad AS urun_adi, d.ad AS depo_adi, d.tur AS depo_tur,
              a.plaka AS arac_plaka
@@ -976,77 +1032,675 @@ class AppDatabase {
       for (final ham in seriNolar) {
         final seri = _normSeri(ham);
         if (seri.isEmpty || !gorulen.add(seri)) continue;
-
-        final rows = await txn.query('cihazlar',
-            where: 'seri_no = ?', whereArgs: [seri], limit: 1);
-        String cihazId;
-
-        if (rows.isEmpty) {
-          cihazId = _uuid.v4();
-          await txn.insert(
-            'cihazlar',
-            Cihaz(
-              id: cihazId,
-              urunId: urunId,
-              seriNo: seri,
-              depoId: depoId,
-              durum: CihazDurumu.depoda,
-              alimTarihi: alim?.alimTarihi,
-              firma: alim?.firmaVeyaNull,
-              ihale: alim?.ihaleVeyaNull,
-              garantiBitis: alim?.garantiBitis,
-              updatedAt: simdi,
-            ).toMap(),
-          );
-        } else {
-          final mevcut = Cihaz.fromMap(rows.first);
-          if (mevcut.durum == CihazDurumu.depoda && !mevcut.deleted) {
-            throw StateError('$seri zaten depoda kayıtlı');
-          }
-          if (mevcut.urunId != urunId) {
-            throw StateError('$seri başka bir modele ait');
-          }
-          cihazId = mevcut.id;
-          await txn.update(
-            'cihazlar',
-            {
-              'depo_id': depoId,
-              'durum': CihazDurumu.depoda.name,
-              'arac_id': null,
-              'kullanim_yeri': null,
-              'deleted': 0,
-              'updated_at': simdi.millisecondsSinceEpoch,
-              'dirty': 1,
-              // Yeniden girişte yalnızca doldurulan alım bilgileri yazılır.
-              if (alim != null)
-                for (final e in alim.kolonlar().entries)
-                  if (e.value != null) e.key: e.value,
-            },
-            where: 'id = ?',
-            whereArgs: [cihazId],
-          );
-        }
-
-        await txn.insert(
-          'stok_hareketleri',
-          StokHareketi(
-            id: _uuid.v4(),
+        await _girisTxn(txn,
             urunId: urunId,
             depoId: depoId,
-            tip: HareketTipi.girisi,
-            miktar: 1,
+            seri: seri,
             kullaniciId: kullaniciId,
-            tarih: simdi,
             not_: not_,
+            alim: alim,
             sebep: sebep,
-            cihazId: cihazId,
-            updatedAt: simdi,
-          ).toMap(),
-        );
+            zaman: simdi);
       }
     });
 
     _notify();
+  }
+
+  /// Tek bir seri numarasının depoya girişi (yeni kayıt veya geri alma).
+  /// Cihazın id'sini döndürür.
+  Future<String> _girisTxn(
+    Transaction txn, {
+    required String urunId,
+    required String depoId,
+    required String seri,
+    required String kullaniciId,
+    String? not_,
+    AlimBilgisi? alim,
+    String? sebep,
+    required DateTime zaman,
+  }) async {
+    final rows = await txn.query('cihazlar',
+        where: 'seri_no = ?', whereArgs: [seri], limit: 1);
+    String cihazId;
+
+    if (rows.isEmpty) {
+      cihazId = _uuid.v4();
+      await txn.insert(
+        'cihazlar',
+        Cihaz(
+          id: cihazId,
+          urunId: urunId,
+          seriNo: seri,
+          depoId: depoId,
+          durum: CihazDurumu.depoda,
+          alimTarihi: alim?.alimTarihi,
+          firma: alim?.firmaVeyaNull,
+          ihale: alim?.ihaleVeyaNull,
+          garantiBitis: alim?.garantiBitis,
+          updatedAt: zaman,
+        ).toMap(),
+      );
+    } else {
+      final mevcut = Cihaz.fromMap(rows.first);
+      if (mevcut.durum == CihazDurumu.depoda && !mevcut.deleted) {
+        throw StateError('$seri zaten depoda kayıtlı');
+      }
+      if (!mevcut.deleted &&
+          (mevcut.servisDurumu == ServisDurumu.hurda ||
+              mevcut.servisDurumu == ServisDurumu.degistirildi)) {
+        throw StateError('$seri ${mevcut.servisDurumu!.etiket.toLowerCase()}; '
+            'tekrar giriş yapılamaz');
+      }
+      if (mevcut.urunId != urunId) {
+        throw StateError('$seri başka bir modele ait');
+      }
+      cihazId = mevcut.id;
+      await txn.update(
+        'cihazlar',
+        {
+          'depo_id': depoId,
+          'durum': CihazDurumu.depoda.name,
+          'arac_id': null,
+          'kullanim_yeri': null,
+          'servis_durumu': null,
+          'deleted': 0,
+          'updated_at': zaman.millisecondsSinceEpoch,
+          'dirty': 1,
+          // Yeniden girişte yalnızca doldurulan alım bilgileri yazılır.
+          if (alim != null)
+            for (final e in alim.kolonlar().entries)
+              if (e.value != null) e.key: e.value,
+        },
+        where: 'id = ?',
+        whereArgs: [cihazId],
+      );
+    }
+
+    await txn.insert(
+      'stok_hareketleri',
+      StokHareketi(
+        id: _uuid.v4(),
+        urunId: urunId,
+        depoId: depoId,
+        tip: HareketTipi.girisi,
+        miktar: 1,
+        kullaniciId: kullaniciId,
+        tarih: zaman,
+        not_: not_,
+        sebep: sebep,
+        cihazId: cihazId,
+        updatedAt: zaman,
+      ).toMap(),
+    );
+    return cihazId;
+  }
+
+  // ---------------------------------------------------------------------
+  // Arıza / servis / hurda
+  // ---------------------------------------------------------------------
+
+  Future<Cihaz> _cihazTxn(Transaction txn, String cihazId) async {
+    final rows = await txn.query('cihazlar',
+        where: 'id = ?', whereArgs: [cihazId], limit: 1);
+    if (rows.isEmpty) throw StateError('Cihaz bulunamadı');
+    return Cihaz.fromMap(rows.first);
+  }
+
+  Future<void> _cihazGuncelleTxn(Transaction txn, String cihazId,
+      Map<String, Object?> degerler, DateTime zaman) async {
+    await txn.update(
+      'cihazlar',
+      {
+        ...degerler,
+        'updated_at': zaman.millisecondsSinceEpoch,
+        'dirty': 1,
+      },
+      where: 'id = ?',
+      whereArgs: [cihazId],
+    );
+  }
+
+  /// Servis adımını hareket geçmişine yazar (hareketler hiç silinmez).
+  Future<void> _servisHareketiTxn(
+    Transaction txn, {
+    required Cihaz cihaz,
+    required String adim,
+    required String kullaniciId,
+    required DateTime zaman,
+    HareketTipi tip = HareketTipi.servis,
+    String? depoId,
+    String? hedefDepoId,
+    int miktar = 0,
+    String? not_,
+  }) async {
+    await txn.insert(
+      'stok_hareketleri',
+      StokHareketi(
+        id: _uuid.v4(),
+        urunId: cihaz.urunId,
+        depoId: depoId ?? cihaz.depoId ?? '',
+        hedefDepoId: hedefDepoId,
+        tip: tip,
+        miktar: miktar,
+        kullaniciId: kullaniciId,
+        tarih: zaman,
+        not_: (not_ == null || not_.trim().isEmpty) ? null : not_.trim(),
+        cihazId: cihaz.id,
+        sebep: adim,
+        updatedAt: zaman,
+      ).toMap(),
+    );
+  }
+
+  Future<ServisKaydi?> _acikServisTxn(
+      DatabaseExecutor txn, String cihazId) async {
+    final rows = await txn.query('servis_kayitlari',
+        where: 'cihaz_id = ? AND kapanis IS NULL AND deleted = 0',
+        whereArgs: [cihazId],
+        orderBy: 'acilis_tarihi DESC',
+        limit: 1);
+    return rows.isEmpty ? null : ServisKaydi.fromMap(rows.first);
+  }
+
+  Future<void> _servisGuncelleTxn(Transaction txn, String id,
+      Map<String, Object?> degerler, DateTime zaman) async {
+    await txn.update(
+      'servis_kayitlari',
+      {
+        ...degerler,
+        'updated_at': zaman.millisecondsSinceEpoch,
+        'dirty': 1,
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  static String? _bosIseNull(String? s) =>
+      (s == null || s.trim().isEmpty) ? null : s.trim();
+
+  /// Depodaki cihaz için arıza kaydı açar: cihaz "arızalı" olur ve
+  /// kullanılamaz. [karar]: tamir | degisim
+  Future<void> _arizaKaydiAcTxn(
+    Transaction txn, {
+    required String cihazId,
+    required String karar,
+    String? aciklama,
+    required String kullaniciId,
+    required DateTime zaman,
+  }) async {
+    final c = await _cihazTxn(txn, cihazId);
+    if (c.durum != CihazDurumu.depoda || c.depoId == null) {
+      throw StateError('${c.seriNo} depoda değil');
+    }
+    if (c.arizali) {
+      throw StateError(
+          '${c.seriNo} zaten ${c.servisDurumu!.kisa.toLowerCase()}');
+    }
+    final durum = karar == 'degisim'
+        ? ServisDurumu.degisimGerekli
+        : ServisDurumu.tamirGerekli;
+    await _cihazGuncelleTxn(txn, cihazId, {'servis_durumu': durum.name}, zaman);
+    await txn.insert(
+      'servis_kayitlari',
+      ServisKaydi(
+        id: _uuid.v4(),
+        cihazId: cihazId,
+        urunId: c.urunId,
+        acilisTarihi: zaman,
+        arizaAciklama: _bosIseNull(aciklama),
+        karar: karar,
+        kullaniciId: kullaniciId,
+        updatedAt: zaman,
+      ).toMap(),
+    );
+    await _servisHareketiTxn(txn,
+        cihaz: c,
+        adim: 'Arıza kaydı: ${servisKararAdlari[karar]}',
+        kullaniciId: kullaniciId,
+        zaman: zaman,
+        not_: aciklama);
+  }
+
+  /// Cihazı hurdaya ayırır: stoktan düşer, açık servis kaydı kapanır.
+  Future<void> _hurdaTxn(
+    Transaction txn, {
+    required String cihazId,
+    required String sebep,
+    String? not_,
+    required String kullaniciId,
+    required DateTime zaman,
+  }) async {
+    final c = await _cihazTxn(txn, cihazId);
+    if (c.durum != CihazDurumu.depoda || c.depoId == null) {
+      throw StateError('${c.seriNo} depoda değil; önce depoya geri alın');
+    }
+    if (c.servisDurumu == ServisDurumu.garantide) {
+      throw StateError(
+          '${c.seriNo} garanti servisinde; önce dönüş sonucunu girin');
+    }
+    await _cihazGuncelleTxn(
+        txn,
+        cihazId,
+        {
+          'depo_id': null,
+          'durum': CihazDurumu.cikti.name,
+          'arac_id': null,
+          'kullanim_yeri': null,
+          'servis_durumu': ServisDurumu.hurda.name,
+        },
+        zaman);
+    await _servisHareketiTxn(txn,
+        cihaz: c,
+        tip: HareketTipi.hurda,
+        adim: sebep,
+        miktar: 1,
+        kullaniciId: kullaniciId,
+        zaman: zaman,
+        not_: not_);
+    final acik = await _acikServisTxn(txn, cihazId);
+    if (acik != null) {
+      await _servisGuncelleTxn(
+          txn,
+          acik.id,
+          {
+            'kapanis': 'hurda',
+            'kapanis_tarihi': zaman.millisecondsSinceEpoch,
+            if (acik.sonuc == null) 'sonuc': 'onarilamadi',
+            if (acik.gonderimTarihi != null && acik.donusTarihi == null)
+              'donus_tarihi': zaman.millisecondsSinceEpoch,
+            if (acik.sonucAciklama == null && _bosIseNull(not_) != null)
+              'sonuc_aciklama': _bosIseNull(not_),
+          },
+          zaman);
+    }
+  }
+
+  /// Sahada kullanılan / çıkışı yapılmış cihazı depoya geri alır.
+  /// [arizaKarari] verilirse (tamir | degisim) arıza kaydı açılır;
+  /// [hurda] ise cihaz alındığı gibi hurdaya ayrılır (ömrünü doldurdu vb.).
+  Future<void> sahadanGeriAl({
+    required String cihazId,
+    required String depoId,
+    required String sebep,
+    required String kullaniciId,
+    String? not_,
+    String? arizaKarari,
+    bool hurda = false,
+  }) async {
+    final db = await _database;
+    await db.transaction((txn) async {
+      final c = await _cihazTxn(txn, cihazId);
+      final simdi = DateTime.now();
+      await _girisTxn(txn,
+          urunId: c.urunId,
+          depoId: depoId,
+          seri: c.seriNo,
+          kullaniciId: kullaniciId,
+          not_: not_,
+          sebep: sebep,
+          zaman: simdi);
+      // Aynı anda yazılan kayıtlar geçmişte doğru sırada görünsün.
+      final sonra = simdi.add(const Duration(milliseconds: 1));
+      if (hurda) {
+        await _hurdaTxn(txn,
+            cihazId: cihazId,
+            sebep: sebep,
+            not_: not_,
+            kullaniciId: kullaniciId,
+            zaman: sonra);
+      } else if (arizaKarari != null) {
+        await _arizaKaydiAcTxn(txn,
+            cihazId: cihazId,
+            karar: arizaKarari,
+            aciklama: not_,
+            kullaniciId: kullaniciId,
+            zaman: sonra);
+      }
+    });
+    _notify();
+  }
+
+  /// Depodaki sağlam cihazı arızalı olarak işaretler.
+  Future<void> arizaKaydiAc({
+    required String cihazId,
+    required String karar,
+    String? aciklama,
+    required String kullaniciId,
+  }) async {
+    final db = await _database;
+    await db.transaction((txn) => _arizaKaydiAcTxn(txn,
+        cihazId: cihazId,
+        karar: karar,
+        aciklama: aciklama,
+        kullaniciId: kullaniciId,
+        zaman: DateTime.now()));
+    _notify();
+  }
+
+  /// Arızalı cihazı servise gönderir. [yer]: garanti (firmaya) | ic
+  /// (kendi bünyemizde). [tarih]: gönderim / onarıma alma zamanı.
+  Future<void> servisGonder({
+    required String cihazId,
+    required String yer,
+    String? firma,
+    required DateTime tarih,
+    String? not_,
+    required String kullaniciId,
+  }) async {
+    final db = await _database;
+    await db.transaction((txn) async {
+      final c = await _cihazTxn(txn, cihazId);
+      if (c.servisDurumu != ServisDurumu.tamirGerekli &&
+          c.servisDurumu != ServisDurumu.degisimGerekli) {
+        throw StateError('${c.seriNo} servise gönderilecek durumda değil');
+      }
+      final simdi = DateTime.now();
+      var kayit = await _acikServisTxn(txn, cihazId);
+      if (kayit == null) {
+        // Dosya yoksa (eski / eksik veri) aç
+        kayit = ServisKaydi(
+          id: _uuid.v4(),
+          cihazId: cihazId,
+          urunId: c.urunId,
+          acilisTarihi: simdi,
+          karar: c.servisDurumu == ServisDurumu.degisimGerekli
+              ? 'degisim'
+              : 'tamir',
+          kullaniciId: kullaniciId,
+          updatedAt: simdi,
+        );
+        await txn.insert('servis_kayitlari', kayit.toMap());
+      }
+      final firmaTemiz = _bosIseNull(firma);
+      await _servisGuncelleTxn(
+          txn,
+          kayit.id,
+          {
+            'onarim_yeri': yer,
+            'firma': firmaTemiz,
+            'gonderim_tarihi': tarih.millisecondsSinceEpoch,
+          },
+          simdi);
+      await _cihazGuncelleTxn(
+          txn,
+          cihazId,
+          {
+            'servis_durumu': (yer == 'garanti'
+                    ? ServisDurumu.garantide
+                    : ServisDurumu.onarimda)
+                .name
+          },
+          simdi);
+      await _servisHareketiTxn(txn,
+          cihaz: c,
+          adim: yer == 'garanti'
+              ? 'Garanti servisine gönderildi'
+              : 'Kendi bünyemizde onarıma alındı',
+          kullaniciId: kullaniciId,
+          zaman: simdi,
+          not_: [
+            if (firmaTemiz != null) firmaTemiz,
+            if (_bosIseNull(not_) != null) _bosIseNull(not_)!,
+          ].join(' · '));
+    });
+    _notify();
+  }
+
+  /// Servisten dönen cihazın sonucu.
+  /// - onarildi: cihaz sağlam olarak [depoId] deposuna eklenir.
+  /// - degistirildi: eski cihaz firmaya teslim edilmiş sayılır (stoktan
+  ///   düşer); [yeniSeriNo] ile gelen cihaz aynı modelle [depoId]'ye girer.
+  /// - onarilamadi: [hurda] ise hurdaya ayrılır, değilse "değişim gerekli"
+  ///   olarak depoda bekletilir (yeni servis dosyası açılır).
+  Future<void> servisSonucu({
+    required String cihazId,
+    required String sonuc,
+    required DateTime donusTarihi,
+    String? aciklama,
+    String? depoId,
+    String? yeniSeriNo,
+    bool hurda = true,
+    required String kullaniciId,
+  }) async {
+    final db = await _database;
+    await db.transaction((txn) async {
+      final c = await _cihazTxn(txn, cihazId);
+      if (!c.arizali) throw StateError('${c.seriNo} serviste görünmüyor');
+      final simdi = DateTime.now();
+      final sonra = simdi.add(const Duration(milliseconds: 1));
+      final kayit = await _acikServisTxn(txn, cihazId);
+      final aciklamaTemiz = _bosIseNull(aciklama);
+      final eskiDepo = c.depoId;
+      final gonderim = kayit?.gonderimTarihi;
+      final sureEki = gonderim == null
+          ? ''
+          : 'Süre: ${sureMetni(donusTarihi.difference(gonderim))}';
+      String notMetni([String? on]) => [
+            if (on != null) on,
+            if (aciklamaTemiz != null) aciklamaTemiz,
+            if (sureEki.isNotEmpty) sureEki,
+          ].join(' · ');
+
+      Future<void> kaydiKapat(String kapanis, {String? yeniSeri}) async {
+        if (kayit == null) return;
+        await _servisGuncelleTxn(
+            txn,
+            kayit.id,
+            {
+              'donus_tarihi': donusTarihi.millisecondsSinceEpoch,
+              'sonuc': sonuc,
+              'sonuc_aciklama': aciklamaTemiz,
+              if (yeniSeri != null) 'yeni_seri_no': yeniSeri,
+              'kapanis': kapanis,
+              'kapanis_tarihi': simdi.millisecondsSinceEpoch,
+            },
+            simdi);
+      }
+
+      switch (sonuc) {
+        case 'onarildi':
+          final hedef = depoId ?? eskiDepo;
+          if (hedef == null) throw StateError('Depo seçin');
+          await _cihazGuncelleTxn(
+              txn,
+              cihazId,
+              {
+                'servis_durumu': null,
+                'depo_id': hedef,
+                'durum': CihazDurumu.depoda.name,
+              },
+              simdi);
+          await _servisHareketiTxn(txn,
+              cihaz: c,
+              adim: 'Onarıldı, depoya eklendi',
+              depoId: eskiDepo,
+              hedefDepoId: hedef,
+              miktar: hedef != eskiDepo ? 1 : 0,
+              kullaniciId: kullaniciId,
+              zaman: simdi,
+              not_: notMetni());
+          await kaydiKapat('depoya');
+          break;
+
+        case 'degistirildi':
+          final seri = _normSeri(yeniSeriNo ?? '');
+          if (seri.isEmpty) {
+            throw StateError('Yeni cihazın seri numarasını girin');
+          }
+          if (seri == c.seriNo) {
+            throw StateError('Yeni seri no eskisiyle aynı olamaz');
+          }
+          final hedef = depoId ?? eskiDepo;
+          if (hedef == null) throw StateError('Depo seçin');
+          await _cihazGuncelleTxn(
+              txn,
+              cihazId,
+              {
+                'servis_durumu': ServisDurumu.degistirildi.name,
+                'depo_id': null,
+                'durum': CihazDurumu.cikti.name,
+              },
+              simdi);
+          await _servisHareketiTxn(txn,
+              cihaz: c,
+              adim: 'Değiştirildi, firmaya teslim',
+              depoId: eskiDepo,
+              miktar: 1,
+              kullaniciId: kullaniciId,
+              zaman: simdi,
+              not_: notMetni('Yeni SN: $seri'));
+          // Yeni cihaz eskinin alım / garanti bilgileriyle girer.
+          await _girisTxn(txn,
+              urunId: c.urunId,
+              depoId: hedef,
+              seri: seri,
+              kullaniciId: kullaniciId,
+              alim: AlimBilgisi.cihazdan(c),
+              not_: 'Değişim (eski SN: ${c.seriNo})',
+              zaman: sonra);
+          await kaydiKapat('degisim', yeniSeri: seri);
+          break;
+
+        case 'onarilamadi':
+          await _servisHareketiTxn(txn,
+              cihaz: c,
+              adim: 'Servisten döndü: onarılamadı',
+              kullaniciId: kullaniciId,
+              zaman: simdi,
+              not_: notMetni());
+          if (hurda) {
+            // Hurda için cihaz "servisten dönmüş" sayılır.
+            await _cihazGuncelleTxn(txn, cihazId,
+                {'servis_durumu': ServisDurumu.degisimGerekli.name}, simdi);
+            await kaydiKapat('hurda');
+            await _hurdaTxn(txn,
+                cihazId: cihazId,
+                sebep: 'Onarılamaz arıza',
+                not_: aciklamaTemiz,
+                kullaniciId: kullaniciId,
+                zaman: sonra);
+          } else {
+            await kaydiKapat('degisim_bekliyor');
+            await _cihazGuncelleTxn(
+                txn, cihazId, {'servis_durumu': null}, simdi);
+            await _arizaKaydiAcTxn(txn,
+                cihazId: cihazId,
+                karar: 'degisim',
+                aciklama: 'Onarılamadı'
+                    '${aciklamaTemiz == null ? '' : ': $aciklamaTemiz'}',
+                kullaniciId: kullaniciId,
+                zaman: sonra);
+          }
+          break;
+
+        default:
+          throw ArgumentError('Bilinmeyen sonuç: $sonuc');
+      }
+    });
+    _notify();
+  }
+
+  /// Depodaki (sağlam veya arızalı) cihazı hurdaya ayırır.
+  Future<void> hurdayaAyir({
+    required String cihazId,
+    required String sebep,
+    String? not_,
+    required String kullaniciId,
+  }) async {
+    final db = await _database;
+    await db.transaction((txn) => _hurdaTxn(txn,
+        cihazId: cihazId,
+        sebep: sebep,
+        not_: not_,
+        kullaniciId: kullaniciId,
+        zaman: DateTime.now()));
+    _notify();
+  }
+
+  /// Cihazın tüm servis dosyaları (en yeni üstte).
+  Future<List<ServisKaydi>> cihazServisKayitlari(String cihazId) async {
+    final db = await _database;
+    final rows = await db.query('servis_kayitlari',
+        where: 'cihaz_id = ? AND deleted = 0',
+        whereArgs: [cihazId],
+        orderBy: 'acilis_tarihi DESC');
+    return rows.map(ServisKaydi.fromMap).toList();
+  }
+
+  Stream<List<ServisKaydi>> cihazServisKayitlariStream(String cihazId) =>
+      _watch(() => cihazServisKayitlari(cihazId));
+
+  /// Rapor: tüm servis dosyaları, cihaz ve ürün bilgisiyle.
+  Future<List<Map<String, Object?>>> servisRaporu({
+    DateTime? baslangic,
+    DateTime? bitis,
+  }) async {
+    final db = await _database;
+    final kosullar = <String>['s.deleted = 0'];
+    final args = <Object?>[];
+    if (baslangic != null) {
+      kosullar.add('s.acilis_tarihi >= ?');
+      args.add(baslangic.millisecondsSinceEpoch);
+    }
+    if (bitis != null) {
+      kosullar.add('s.acilis_tarihi <= ?');
+      args.add(bitis.millisecondsSinceEpoch);
+    }
+    return db.rawQuery(
+        'SELECT s.*, c.seri_no AS seri_no, c.servis_durumu AS servis_durumu, '
+        'c.garanti_bitis AS garanti_bitis, u.ad AS urun_adi, d.ad AS depo_adi '
+        'FROM servis_kayitlari s '
+        'LEFT JOIN cihazlar c ON c.id = s.cihaz_id '
+        'LEFT JOIN urunler u ON u.id = s.urun_id '
+        'LEFT JOIN depolar d ON d.id = c.depo_id '
+        'WHERE ${kosullar.join(' AND ')} '
+        'ORDER BY s.acilis_tarihi DESC',
+        args);
+  }
+
+  /// Rapor: hurdaya ayrılan cihazlar.
+  Future<List<Map<String, Object?>>> hurdaRaporu({
+    DateTime? baslangic,
+    DateTime? bitis,
+  }) async {
+    final db = await _database;
+    final kosullar = <String>['sh.deleted = 0', "sh.tip = 'hurda'"];
+    final args = <Object?>[];
+    if (baslangic != null) {
+      kosullar.add('sh.tarih >= ?');
+      args.add(baslangic.millisecondsSinceEpoch);
+    }
+    if (bitis != null) {
+      kosullar.add('sh.tarih <= ?');
+      args.add(bitis.millisecondsSinceEpoch);
+    }
+    return db.rawQuery(
+        'SELECT sh.tarih AS tarih, sh.sebep AS sebep, sh.not_ AS not_, '
+        'c.seri_no AS seri_no, u.ad AS urun_adi, d.ad AS depo_adi, '
+        'c.alim_tarihi AS alim_tarihi, c.firma AS firma, c.ihale AS ihale, '
+        'k.ad AS kullanici '
+        'FROM stok_hareketleri sh '
+        'LEFT JOIN cihazlar c ON c.id = sh.cihaz_id '
+        'LEFT JOIN urunler u ON u.id = sh.urun_id '
+        'LEFT JOIN depolar d ON d.id = sh.depo_id '
+        'LEFT JOIN kullanicilar k ON k.id = sh.kullanici_id '
+        'WHERE ${kosullar.join(' AND ')} '
+        'ORDER BY sh.tarih DESC',
+        args);
+  }
+
+  /// Daha önce girilmiş servis / alım firmaları (öneri için).
+  Future<List<String>> oncekiServisFirmalari() async {
+    final db = await _database;
+    final rows = await db.rawQuery(
+        "SELECT firma AS v FROM servis_kayitlari "
+        "WHERE firma IS NOT NULL AND firma <> '' AND deleted = 0 "
+        "UNION SELECT firma AS v FROM cihazlar "
+        "WHERE firma IS NOT NULL AND firma <> '' AND deleted = 0 "
+        'ORDER BY 1 COLLATE NOCASE LIMIT 300');
+    return [for (final r in rows) r['v'] as String];
   }
 
   /// Cihazın alım / garanti bilgilerini değiştirir (boş bırakılanlar silinir).
@@ -1266,6 +1920,7 @@ class AppDatabase {
       SELECT urun_id, COUNT(*) AS toplam
       FROM cihazlar
       WHERE depo_id = ? AND durum = 'depoda' AND deleted = 0
+        AND servis_durumu IS NULL
       GROUP BY urun_id
     ''', [depoId]);
     return {
@@ -1301,6 +1956,11 @@ class AppDatabase {
 
     if (c.durum != CihazDurumu.depoda || c.depoId == null) {
       throw StateError('${c.seriNo} şu an depoda değil, bu işlem yapılamaz');
+    }
+    if (c.arizali) {
+      throw StateError('${c.seriNo} ${c.servisDurumu!.kisa.toLowerCase()}: '
+          'transfer, kullanıma verme, sahada kullanım ve çıkış yapılamaz. '
+          'Önce cihaz kartından servis işlemini tamamlayın.');
     }
     final kaynakDepo = c.depoId!;
     final simdi = DateTime.now();
@@ -1348,7 +2008,9 @@ class AppDatabase {
         };
         break;
       case HareketTipi.silme:
-        throw ArgumentError('Silme için cihazSil kullanın');
+      case HareketTipi.servis:
+      case HareketTipi.hurda:
+        throw ArgumentError('Bu işlem için ilgili özel metodu kullanın');
       case HareketTipi.girisi:
         break;
     }
@@ -1421,8 +2083,12 @@ class AppDatabase {
     String? il,
     String? ilce,
     String? mahalle,
+    String? arizaKarari, // iadede "Arıza" seçildiyse: tamir | degisim
   }) async {
-    if (tip == HareketTipi.girisi || tip == HareketTipi.silme) {
+    if (tip == HareketTipi.girisi ||
+        tip == HareketTipi.silme ||
+        tip == HareketTipi.servis ||
+        tip == HareketTipi.hurda) {
       throw ArgumentError('Bu işlem için ilgili özel metodu kullanın');
     }
     if (cihazIdleri.isEmpty) throw StateError('Hiç cihaz seçilmedi');
@@ -1447,6 +2113,14 @@ class AppDatabase {
           ilce: ilce,
           mahalle: mahalle,
         );
+        if (arizaKarari != null) {
+          await _arizaKaydiAcTxn(txn,
+              cihazId: id,
+              karar: arizaKarari,
+              aciklama: not_,
+              kullaniciId: kullaniciId,
+              zaman: DateTime.now());
+        }
       }
     });
 
@@ -1470,7 +2144,7 @@ class AppDatabase {
     'cihazlar': [
       'id', 'urun_id', 'seri_no', 'depo_id', 'durum', 'arac_id',
       'kullanim_yeri', 'alim_tarihi', 'firma', 'ihale', 'garanti_bitis',
-      'updated_at', 'deleted'
+      'servis_durumu', 'updated_at', 'deleted'
     ],
     'stok_hareketleri': [
       'id', 'urun_id', 'depo_id', 'hedef_depo_id', 'tip', 'miktar',
@@ -1481,6 +2155,12 @@ class AppDatabase {
       'id', 'stok_hareket_id', 'arac_id', 'kullanim_yeri', 'not_',
       'enlem', 'boylam', 'konum_hassasiyet', 'il', 'ilce', 'mahalle',
       'updated_at', 'deleted'
+    ],
+    'servis_kayitlari': [
+      'id', 'cihaz_id', 'urun_id', 'acilis_tarihi', 'ariza_aciklama', 'karar',
+      'onarim_yeri', 'firma', 'gonderim_tarihi', 'donus_tarihi', 'sonuc',
+      'sonuc_aciklama', 'yeni_seri_no', 'kapanis', 'kapanis_tarihi',
+      'kullanici_id', 'updated_at', 'deleted'
     ],
   };
 

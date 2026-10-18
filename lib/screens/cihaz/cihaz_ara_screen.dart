@@ -125,9 +125,9 @@ class _Sonuclar extends ConsumerWidget {
           separatorBuilder: (_, __) => const Divider(height: 1),
           itemBuilder: (context, i) {
             final b = liste[i];
-            final renk = cihazDurumRengi(b.cihaz.durum);
+            final renk = cihazRengi(b.cihaz);
             return ListTile(
-              leading: Icon(cihazDurumIkonu(b.cihaz.durum), color: renk),
+              leading: Icon(cihazIkonu(b.cihaz), color: renk),
               title: Text(b.urunAdi),
               subtitle: Text('SN: ${b.cihaz.seriNo}\n${cihazKonumMetni(b)}'),
               isThreeLine: true,

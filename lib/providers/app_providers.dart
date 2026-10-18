@@ -87,3 +87,9 @@ final cihazGecmisiProvider =
 /// tablosundaki karşılığı. Basitlik için burada elle set edilecek
 /// şekilde bırakıldı; gerçek projede auth state listener ile doldurulur.
 final aktifKullaniciIdProvider = StateProvider<String?>((ref) => null);
+
+/// Bir cihazın arıza / servis dosyaları (en yeni üstte).
+final cihazServisKayitlariProvider =
+    StreamProvider.family<List<ServisKaydi>, String>((ref, cihazId) {
+  return ref.watch(appDatabaseProvider).cihazServisKayitlariStream(cihazId);
+});

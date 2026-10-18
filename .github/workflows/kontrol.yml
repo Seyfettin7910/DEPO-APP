@@ -1,0 +1,23 @@
+# main dışındaki dallarda: yayınlamadan önce kodun derlendiğini denetler
+# (flutter analyze + web derlemesi). Hiçbir şey yayınlanmaz.
+name: Kod kontrolü
+
+on:
+  push:
+    branches-ignore: [main]
+  workflow_dispatch:
+
+jobs:
+  kontrol:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter create --platforms=web .
+      - run: flutter pub get
+      - name: Analiz (yalnızca hatalar durdurur)
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+      - run: flutter build web --release

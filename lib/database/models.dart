@@ -3,7 +3,7 @@ enum KullaniciRol { admin, depoSorumlusu, sahaKullanicisi }
 /// Depo türü: sabit depo ya da seyyar depo olarak çalışan araç.
 enum DepoTuru { sabit, arac }
 
-enum HareketTipi { girisi, cikis, transfer, kullanim, iade, silme }
+enum HareketTipi { girisi, cikis, transfer, kullanim, iade, silme, servis, hurda }
 
 /// Kayıttaki hareket türünü çözer; tanınmayan (daha yeni sürümden gelmiş)
 /// bir tür uygulamayı çökertmesin diye "çıkış" sayılır.
@@ -12,6 +12,52 @@ HareketTipi hareketTipiCoz(Object? ad) => HareketTipi.values
 
 /// Seri numaralı bir cihazın şu anki durumu.
 enum CihazDurumu { depoda, kullanimda, cikti }
+
+/// Arızalı / servisteki / hurdaya ayrılmış cihazın durumu (sağlam cihazda
+/// null). İlk dördünde cihaz depodadır ama kullanılamaz: transfer, kullanıma
+/// verme, sahada kullanım ve çıkış yapılamaz.
+enum ServisDurumu {
+  tamirGerekli,
+  degisimGerekli,
+  garantide,
+  onarimda,
+  hurda,
+  degistirildi;
+
+  String get etiket => switch (this) {
+        ServisDurumu.tamirGerekli => 'Arızalı · tamir gerekli',
+        ServisDurumu.degisimGerekli =>
+          'Arızalı · tamiri mümkün değil, değişim gerekli',
+        ServisDurumu.garantide => 'Garanti servisinde',
+        ServisDurumu.onarimda => 'Kendi bünyemizde onarımda',
+        ServisDurumu.hurda => 'Hurdaya ayrıldı',
+        ServisDurumu.degistirildi => 'Değiştirildi (firmaya teslim)',
+      };
+
+  /// Kısa etiket (listelerde rozet).
+  String get kisa => switch (this) {
+        ServisDurumu.tamirGerekli => 'Arızalı',
+        ServisDurumu.degisimGerekli => 'Değişim gerekli',
+        ServisDurumu.garantide => 'Garantide',
+        ServisDurumu.onarimda => 'Onarımda',
+        ServisDurumu.hurda => 'Hurda',
+        ServisDurumu.degistirildi => 'Değiştirildi',
+      };
+
+  /// Cihaz depoda ama arızalı / serviste (kullanılamaz).
+  bool get arizali => index <= ServisDurumu.onarimda.index;
+
+  /// Servise (firmaya / onarıma) gönderilmiş.
+  bool get serviste =>
+      this == ServisDurumu.garantide || this == ServisDurumu.onarimda;
+}
+
+ServisDurumu? servisDurumuCoz(Object? ad) {
+  for (final d in ServisDurumu.values) {
+    if (d.name == ad) return d;
+  }
+  return null;
+}
 
 DateTime _epochToDate(int ms) => DateTime.fromMillisecondsSinceEpoch(ms);
 DateTime? _epochOrNull(Object? ms) =>
@@ -385,9 +431,13 @@ class Cihaz {
   final String? firma;
   final String? ihale;
   final DateTime? garantiBitis;
+  final ServisDurumu? servisDurumu; // arızalı / serviste / hurda; sağlamsa null
   final DateTime updatedAt;
   final bool dirty;
   final bool deleted;
+
+  /// Depoda ama arızalı / serviste (kullanılamaz).
+  bool get arizali => servisDurumu?.arizali ?? false;
 
   Cihaz({
     required this.id,
@@ -401,6 +451,7 @@ class Cihaz {
     this.firma,
     this.ihale,
     this.garantiBitis,
+    this.servisDurumu,
     required this.updatedAt,
     this.dirty = true,
     this.deleted = false,
@@ -418,6 +469,7 @@ class Cihaz {
         firma: m['firma'] as String?,
         ihale: m['ihale'] as String?,
         garantiBitis: _epochOrNull(m['garanti_bitis']),
+        servisDurumu: servisDurumuCoz(m['servis_durumu']),
         updatedAt: _epochToDate(m['updated_at'] as int),
         dirty: _intToBool(m['dirty'] as int),
         deleted: _intToBool(m['deleted'] as int),
@@ -435,6 +487,7 @@ class Cihaz {
         'firma': firma,
         'ihale': ihale,
         'garanti_bitis': garantiBitis?.millisecondsSinceEpoch,
+        'servis_durumu': servisDurumu?.name,
         'updated_at': _dateToEpoch(updatedAt),
         'dirty': _boolToInt(dirty),
         'deleted': _boolToInt(deleted),
@@ -481,3 +534,134 @@ class AlimBilgisi {
         'garanti_bitis': garantiBitis?.millisecondsSinceEpoch,
       };
 }
+
+
+/// Bir arıza / servis dosyası: arızanın tespitinden (sahadan geri alma)
+/// onarım sonucuna ve kapanışa (depoya dönüş, değişim veya hurda) kadar.
+class ServisKaydi {
+  ServisKaydi({
+    required this.id,
+    required this.cihazId,
+    required this.urunId,
+    required this.acilisTarihi,
+    required this.karar,
+    this.arizaAciklama,
+    this.onarimYeri,
+    this.firma,
+    this.gonderimTarihi,
+    this.donusTarihi,
+    this.sonuc,
+    this.sonucAciklama,
+    this.yeniSeriNo,
+    this.kapanis,
+    this.kapanisTarihi,
+    required this.kullaniciId,
+    required this.updatedAt,
+    this.dirty = true,
+    this.deleted = false,
+  });
+
+  final String id;
+  final String cihazId;
+  final String urunId;
+  final DateTime acilisTarihi;
+  final String? arizaAciklama;
+  final String karar; // tamir | degisim
+  final String? onarimYeri; // garanti | ic
+  final String? firma; // garantide servis firması; içte onarımı yapan birim
+  final DateTime? gonderimTarihi;
+  final DateTime? donusTarihi;
+  final String? sonuc; // onarildi | degistirildi | onarilamadi
+  final String? sonucAciklama;
+  final String? yeniSeriNo; // değişimde gelen cihaz
+  final String? kapanis; // depoya | hurda | degisim | degisim_bekliyor
+  final DateTime? kapanisTarihi;
+  final String kullaniciId;
+  final DateTime updatedAt;
+  final bool dirty;
+  final bool deleted;
+
+  bool get acik => kapanis == null;
+
+  /// Gönderimden dönüşe (dönmediyse bugüne) geçen süre.
+  Duration? get onarimSuresi {
+    if (gonderimTarihi == null) return null;
+    return (donusTarihi ?? DateTime.now()).difference(gonderimTarihi!);
+  }
+
+  factory ServisKaydi.fromMap(Map<String, dynamic> m) => ServisKaydi(
+        id: m['id'] as String,
+        cihazId: m['cihaz_id'] as String,
+        urunId: m['urun_id'] as String,
+        acilisTarihi: _epochToDate((m['acilis_tarihi'] as num).toInt()),
+        arizaAciklama: m['ariza_aciklama'] as String?,
+        karar: (m['karar'] as String?) ?? 'tamir',
+        onarimYeri: m['onarim_yeri'] as String?,
+        firma: m['firma'] as String?,
+        gonderimTarihi: _epochOrNull(m['gonderim_tarihi']),
+        donusTarihi: _epochOrNull(m['donus_tarihi']),
+        sonuc: m['sonuc'] as String?,
+        sonucAciklama: m['sonuc_aciklama'] as String?,
+        yeniSeriNo: m['yeni_seri_no'] as String?,
+        kapanis: m['kapanis'] as String?,
+        kapanisTarihi: _epochOrNull(m['kapanis_tarihi']),
+        kullaniciId: (m['kullanici_id'] as String?) ?? '',
+        updatedAt: _epochToDate((m['updated_at'] as num).toInt()),
+        dirty: _intToBool(((m['dirty'] as num?) ?? 0).toInt()),
+        deleted: _intToBool(((m['deleted'] as num?) ?? 0).toInt()),
+      );
+
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'cihaz_id': cihazId,
+        'urun_id': urunId,
+        'acilis_tarihi': _dateToEpoch(acilisTarihi),
+        'ariza_aciklama': arizaAciklama,
+        'karar': karar,
+        'onarim_yeri': onarimYeri,
+        'firma': firma,
+        'gonderim_tarihi': gonderimTarihi?.millisecondsSinceEpoch,
+        'donus_tarihi': donusTarihi?.millisecondsSinceEpoch,
+        'sonuc': sonuc,
+        'sonuc_aciklama': sonucAciklama,
+        'yeni_seri_no': yeniSeriNo,
+        'kapanis': kapanis,
+        'kapanis_tarihi': kapanisTarihi?.millisecondsSinceEpoch,
+        'kullanici_id': kullaniciId,
+        'updated_at': _dateToEpoch(updatedAt),
+        'dirty': _boolToInt(dirty),
+        'deleted': _boolToInt(deleted),
+      };
+}
+
+/// "2 gün 5 saat", "3 saat 10 dk" gibi okunur süre.
+String sureMetni(Duration d) {
+  if (d.isNegative) return '-';
+  final gun = d.inDays;
+  final saat = d.inHours % 24;
+  final dk = d.inMinutes % 60;
+  if (gun > 0) return saat > 0 ? '$gun gün $saat saat' : '$gun gün';
+  if (saat > 0) return dk > 0 ? '$saat saat $dk dk' : '$saat saat';
+  return '$dk dk';
+}
+
+/// Servis kaydındaki kodların okunur karşılıkları.
+const servisKararAdlari = {
+  'tamir': 'Tamir gerekli',
+  'degisim': 'Tamiri mümkün değil, değişim gerekli',
+};
+const onarimYeriAdlari = {
+  'garanti': 'Garanti kapsamında (firma)',
+  'ic': 'Kendi bünyemizde',
+};
+const servisSonucAdlari = {
+  'onarildi': 'Onarıldı',
+  'degistirildi': 'Yeni cihazla değiştirildi',
+  'onarilamadi': 'Onarılamadı',
+};
+const servisKapanisAdlari = {
+  'depoya': 'Depoya eklendi',
+  'hurda': 'Hurdaya ayrıldı',
+  'degisim': 'Yeni cihaz depoya eklendi',
+  'degisim_bekliyor': 'Değişim için bekletiliyor',
+};

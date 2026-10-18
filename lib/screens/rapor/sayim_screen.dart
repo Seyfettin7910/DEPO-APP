@@ -199,7 +199,10 @@ class _SayimScreenState extends ConsumerState<SayimScreen> {
     final secili = depolar.where((d) => d.id == _depoId).firstOrNull;
     final beklenen = _depoId == null
         ? <CihazBilgi>[]
-        : (ref.watch(depoCihazlariProvider(_depoId!)).value ?? <CihazBilgi>[]);
+        : (ref.watch(depoCihazlariProvider(_depoId!)).value ?? <CihazBilgi>[])
+            // Garanti servisindeki cihaz fiziksel olarak firmadadır.
+            .where((c) => c.cihaz.servisDurumu != ServisDurumu.garantide)
+            .toList();
 
     final beklenenSeriler = {for (final c in beklenen) c.cihaz.seriNo};
     final bulunan =
