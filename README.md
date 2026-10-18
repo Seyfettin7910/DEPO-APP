@@ -5,6 +5,14 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.17.0 – Arıza / servis / hurda
+- **Sahadan geri almada arıza:** "Arıza" seçilince "Tamir gerekli" veya "Tamiri mümkün değil, değişim gerekli" sorulur. Cihaz depoya **arızalı** olarak girer; onarılana kadar transfer edilemez, kullanıma verilemez, sahada kullanılamaz, çıkışı yapılamaz ve stok/kritik stok sayılarına girmez.
+- **Servis akışı (cihaz kartında):** garanti durumu gösterilir → "Garanti (firma)" veya "Kendi bünyemiz" seçilir; firma, gönderim tarihi ve saati kaydedilir → "Servisten döndü" ile dönüş tarihi/saati, **onarım süresi** ve sonuç girilir: Onarıldı (depoya eklenir), Yeni cihazla değiştirildi (yeni seri no girer, eski stoktan düşer), Onarılamadı (hurda veya değişim için bekletme).
+- **Hurda:** "Ömrünü doldurdu (hurda)" ile sahadan geri alınan cihaz doğrudan hurdaya ayrılır. Depodaki cihaz da ⋮ menüsünden veya basılı tutarak hurdaya ayrılabilir (neden sorulur). Kayıt ve geçmiş silinmez.
+- Depodaki sağlam cihaz "Arızalı olarak işaretle" ile servise alınabilir; araçtan iadede de arıza seçilebilir.
+- Yeni raporlar: **Arıza / servis** (açık/kapanan dosyalar, firma bazında onarım süreleri ve sonuçlar) ve **Hurda**. Ürün raporlarında Arızalı ve Hurda sütunları.
+- Supabase: `supabase_guncelleme_1_17_0.sql` güncellemeden önce bir kez çalıştırılmalı. En düşük sürüm 1.17.0.
+
 ## 1.16.5
 - Güncelleme indirmesi Android'in kendi indirme yöneticisine geçti: uygulama arka plana düşse, hatta kapatılsa da indirme sürer; ilerleme bildirim çubuğunda görünür. Uygulama yeniden açılınca yarım kalan indirme kaldığı yerden izlenir, bitmişse "Şimdi kur" sorulur.
 - Wi-Fi ile başlayan otomatik indirme mobil veriye geçilirse duraklar, Wi-Fi gelince devam eder (kota yemez).
