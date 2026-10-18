@@ -113,6 +113,10 @@ class _StokListesi extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final sayilarAsync = ref.watch(depoUrunSayilariProvider(depoId));
     final urunlerAsync = ref.watch(urunlerStreamProvider);
+    final kritikler = {
+      for (final k in ref.watch(kritikStoklarProvider).value ?? const [])
+        k.urunId: k,
+    };
 
     return sayilarAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -166,6 +170,7 @@ class _StokListesi extends ConsumerWidget {
                 urun: urunlerMap[e.key],
                 urunId: e.key,
                 adet: e.value,
+                kritik: kritikler[e.key],
               ),
           ],
         );
@@ -276,18 +281,18 @@ class _StokSatiri extends StatelessWidget {
   final String urunId;
   final Urun? urun;
   final int adet;
+  final KritikStok? kritik; // depolardaki TOPLAM minimumun altındaysa dolu
   const _StokSatiri({
     required this.depoId,
     required this.urunId,
     required this.adet,
     this.urun,
+    this.kritik,
   });
 
   @override
   Widget build(BuildContext context) {
-    final dusuk = urun != null &&
-        urun!.minStokSeviyesi > 0 &&
-        adet <= urun!.minStokSeviyesi;
+    final dusuk = kritik != null;
     final renk = dusuk ? Colors.red : null;
 
     return ListTile(
@@ -295,7 +300,8 @@ class _StokSatiri extends StatelessWidget {
       title: Text(urun?.ad ?? urunId),
       subtitle: Text([
         if (urun?.kategori != null) urun!.kategori!,
-        if (dusuk) 'Minimum seviyenin altında',
+        if (dusuk)
+          'Kritik: depolarda toplam ${kritik!.depoda} / minimum ${kritik!.minStok}',
       ].join(' · ')),
       trailing: Text(
         '$adet',

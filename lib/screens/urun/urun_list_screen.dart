@@ -16,6 +16,10 @@ class UrunListScreen extends ConsumerWidget {
     final urunlerAsync = ref.watch(urunlerStreamProvider);
     final toplamlar =
         ref.watch(urunToplamStoklariProvider).value ?? <String, int>{};
+    final kritikler = {
+      for (final k in ref.watch(kritikStoklarProvider).value ?? const [])
+        k.urunId: k,
+    };
 
     return Scaffold(
       appBar: AppBar(title: const Text('Ürünler')),
@@ -57,6 +61,38 @@ class UrunListScreen extends ConsumerWidget {
                   ),
                 ),
               ),
+              if (kritikler.isNotEmpty)
+                Card(
+                  margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                  color: Theme.of(context).colorScheme.errorContainer,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.warning_amber),
+                            const SizedBox(width: 8),
+                            Text('Kritik stok (${kritikler.length})',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        for (final k in kritikler.values)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 2),
+                            child: Text(
+                              '• ${k.urunAdi}: depolarda ${k.depoda} / min '
+                              '${k.minStok} · ${k.durum}'
+                              '${k.aracta > 0 ? ' (araçlarda ${k.aracta})' : ''}',
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
               for (final kategori in kategoriler) ...[
                 _KategoriBasligi(
                   ad: kategori,
@@ -76,8 +112,12 @@ class UrunListScreen extends ConsumerWidget {
                       children: [
                         Text(
                           '${toplamlar[urun.id] ?? 0}',
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 18),
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                              color: kritikler.containsKey(urun.id)
+                                  ? Colors.red
+                                  : null),
                         ),
                         const Text('depoda', style: TextStyle(fontSize: 11)),
                       ],

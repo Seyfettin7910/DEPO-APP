@@ -39,6 +39,11 @@ final depoOzetleriProvider = StreamProvider<Map<String, DepoOzet>>((ref) {
   return ref.watch(appDatabaseProvider).depoOzetleriStream();
 });
 
+/// Minimum adedin altına inmiş ürünler (sabit depolardaki toplama göre).
+final kritikStoklarProvider = StreamProvider<List<KritikStok>>((ref) {
+  return ref.watch(appDatabaseProvider).kritikStoklarStream();
+});
+
 /// Ürün listesinde gösterilen, tüm depolardaki toplam stok.
 final urunToplamStoklariProvider = StreamProvider<Map<String, int>>((ref) {
   return ref.watch(appDatabaseProvider).urunToplamStoklariStream();

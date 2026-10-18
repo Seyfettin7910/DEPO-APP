@@ -86,6 +86,12 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
               onTap: () => Navigator.pop(ctx, 'stok'),
             ),
             ListTile(
+              leading: const Icon(Icons.warning_amber),
+              title: const Text('Kritik stok'),
+              subtitle: const Text('Minimum adedin altına inen ürünler'),
+              onTap: () => Navigator.pop(ctx, 'kritik'),
+            ),
+            ListTile(
               leading: const Icon(Icons.map_outlined),
               title: const Text('Bölge raporu'),
               subtitle: const Text(
@@ -170,6 +176,9 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
           break;
         case 'stok':
           rapor = await RaporOlusturucu.urunStokDurumu(db, urun!);
+          break;
+        case 'kritik':
+          rapor = await RaporOlusturucu.kritikStok(db);
           break;
         case 'bolge':
           rapor = await RaporOlusturucu.bolge(db, filtre: bolgeFiltresi);

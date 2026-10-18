@@ -214,6 +214,33 @@ class CihazHareketSatiri {
   });
 }
 
+/// Minimum adedin altına inmiş (veya eşit) ürün. Hesap, sabit depolardaki
+/// toplam adede göre yapılır; araçtakiler ayrıca gösterilir.
+class KritikStok {
+  const KritikStok({
+    required this.urunId,
+    required this.urunAdi,
+    this.kategori,
+    required this.minStok,
+    required this.depoda,
+    required this.aracta,
+  });
+
+  final String urunId;
+  final String urunAdi;
+  final String? kategori;
+  final int minStok;
+  final int depoda;
+  final int aracta;
+
+  /// Minimumun üstüne çıkmak için gereken adet.
+  int get eksik => minStok - depoda + 1;
+
+  String get durum => depoda == 0
+      ? 'Tükendi'
+      : (depoda < minStok ? 'Kritik' : 'Sınırda');
+}
+
 class KullanimRaporSatiri {
   final String urunAdi;
   final String depoAdi;
@@ -703,6 +730,41 @@ class AppDatabase {
         r['urun_id'] as String: (r['toplam'] as num?)?.toInt() ?? 0,
     };
   }
+
+  /// Minimum adet tanımlı ve sabit depolardaki toplamı minimuma eşit / altında
+  /// olan ürünler (en kritik üstte).
+  Future<List<KritikStok>> kritikStoklar() async {
+    final db = await _database;
+    final rows = await db.rawQuery('''
+      SELECT u.id AS id, u.ad AS ad, u.kategori AS kategori,
+             u.min_stok_seviyesi AS min_stok,
+             SUM(CASE WHEN c.id IS NOT NULL AND d.tur = 'sabit' THEN 1 ELSE 0 END)
+               AS depoda,
+             SUM(CASE WHEN c.id IS NOT NULL AND d.tur = 'arac' THEN 1 ELSE 0 END)
+               AS aracta
+      FROM urunler u
+      LEFT JOIN cihazlar c
+             ON c.urun_id = u.id AND c.deleted = 0 AND c.durum = 'depoda'
+      LEFT JOIN depolar d ON d.id = c.depo_id AND d.deleted = 0
+      WHERE u.deleted = 0 AND u.min_stok_seviyesi > 0
+      GROUP BY u.id
+      HAVING depoda <= u.min_stok_seviyesi
+      ORDER BY (depoda * 1.0 / u.min_stok_seviyesi), u.ad COLLATE NOCASE
+    ''');
+    return [
+      for (final r in rows)
+        KritikStok(
+          urunId: r['id'] as String,
+          urunAdi: r['ad'] as String,
+          kategori: r['kategori'] as String?,
+          minStok: (r['min_stok'] as num).toInt(),
+          depoda: (r['depoda'] as num?)?.toInt() ?? 0,
+          aracta: (r['aracta'] as num?)?.toInt() ?? 0,
+        ),
+    ];
+  }
+
+  Stream<List<KritikStok>> kritikStoklarStream() => _watch(kritikStoklar);
 
   Stream<Map<String, int>> urunToplamStoklariStream() =>
       _watch(urunToplamStoklari);

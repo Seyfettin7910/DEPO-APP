@@ -10,6 +10,7 @@ import '../cihaz/cihaz_detay_screen.dart';
 import '../cihaz/toplu_giris_screen.dart';
 import '../cihaz/toplu_transfer_screen.dart';
 import '../../widgets/hedefli_tarayici.dart';
+import '../../widgets/kritik_stok_seridi.dart';
 
 /// Hızlı tarama: seri numarası okutulunca cihazın kartı (hangi ürün, hangi
 /// depoda / araçta) açılır. Kayıtlı değilse uyarı sesi + titreşim verir ve
@@ -135,7 +136,17 @@ class _BarkodTaramaScreenState extends ConsumerState<BarkodTaramaScreen> {
           ),
         ],
       ),
-      body: Stack(
+      body: Column(
+        children: [
+          const KritikStokSeridi(),
+          Expanded(child: _kamera()),
+        ],
+      ),
+    );
+  }
+
+  Widget _kamera() {
+    return Stack(
         children: [
           HedefliTarayici(controller: _controller, onDetect: _okundu),
           if (_coklu)
@@ -153,7 +164,6 @@ class _BarkodTaramaScreenState extends ConsumerState<BarkodTaramaScreen> {
               ),
             ),
         ],
-      ),
-    );
+      );
   }
 }

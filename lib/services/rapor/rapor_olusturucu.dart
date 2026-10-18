@@ -310,6 +310,49 @@ class RaporOlusturucu {
   }
 
   // ------------------------------------------------------------------
+  // Kritik stok
+  // ------------------------------------------------------------------
+  static Future<Rapor> kritikStok(AppDatabase db) async {
+    final liste = await db.kritikStoklar();
+    return Rapor(
+      baslik: 'Kritik Stok',
+      altBaslik: 'Sabit depolardaki toplam adet, ürünün minimum adediyle '
+          'karşılaştırılır (araçtakiler hesaba katılmaz) · ${_olusturma()}',
+      dosyaOn: 'kritik_stok',
+      ozet: [
+        MapEntry('Kritik ürün', '${liste.length}'),
+        MapEntry('Tükenen', '${liste.where((k) => k.depoda == 0).length}'),
+        MapEntry('Toplam eksik',
+            '${liste.fold<int>(0, (t, k) => t + (k.eksik > 0 ? k.eksik : 0))}'),
+      ],
+      sutunlar: const [
+        'Ürün', 'Kategori', 'Minimum', 'Depolarda', 'Araçlarda', 'Eksik',
+        'Durum'
+      ],
+      genislikler: const [30, 18, 10, 10, 10, 9, 11],
+      bolumler: [
+        RaporBolumu(
+          aciklama: liste.isEmpty
+              ? 'Minimum adedin altına inmiş ürün yok.'
+              : '"Eksik": minimumun üstüne çıkmak için alınması gereken adet.',
+          satirlar: [
+            for (final k in liste)
+              [
+                k.urunAdi,
+                k.kategori ?? '',
+                k.minStok,
+                k.depoda,
+                k.aracta,
+                k.eksik,
+                k.durum,
+              ],
+          ],
+        ),
+      ],
+    );
+  }
+
+  // ------------------------------------------------------------------
   // Garanti durumu
   // ------------------------------------------------------------------
   static Future<Rapor> garanti(AppDatabase db, {int yakinGun = 90}) async {

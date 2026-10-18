@@ -86,7 +86,9 @@ Future<void> urunFormDialog(BuildContext context, WidgetRef ref,
               TextField(
                 controller: minStokCtrl,
                 decoration: const InputDecoration(
-                    labelText: 'Minimum adet uyarısı (opsiyonel)'),
+                    labelText: 'Minimum adet uyarısı (opsiyonel)',
+                    helperText: 'Depolardaki toplam bu sayıya inince uyarır',
+                ),
                 keyboardType: TextInputType.number,
               ),
               if (hata != null)

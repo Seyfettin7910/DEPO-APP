@@ -7,6 +7,7 @@ import '../../providers/app_providers.dart';
 import '../../widgets/depo_secici.dart';
 import '../../widgets/sync_durum_dugmesi.dart';
 import 'depo_stok_screen.dart';
+import '../../widgets/kritik_stok_seridi.dart';
 
 /// Depolar ve araçlar (seyyar depolar) bir arada. Araçlar da depo gibi
 /// çalışır: içinde cihaz tutar, transfer hedefi olur.
@@ -48,6 +49,7 @@ class DepoListScreen extends ConsumerWidget {
           return ListView(
             padding: const EdgeInsets.only(bottom: 88),
             children: [
+              const KritikStokSeridi(),
               if (sabitler.isNotEmpty) const _Baslik('DEPOLAR'),
               for (final d in sabitler) _satir(context, ref, d, ozetler[d.id]),
               if (araclar.isNotEmpty) const _Baslik('ARAÇLAR (SEYYAR DEPO)'),

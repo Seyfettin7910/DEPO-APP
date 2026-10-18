@@ -5,6 +5,16 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.16.0 – Kritik stok
+- Ürünün "Minimum adet uyarısı", **sabit depolardaki toplam** adede göre kontrol edilir
+  (araçtakiler hesaba katılmaz, ayrıca gösterilir). Toplam minimuma eşit / altındaysa kritik.
+- **Okut** ve **Depolar** ekranlarının üstünde uyarı şeridi (tükenen varsa kırmızı, yoksa
+  turuncu); dokununca Kritik stok raporu açılır.
+- **Ürünler** ekranında kritik ürünler kartı ve kırmızı adet.
+- Depo > Stok sekmesindeki depo bazlı yanıltıcı kırmızı uyarı kaldırıldı; yalnızca toplamı
+  kritik olan ürünler işaretlenir.
+- Raporlar'da yeni **Kritik stok** raporu (ürün, minimum, depolarda, araçlarda, eksik, durum).
+
 ## 1.15.3
 - Bilgisayar tarayıcısında açılış ekranı Depolar; telefonda (APK veya telefon tarayıcısı) Okut.
 
