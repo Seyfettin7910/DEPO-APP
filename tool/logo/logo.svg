@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3A8A52"/><stop offset="1" stop-color="#1E5230"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <!-- scan frame corners -->
+  <g fill="none" stroke="#FFFFFF" stroke-width="22" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M96 170 V112 Q96 96 112 96 H170"/>
+    <path d="M342 96 H400 Q416 96 416 112 V170"/>
+    <path d="M416 342 V400 Q416 416 400 416 H342"/>
+    <path d="M170 416 H112 Q96 416 96 400 V342"/>
+  </g>
+  <!-- warehouse -->
+  <path d="M150 236 L256 168 L362 236 V352 H150 Z" fill="#FFFFFF"/>
+  <rect x="200" y="262" width="112" height="90" fill="#1E5230"/>
+  <g fill="#FFFFFF"><rect x="200" y="284" width="112" height="8"/><rect x="200" y="306" width="112" height="8"/><rect x="200" y="328" width="112" height="8"/></g>
+  <!-- scan line -->
+  <rect x="122" y="250" width="268" height="12" rx="6" fill="#F2B233"/>
+</svg>

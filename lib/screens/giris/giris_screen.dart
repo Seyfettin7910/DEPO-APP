@@ -112,8 +112,13 @@ class _GirisScreenState extends State<GirisScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Icon(Icons.warehouse,
-                      size: 72, color: Theme.of(context).colorScheme.primary),
+                  Center(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: Image.asset('assets/logo.png',
+                          width: 88, height: 88, filterQuality: FilterQuality.medium),
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   const Text('DEPO OTOMASYON SİSTEMİ',
                       textAlign: TextAlign.center,

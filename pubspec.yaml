@@ -1,7 +1,7 @@
 name: depo_app
 description: Çok kullanıcılı, çoklu depo stok ve kullanım takip uygulaması (iOS / Android / Windows / Web)
 publish_to: 'none'
-version: 1.18.0+37
+version: 1.18.1+38
 
 environment:
   sdk: '>=3.3.0 <4.0.0'
@@ -64,3 +64,4 @@ flutter:
   assets:
     - assets/sounds/
     - assets/fonts/
+    - assets/logo.png

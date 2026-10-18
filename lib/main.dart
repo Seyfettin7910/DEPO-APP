@@ -116,8 +116,8 @@ class _BaslangicEkraniState extends State<BaslangicEkrani> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.warehouse,
-                    size: 64, color: Theme.of(context).colorScheme.primary),
+                Image.asset('assets/logo.png',
+                    width: 80, height: 80, filterQuality: FilterQuality.medium),
                 const SizedBox(height: 16),
                 if (_hata == null) ...[
                   const CircularProgressIndicator(),

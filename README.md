@@ -5,6 +5,9 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.18.1
+- Yeni logo (tarama çerçevesinde depo): Android simgesi (Android 8+ uyarlanabilir, Android 13+ temalı simge), web sekme simgesi, iPhone "Ana ekrana ekle" simgesi, açılış ve giriş ekranı.
+
 ## 1.18.0 – Giriş kayıtları
 - Her girişte kullanıcı, tarih-saat, **IP adresi** (sunucunun gördüğü, telefondan değiştirilemez), platform (Android / iPhone / Web), uygulama sürümü ve tarayıcı bilgisi kaydedilir. Hatalı şifre denemeleri de ayrıca kaydedilir.
 - Raporlar → **Giriş kayıtları**: kullanıcı bazında özet, hatalı denemeler ve tüm girişler (internet gerekir). Kayıtlar uygulamadan değiştirilemez / silinemez.
