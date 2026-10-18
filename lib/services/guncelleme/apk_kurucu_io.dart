@@ -9,7 +9,7 @@ const _kanal = MethodChannel('depo_takip/guncelleme');
 
 Future<File> _dosya(String surum) async {
   final klasor = await getTemporaryDirectory();
-  return File('${klasor.path}/depo-takip-$surum.apk');
+  return File('${klasor.path}/Depo-Otomasyon-Sistemi-$surum.apk');
 }
 
 /// Bu sürümün APK'sı daha önce tam indirildiyse yolunu döndürür.
@@ -27,7 +27,8 @@ Future<String> apkIndir(String url, String surum,
   try {
     for (final e in hedef.parent.listSync()) {
       if (e is File &&
-          e.path.contains('depo-takip-') &&
+          (e.path.contains('depo-takip-') ||
+              e.path.contains('Depo-Otomasyon-Sistemi-')) &&
           e.path != hedef.path) {
         e.deleteSync();
       }

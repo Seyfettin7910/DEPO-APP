@@ -1,6 +1,7 @@
 # Her yüklemede (main dalı) imzalı Android APK derler ve GitHub "Releases"
 # bölümüne koyar. Sabit indirme adresi:
-# https://github.com/Seyfettin7910/DEPO-APP/releases/latest/download/depo-takip.apk
+# https://github.com/Seyfettin7910/DEPO-APP/releases/latest/download/Depo-Otomasyon-Sistemi.apk
+# (Eski uygulamalar güncelleme için depo-takip.apk adını arar; o da yüklenir.)
 #
 # Gerekli secret'lar (Settings > Secrets and variables > Actions):
 #   ANDROID_KEYSTORE_BASE64   imza anahtarının base64 hali
@@ -61,11 +62,15 @@ jobs:
           ANDROID_KEY_ALIAS: depo
         run: flutter build apk --release --dart-define=APP_SURUM=${{ steps.surum.outputs.v }}
 
-      - run: cp build/app/outputs/flutter-apk/app-release.apk depo-takip.apk
+      - run: |
+          cp build/app/outputs/flutter-apk/app-release.apk Depo-Otomasyon-Sistemi.apk
+          cp build/app/outputs/flutter-apk/app-release.apk depo-takip.apk
 
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.surum.outputs.v }}
           name: Depo Takip ${{ steps.surum.outputs.v }}
-          files: depo-takip.apk
+          files: |
+            Depo-Otomasyon-Sistemi.apk
+            depo-takip.apk
           make_latest: true

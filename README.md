@@ -5,6 +5,9 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.16.4
+- APK dosya adı **Depo-Otomasyon-Sistemi.apk** oldu. Eski uygulamaların güncellemesi bozulmasın diye aynı APK eski adla (depo-takip.apk) da yayınlanır; eski link de çalışır.
+
 ## 1.16.3
 - Uygulama adı **DEPO OTOMASYON SİSTEMİ** oldu (telefon ana ekranı, giriş ekranı, web sekme başlığı, PDF alt bilgisi).
 
@@ -164,7 +167,7 @@ Tarih aralığı seçildiğinde son gün de dahil edilir.
 
 `.github/workflows/android.yml` her yüklemede imzalı APK derler ve Releases'e koyar.
 Sabit indirme adresi (saha ekibine bu link verilir):
-https://github.com/Seyfettin7910/DEPO-APP/releases/latest/download/depo-takip.apk
+https://github.com/Seyfettin7910/DEPO-APP/releases/latest/download/Depo-Otomasyon-Sistemi.apk
 
 - İmza anahtarı repoda DEĞİL; GitHub secret'larında durur
   (`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`). Yedeği güvenli yerde saklanmalı.

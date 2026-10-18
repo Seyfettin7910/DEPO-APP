@@ -25,7 +25,7 @@ class GuncellemeServisi {
   static const mevcutSurum = String.fromEnvironment('APP_SURUM');
   static const _repo = 'Seyfettin7910/DEPO-APP';
   static const apkLinki =
-      'https://github.com/$_repo/releases/latest/download/depo-takip.apk';
+      'https://github.com/$_repo/releases/latest/download/Depo-Otomasyon-Sistemi.apk';
   static const _surumDosyasi =
       'https://seyfettin7910.github.io/DEPO-APP/version.json';
 
@@ -88,7 +88,7 @@ class GuncellemeServisi {
     final dosyalar = yayin?['assets'];
     if (dosyalar is List) {
       for (final d in dosyalar) {
-        if (d is Map && d['name'] == 'depo-takip.apk' && d['size'] is num) {
+        if (d is Map && d['name'] == 'Depo-Otomasyon-Sistemi.apk' && d['size'] is num) {
           _apkBoyutu = (d['size'] as num).toInt();
         }
       }

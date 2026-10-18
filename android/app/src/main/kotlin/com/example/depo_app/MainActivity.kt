@@ -72,7 +72,7 @@ class MainActivity : FlutterActivity() {
         val oturumId = kurucu.createSession(parametre)
         kurucu.openSession(oturumId).use { oturum ->
             File(yol).inputStream().use { giris ->
-                oturum.openWrite("depo-takip.apk", 0, -1).use { cikis ->
+                oturum.openWrite("Depo-Otomasyon-Sistemi.apk", 0, -1).use { cikis ->
                     giris.copyTo(cikis)
                     oturum.fsync(cikis)
                 }
