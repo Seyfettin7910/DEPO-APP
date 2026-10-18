@@ -69,7 +69,7 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.surum.outputs.v }}
-          name: Depo Takip ${{ steps.surum.outputs.v }}
+          name: DEPO OTOMASYON SİSTEMİ ${{ steps.surum.outputs.v }}
           files: |
             Depo-Otomasyon-Sistemi.apk
             depo-takip.apk
