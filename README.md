@@ -4,6 +4,20 @@
 uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
+
+## Android APK'yı GitHub'da derleme
+
+`.github/workflows/android.yml` her yüklemede imzalı APK derler ve Releases'e koyar.
+Sabit indirme adresi (saha ekibine bu link verilir):
+https://github.com/Seyfettin7910/DEPO-APP/releases/latest/download/depo-takip.apk
+
+- İmza anahtarı repoda DEĞİL; GitHub secret'larında durur
+  (`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`). Yedeği güvenli yerde saklanmalı.
+- Aynı anahtarla imzalandığı için güncellemeler eski uygulamanın üstüne kurulur
+  (her sürümde `pubspec.yaml` içindeki `version` artırılır).
+- Repodaki `android/` klasörü FlutLab için olduğu gibi kalır; derleme makinesi Gradle
+  dosyalarını `tool/android_hazirla.py` ile güncel Flutter şablonuna uyarlar.
+
 ## Web'de çalıştırma (1.6.0)
 
 Web sürümü tarayıcıda açılır; veriler tarayıcının içinde (IndexedDB) tutulur ve
