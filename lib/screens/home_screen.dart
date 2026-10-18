@@ -19,7 +19,8 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen>
     with WidgetsBindingObserver {
-  int _index = 0;
+  // Açılışta seri no okutma ekranı gelir (en sık yapılan iş).
+  int _index = 2;
 
   static const _screens = [
     DepoListScreen(),
@@ -73,7 +74,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final destinations = const [
       NavigationDestination(icon: Icon(Icons.warehouse_outlined), label: 'Depolar'),
       NavigationDestination(icon: Icon(Icons.inventory_2_outlined), label: 'Ürünler'),
-      NavigationDestination(icon: Icon(Icons.qr_code_scanner), label: 'Tarama'),
+      NavigationDestination(icon: Icon(Icons.qr_code_scanner), label: 'Okut'),
       NavigationDestination(icon: Icon(Icons.search), label: 'Ara'),
       NavigationDestination(icon: Icon(Icons.bar_chart_outlined), label: 'Raporlar'),
       NavigationDestination(icon: Icon(Icons.logout), label: 'Çıkış'),

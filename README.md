@@ -5,6 +5,9 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.15.2
+- "Tarama" sekmesinin adı **Okut** oldu ve uygulama açılınca doğrudan bu ekran gelir.
+
 ## 1.15.1
 - Ürünler ekranında kısa dokunuşla düzenleme açılmıyor; Düzenle / Sil yalnızca basılı tutunca.
 

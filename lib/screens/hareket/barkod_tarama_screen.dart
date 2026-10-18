@@ -105,7 +105,7 @@ class _BarkodTaramaScreenState extends ConsumerState<BarkodTaramaScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Seri No Tara'),
+        title: const Text('Seri No Okut'),
         actions: [
           IconButton(
             icon: const Icon(Icons.keyboard),
