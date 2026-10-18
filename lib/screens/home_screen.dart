@@ -74,11 +74,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
-    // Geniş ekranlarda (Windows masaüstü) yan menü, dar ekranlarda
-    // (telefon) alt gezinme çubuğu kullanılır.
-    final genisEkran = MediaQuery.of(context).size.width >= 700;
-
-    final destinations = const [
+    // Menü telefonda da bilgisayarda da (web) altta.
+    const destinations = [
       NavigationDestination(icon: Icon(Icons.warehouse_outlined), label: 'Depolar'),
       NavigationDestination(icon: Icon(Icons.inventory_2_outlined), label: 'Ürünler'),
       NavigationDestination(icon: Icon(Icons.qr_code_scanner), label: 'Okut'),
@@ -86,28 +83,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       NavigationDestination(icon: Icon(Icons.bar_chart_outlined), label: 'Raporlar'),
       NavigationDestination(icon: Icon(Icons.logout), label: 'Çıkış'),
     ];
-
-    if (genisEkran) {
-      return Scaffold(
-        body: Row(
-          children: [
-            NavigationRail(
-              selectedIndex: _index,
-              onDestinationSelected: _sec,
-              labelType: NavigationRailLabelType.all,
-              destinations: destinations
-                  .map((d) => NavigationRailDestination(
-                        icon: d.icon,
-                        label: Text(d.label),
-                      ))
-                  .toList(),
-            ),
-            const VerticalDivider(width: 1),
-            Expanded(child: _screens[_index]),
-          ],
-        ),
-      );
-    }
 
     return Scaffold(
       body: _screens[_index],

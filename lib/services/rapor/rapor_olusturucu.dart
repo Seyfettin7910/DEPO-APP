@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../../database/app_database.dart';
 import '../../database/models.dart';
 import '../adres_servisi.dart';
+import '../giris_kaydi_servisi.dart';
 import '../konum_servisi.dart';
 import 'rapor_modeli.dart';
 
@@ -877,6 +878,93 @@ class RaporOlusturucu {
                 r['not_'] ?? '',
               ],
           ],
+        ),
+      ],
+    );
+  }
+
+  // ------------------------------------------------------------------
+  // Giriş kayıtları (sunucudan okunur, internet gerekir)
+  // ------------------------------------------------------------------
+  static Future<Rapor> girisKayitlari(
+      {DateTime? baslangic, DateTime? bitis}) async {
+    final rows =
+        await GirisKaydiServisi.kayitlar(baslangic: baslangic, bitis: bitis);
+
+    DateTime? zaman(Object? v) =>
+        v == null ? null : DateTime.tryParse('$v')?.toLocal();
+    String tarih(Object? v) {
+      final t = zaman(v);
+      return t == null ? '' : _tarih.format(t);
+    }
+
+    final basarili = rows.where((r) => r['basarili'] != false).toList();
+    final hatali = rows.where((r) => r['basarili'] == false).toList();
+
+    // Kullanıcı bazında özet (sorgu yeniden eskiye sıralı gelir)
+    final kullanicilar = <String, List<Map<String, dynamic>>>{};
+    for (final r in basarili) {
+      kullanicilar
+          .putIfAbsent((r['email'] as String?) ?? '-', () => [])
+          .add(r);
+    }
+    final ozetSatirlari = [
+      for (final e in kullanicilar.entries)
+        [
+          e.key,
+          e.value.length,
+          tarih(e.value.first['tarih']),
+          e.value.first['ip'] ?? '',
+          e.value.first['platform'] ?? '',
+          {for (final r in e.value) r['ip']}.whereType<String>().length,
+        ],
+    ]..sort((a, b) => (b[1] as int).compareTo(a[1] as int));
+
+    List<Object?> satir(Map<String, dynamic> r) => [
+          tarih(r['tarih']),
+          r['email'] ?? '',
+          r['basarili'] == false ? 'Hatalı şifre' : 'Başarılı',
+          r['ip'] ?? '',
+          r['platform'] ?? '',
+          r['surum'] ?? '',
+          r['tarayici'] ?? '',
+        ];
+
+    return Rapor(
+      baslik: 'Giriş Kayıtları',
+      altBaslik: '${_aralik(baslangic, bitis)} · ${_olusturma()}',
+      dosyaOn: 'giris_kayitlari',
+      ozet: [
+        MapEntry('Başarılı giriş', '${basarili.length}'),
+        MapEntry('Hatalı şifre', '${hatali.length}'),
+        MapEntry('Kullanıcı', '${kullanicilar.length}'),
+        MapEntry('Farklı IP',
+            '${{for (final r in rows) r['ip']}.whereType<String>().length}'),
+      ],
+      sutunlar: const [
+        'Tarih', 'Kullanıcı', 'Sonuç', 'IP adresi', 'Platform', 'Sürüm',
+        'Tarayıcı / cihaz'
+      ],
+      genislikler: const [14, 24, 11, 15, 16, 8, 32],
+      bolumler: [
+        if (ozetSatirlari.isNotEmpty)
+          RaporBolumu(
+            baslik: 'Kullanıcı bazında',
+            sutunlar: const [
+              'Kullanıcı', 'Giriş sayısı', 'Son giriş', 'Son IP',
+              'Son platform', 'Farklı IP'
+            ],
+            genislikler: const [26, 10, 14, 15, 18, 9],
+            satirlar: ozetSatirlari,
+          ),
+        if (hatali.isNotEmpty)
+          RaporBolumu(
+            baslik: 'Hatalı şifre denemeleri (${hatali.length})',
+            satirlar: [for (final r in hatali) satir(r)],
+          ),
+        RaporBolumu(
+          baslik: 'Tüm girişler (${rows.length})',
+          satirlar: [for (final r in rows) satir(r)],
         ),
       ],
     );

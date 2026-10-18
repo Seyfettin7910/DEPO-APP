@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -6,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../services/guncelleme_servisi.dart';
 import '../../services/oturum_kilidi.dart';
 import '../../services/supabase_service.dart';
+import '../../services/giris_kaydi_servisi.dart';
 
 /// E-posta + şifre ile giriş. Kullanıcılar Supabase panelinden
 /// (Authentication > Users) eklenir; uygulamadan kayıt olunamaz.
@@ -72,6 +75,7 @@ class _GirisScreenState extends State<GirisScreen> {
     });
     try {
       await SupabaseService.girisYap(email, sifre);
+      unawaited(GirisKaydiServisi.basarili());
       await OturumKilidi.instance.kilidiAc();
       await _emailiHatirla(email);
       // Telefona/tarayıcıya "şifreyi kaydet" teklifini göster.
@@ -79,6 +83,9 @@ class _GirisScreenState extends State<GirisScreen> {
       // Başarılı girişte AuthGate oturum olayını yakalayıp ana ekrana geçer.
     } on AuthException catch (e) {
       final m = e.message.toLowerCase();
+      if (m.contains('invalid login')) {
+        unawaited(GirisKaydiServisi.hatali(email));
+      }
       setState(() => _hata = m.contains('invalid login')
           ? 'E-posta veya şifre hatalı'
           : m.contains('not confirmed')

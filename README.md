@@ -5,6 +5,12 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.18.0 – Giriş kayıtları
+- Her girişte kullanıcı, tarih-saat, **IP adresi** (sunucunun gördüğü, telefondan değiştirilemez), platform (Android / iPhone / Web), uygulama sürümü ve tarayıcı bilgisi kaydedilir. Hatalı şifre denemeleri de ayrıca kaydedilir.
+- Raporlar → **Giriş kayıtları**: kullanıcı bazında özet, hatalı denemeler ve tüm girişler (internet gerekir). Kayıtlar uygulamadan değiştirilemez / silinemez.
+- Web'de menü de telefondaki gibi altta.
+- Supabase: `supabase_guncelleme_1_18_0.sql` bir kez çalıştırılmalı.
+
 ## 1.17.2
 - **Seri No ile Depoya Giriş:** üstteki kamera düğmesi kalktı; "Seri no okut" (+) düğmesi kamerayı açar, açık kaldıkça okutulan her seri listeye eklenir. Telefonda hatalı girişi önlemek için seri no elle yazılamaz (bilgisayar tarayıcısında USB barkod okuyucu için yazma alanı kalır). Değişimde yeni cihaz seri nosu da aynı şekilde yalnızca okutulur.
 - **Okut ekranı:** başka sayfa açılınca arkadaki kamera durur. Böylece giriş sayfasında okutulan kodlar Okut ekranında "Kayıtlı cihaz yok / Depoya ekle" uyarısı çıkarmaz ve ikinci bir giriş sayfası açılmaz. Geri dönünce veya uygulamaya dönünce kamera yeniden açılır (donma giderildi).

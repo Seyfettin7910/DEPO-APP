@@ -131,6 +131,12 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
               onTap: () => Navigator.pop(ctx, 'kullanim'),
             ),
             ListTile(
+              leading: const Icon(Icons.login),
+              title: const Text('Giriş kayıtları'),
+              subtitle: Text('Kim, ne zaman, hangi IP\'den giriş yaptı · $aralik'),
+              onTap: () => Navigator.pop(ctx, 'giris'),
+            ),
+            ListTile(
               leading: const Icon(Icons.history),
               title: const Text('Hareket geçmişi'),
               subtitle: Text(
@@ -211,6 +217,10 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
           rapor = await RaporOlusturucu.hurda(db,
               baslangic: _tarihAraligi?.start, bitis: _bitisGunSonu());
           break;
+        case 'giris':
+          rapor = await RaporOlusturucu.girisKayitlari(
+              baslangic: _tarihAraligi?.start, bitis: _bitisGunSonu());
+          break;
         case 'hareketler':
           rapor = await RaporOlusturucu.hareketler(db,
               baslangic: _tarihAraligi?.start, bitis: _bitisGunSonu());
@@ -223,7 +233,10 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
           builder: (_) => RaporOnizlemeScreen(rapor: rapor)));
     } catch (e) {
       messenger.showSnackBar(SnackBar(
-        content: Text('Rapor hazırlanamadı: $e'),
+        content: Text(tur == 'giris'
+            ? 'Giriş kayıtları alınamadı. İnternet bağlantısını kontrol edin '
+                '(sunucuda 1.18.0 SQL\'i çalıştırılmış olmalı).'
+            : 'Rapor hazırlanamadı: $e'),
         backgroundColor: Colors.red.shade700,
       ));
     }
