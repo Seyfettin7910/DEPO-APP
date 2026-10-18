@@ -5,6 +5,14 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.8.0 – Hedef çerçeveli okuma
+- Tüm kamera ekranlarında ortada yeşil bir hedef çerçeve var; **yalnızca çerçevenin
+  içindeki kod okunur**. Etikette seri no barkodunun yanında başka barkod/karekod
+  olsa bile karışmaz.
+- Sağ üstteki düğmeyle çerçeve **Barkod** (ince-uzun) ↔ **Karekod** (kare) yapılır;
+  seçim telefonda hatırlanır.
+- Çerçevenin içinde yine birden çok kod varsa uyarı verilir, hiçbiri okunmaz.
+
 ## 1.7.0 – Excel raporları
 Raporlar sekmesindeki tablo simgesinden (PDF'in yanında) üç Excel çıktısı alınır:
 - **Kullanım raporu** (ekrandaki liste, seçili tarih aralığıyla)

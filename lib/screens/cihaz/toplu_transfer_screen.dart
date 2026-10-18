@@ -9,6 +9,7 @@ import '../../services/ses_servisi.dart';
 import '../../widgets/depo_secici.dart';
 import '../../widgets/kod_yardimci.dart';
 import 'cihaz_detay_screen.dart';
+import '../../widgets/hedefli_tarayici.dart';
 
 /// Birden çok cihazı seri numarasıyla okutup tek seferde bir depoya veya
 /// araca (seyyar depo) taşır. [tip] transfer ya da kullanıma verme olabilir;
@@ -234,7 +235,7 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen> {
               height: 200,
               child: Stack(
                 children: [
-                  MobileScanner(controller: _kamera!, onDetect: _okundu),
+                  HedefliTarayici(controller: _kamera!, onDetect: _okundu),
                   if (_coklu)
                     Align(
                       alignment: Alignment.bottomCenter,
@@ -243,7 +244,7 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen> {
                         color: Colors.black87,
                         padding: const EdgeInsets.all(6),
                         child: const Text(
-                          'Birden çok barkod görünüyor. Yalnızca seri no barkodunu çerçeveye alın.',
+                          'Çerçevede birden çok kod var. Yaklaştırıp yalnızca seri no kodunu çerçeveye alın.',
                           textAlign: TextAlign.center,
                           style: TextStyle(color: Colors.amber, fontSize: 12),
                         ),

@@ -3,6 +3,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../services/ses_servisi.dart';
 import 'kod_yardimci.dart';
+import 'hedefli_tarayici.dart';
 
 /// Kamerayı açıp bir barkod/QR kod okur ve okunan değeri
 /// Navigator.pop ile geri döndürür. Kullanım:
@@ -59,7 +60,7 @@ class _BarkodOkuyucuSayfasiState extends State<BarkodOkuyucuSayfasi> {
       ),
       body: Stack(
         children: [
-          MobileScanner(controller: _controller, onDetect: _okundu),
+          HedefliTarayici(controller: _controller, onDetect: _okundu),
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
@@ -68,8 +69,8 @@ class _BarkodOkuyucuSayfasiState extends State<BarkodOkuyucuSayfasi> {
               padding: const EdgeInsets.all(16),
               child: Text(
                 _coklu
-                    ? 'Birden çok barkod görünüyor. Yalnızca istediğiniz barkodu çerçeveye alın.'
-                    : 'Barkodu veya QR kodu çerçeveye getirin',
+                    ? 'Çerçevede birden çok kod var. Telefonu yaklaştırıp yalnızca istediğiniz kodu çerçeveye alın.'
+                    : 'Okutmak istediğiniz kodu yeşil çerçevenin içine alın',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                     color: _coklu ? Colors.amber : Colors.white),

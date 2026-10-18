@@ -9,6 +9,7 @@ import '../cihaz/cihaz_ara_screen.dart';
 import '../cihaz/cihaz_detay_screen.dart';
 import '../cihaz/toplu_giris_screen.dart';
 import '../cihaz/toplu_transfer_screen.dart';
+import '../../widgets/hedefli_tarayici.dart';
 
 /// Hızlı tarama: seri numarası okutulunca cihazın kartı (hangi ürün, hangi
 /// depoda / araçta) açılır. Kayıtlı değilse uyarı sesi + titreşim verir ve
@@ -136,7 +137,7 @@ class _BarkodTaramaScreenState extends ConsumerState<BarkodTaramaScreen> {
       ),
       body: Stack(
         children: [
-          MobileScanner(controller: _controller, onDetect: _okundu),
+          HedefliTarayici(controller: _controller, onDetect: _okundu),
           if (_coklu)
             Align(
               alignment: Alignment.bottomCenter,
@@ -145,7 +146,7 @@ class _BarkodTaramaScreenState extends ConsumerState<BarkodTaramaScreen> {
                 color: Colors.black87,
                 padding: const EdgeInsets.all(12),
                 child: const Text(
-                  'Birden çok barkod görünüyor. Yalnızca seri no barkodunu çerçeveye alın.',
+                  'Çerçevede birden çok kod var. Yaklaştırıp yalnızca seri no kodunu çerçeveye alın.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.amber),
                 ),
