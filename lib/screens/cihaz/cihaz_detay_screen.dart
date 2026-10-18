@@ -13,6 +13,7 @@ import '../../widgets/alim_bilgisi_alanlari.dart';
 import '../../widgets/iade_sebebi.dart';
 import '../../services/konum_servisi.dart';
 import '../../services/adres_servisi.dart';
+import '../../widgets/silme_islemleri.dart';
 
 /// Cihazın şu anki konumunu tek satırda anlatır.
 String cihazKonumMetni(CihazBilgi b) {
@@ -62,7 +63,31 @@ class CihazDetayScreen extends ConsumerWidget {
     final gecmisAsync = ref.watch(cihazGecmisiProvider(cihazId));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Cihaz')),
+      appBar: AppBar(
+        title: const Text('Cihaz'),
+        actions: [
+          if (bilgiAsync.value != null && !bilgiAsync.value!.cihaz.deleted)
+            PopupMenuButton<String>(
+              onSelected: (v) async {
+                if (v == 'sil') {
+                  final silindi =
+                      await cihazSilAkisi(context, ref, bilgiAsync.value!);
+                  if (silindi && context.mounted) Navigator.of(context).pop();
+                }
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(
+                  value: 'sil',
+                  child: ListTile(
+                    leading: Icon(Icons.delete_outline),
+                    title: Text('Cihazı sil'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
       body: bilgiAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Hata: $e')),
@@ -136,7 +161,17 @@ class CihazDetayScreen extends ConsumerWidget {
               ),
               _alimKarti(context, ref, bilgi),
               const SizedBox(height: 12),
-              if (durum == CihazDurumu.depoda)
+              if (bilgi.cihaz.deleted)
+                Card(
+                  color: Theme.of(context).colorScheme.errorContainer,
+                  child: const ListTile(
+                    leading: Icon(Icons.delete_outline),
+                    title: Text('Bu cihaz silindi'),
+                    subtitle: Text('Silme nedeni aşağıdaki geçmişte yazıyor. '
+                        'Aynı seri no ile yeniden giriş yapılabilir.'),
+                  ),
+                )
+              else if (durum == CihazDurumu.depoda)
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
@@ -230,6 +265,8 @@ class CihazDetayScreen extends ConsumerWidget {
 
   static IconData _ikon(HareketTipi t) {
     switch (t) {
+      case HareketTipi.silme:
+        return Icons.delete_outline;
       case HareketTipi.girisi:
         return Icons.arrow_downward;
       case HareketTipi.cikis:
@@ -245,6 +282,8 @@ class CihazDetayScreen extends ConsumerWidget {
 
   static String _baslik(CihazHareketSatiri h) {
     switch (h.tip) {
+      case HareketTipi.silme:
+        return 'Cihaz silindi${h.depoAdi == null ? '' : ' (${h.depoAdi})'}';
       case HareketTipi.girisi:
         if (h.sebep != null || h.not_ == 'İade') {
           return 'Sahadan geri alındı: ${h.depoAdi ?? '-'}';

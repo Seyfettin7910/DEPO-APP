@@ -5,6 +5,21 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.15.0 – Ürün ve cihaz silme (nedenli)
+- **Basılı tutunca:** Ürünler listesinde ürüne, Depo > Cihazlar sekmesinde ve Ara
+  sonuçlarında seri numarasına basılı tutulunca seçenekler çıkar (Düzenle / Aç / Sil).
+  Cihaz kartının sağ üst menüsünde de "Cihazı sil" var.
+- **Silme nedeni zorunlu:** cihaz için Yanlış kayıt / Mükerrer / Hurdaya ayrıldı /
+  Kayıp-çalıntı / Diğer; ürün için Yanlış tanımlandı / Mükerrer / Artık kullanılmıyor /
+  Diğer ("Diğer"de açıklama zorunlu).
+- Silme, yapan kişi ve nedeniyle **hareket kayıtlarına** yazılır (cihaz geçmişi, depo
+  Hareketler sekmesi, Hareket geçmişi raporu). **Hareket kayıtlarını silen hiçbir işlem
+  yoktur** (yönetici dahil).
+- Kayıtlar gizlenir, raporlardaki geçmiş korunur. Silinen seri no ileride yeniden
+  girilebilir. Depoda / araçta / sahada cihazı olan ürün silinemez.
+- **Zorunlu güncelleme:** `min_surum.txt` = 1.15.0 (yeni "silme" hareket türünü eski
+  sürümler tanımadığı için).
+
 ## 1.14.1 – Otomatik güncelleme
 - Giriş ekranında "Developed by Seyfettin AYDIN".
 - **Telefon:** yeni sürüm Wi-Fi'deyken arka planda indirilir, sonra "Güncelleme hazır →

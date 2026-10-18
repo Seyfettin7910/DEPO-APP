@@ -636,7 +636,10 @@ class AppDatabase {
     DateTime? bitis,
   }) async {
     final db = await _database;
-    final kosullar = <String>['sh.deleted = 0', 'sh.cihaz_id IS NOT NULL'];
+    final kosullar = <String>[
+      'sh.deleted = 0',
+      "(sh.cihaz_id IS NOT NULL OR sh.tip = 'silme')",
+    ];
     final args = <Object?>[];
     if (baslangic != null) {
       kosullar.add('sh.tarih >= ?');
@@ -731,7 +734,7 @@ class AppDatabase {
     ''', [depoId, depoId, limit]);
 
     return rows.map((r) {
-      final tip = HareketTipi.values.firstWhere((t) => t.name == r['tip']);
+      final tip = hareketTipiCoz(r['tip']);
       final miktar = (r['miktar'] as num).toInt();
       var isaretli = 0;
       String? karsiDepo;
@@ -740,6 +743,7 @@ class AppDatabase {
           isaretli = miktar;
           break;
         case HareketTipi.cikis:
+        case HareketTipi.silme:
           isaretli = -miktar;
           break;
         case HareketTipi.kullanim:
@@ -855,7 +859,7 @@ class AppDatabase {
 
     return rows
         .map((r) => CihazHareketSatiri(
-              tip: HareketTipi.values.firstWhere((t) => t.name == r['tip']),
+              tip: hareketTipiCoz(r['tip']),
               tarih: DateTime.fromMillisecondsSinceEpoch((r['tarih'] as num).toInt()),
               depoId: r['depo_id'] as String?,
               hedefDepoId: r['hedef_depo_id'] as String?,
@@ -1056,6 +1060,105 @@ class AppDatabase {
     return [for (final r in rows) r['v'] as String];
   }
 
+  // ---------------------------------------------------------------------
+  // Silme (yanlış kayıtlar için). Kayıt gizlenir; silme işlemi sebebiyle
+  // birlikte hareket geçmişine yazılır. Hareket kayıtları hiçbir zaman
+  // silinmez.
+  // ---------------------------------------------------------------------
+
+  Future<void> cihazSil(
+    String cihazId, {
+    required String sebep,
+    String? not_,
+    required String kullaniciId,
+  }) async {
+    final db = await _database;
+    await db.transaction((txn) async {
+      final rows = await txn.query('cihazlar',
+          where: 'id = ?', whereArgs: [cihazId], limit: 1);
+      if (rows.isEmpty) throw StateError('Cihaz bulunamadı');
+      final c = Cihaz.fromMap(rows.first);
+      if (c.deleted) throw StateError('${c.seriNo} zaten silinmiş');
+      final simdi = DateTime.now();
+      await txn.update(
+        'cihazlar',
+        {
+          'deleted': 1,
+          'updated_at': simdi.millisecondsSinceEpoch,
+          'dirty': 1,
+        },
+        where: 'id = ?',
+        whereArgs: [cihazId],
+      );
+      await txn.insert(
+        'stok_hareketleri',
+        StokHareketi(
+          id: _uuid.v4(),
+          urunId: c.urunId,
+          depoId: c.depoId ?? '',
+          tip: HareketTipi.silme,
+          miktar: 1,
+          kullaniciId: kullaniciId,
+          tarih: simdi,
+          not_: not_,
+          cihazId: cihazId,
+          sebep: sebep,
+          updatedAt: simdi,
+        ).toMap(),
+      );
+    });
+    _notify();
+  }
+
+  /// Ürün (model) silinir. Depoda, araçta veya sahada cihazı varsa
+  /// silinmez; önce o cihazlar silinmeli veya çıkışı yapılmalı.
+  Future<void> urunSil(
+    String urunId, {
+    required String sebep,
+    String? not_,
+    required String kullaniciId,
+  }) async {
+    final db = await _database;
+    await db.transaction((txn) async {
+      final aktif = Sqflite.firstIntValue(await txn.rawQuery(
+              "SELECT COUNT(*) FROM cihazlar WHERE urun_id = ? AND deleted = 0 "
+              "AND durum IN ('depoda', 'kullanimda')",
+              [urunId])) ??
+          0;
+      if (aktif > 0) {
+        throw StateError('Bu üründen $aktif cihaz depoda / araçta / sahada '
+            'görünüyor. Önce o cihazları silin veya çıkışını yapın.');
+      }
+      final simdi = DateTime.now();
+      await txn.update(
+        'urunler',
+        {
+          'deleted': 1,
+          'updated_at': simdi.millisecondsSinceEpoch,
+          'dirty': 1,
+        },
+        where: 'id = ?',
+        whereArgs: [urunId],
+      );
+      await txn.insert(
+        'stok_hareketleri',
+        StokHareketi(
+          id: _uuid.v4(),
+          urunId: urunId,
+          depoId: '',
+          tip: HareketTipi.silme,
+          miktar: 0,
+          kullaniciId: kullaniciId,
+          tarih: simdi,
+          not_: not_,
+          sebep: sebep,
+          updatedAt: simdi,
+        ).toMap(),
+      );
+    });
+    _notify();
+  }
+
   /// Okutulan seri numarasının cihaz bilgisini (model, depo, araç) getirir.
   Future<CihazBilgi?> seriNoIleCihazBilgi(String seriNo) async {
     final db = await _database;
@@ -1178,6 +1281,8 @@ class AppDatabase {
           'kullanim_yeri': null,
         };
         break;
+      case HareketTipi.silme:
+        throw ArgumentError('Silme için cihazSil kullanın');
       case HareketTipi.girisi:
         break;
     }
@@ -1251,8 +1356,8 @@ class AppDatabase {
     String? ilce,
     String? mahalle,
   }) async {
-    if (tip == HareketTipi.girisi) {
-      throw ArgumentError('Depoya alma için cihazlariGirisYap kullanın');
+    if (tip == HareketTipi.girisi || tip == HareketTipi.silme) {
+      throw ArgumentError('Bu işlem için ilgili özel metodu kullanın');
     }
     if (cihazIdleri.isEmpty) throw StateError('Hiç cihaz seçilmedi');
     final db = await _database;

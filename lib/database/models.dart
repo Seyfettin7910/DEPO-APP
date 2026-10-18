@@ -3,7 +3,12 @@ enum KullaniciRol { admin, depoSorumlusu, sahaKullanicisi }
 /// Depo türü: sabit depo ya da seyyar depo olarak çalışan araç.
 enum DepoTuru { sabit, arac }
 
-enum HareketTipi { girisi, cikis, transfer, kullanim, iade }
+enum HareketTipi { girisi, cikis, transfer, kullanim, iade, silme }
+
+/// Kayıttaki hareket türünü çözer; tanınmayan (daha yeni sürümden gelmiş)
+/// bir tür uygulamayı çökertmesin diye "çıkış" sayılır.
+HareketTipi hareketTipiCoz(Object? ad) => HareketTipi.values
+    .firstWhere((t) => t.name == ad, orElse: () => HareketTipi.cikis);
 
 /// Seri numaralı bir cihazın şu anki durumu.
 enum CihazDurumu { depoda, kullanimda, cikti }
@@ -267,7 +272,7 @@ class StokHareketi {
         urunId: m['urun_id'] as String,
         depoId: m['depo_id'] as String,
         hedefDepoId: m['hedef_depo_id'] as String?,
-        tip: HareketTipi.values.firstWhere((t) => t.name == m['tip']),
+        tip: hareketTipiCoz(m['tip']),
         miktar: m['miktar'] as int,
         kullaniciId: m['kullanici_id'] as String,
         tarih: _epochToDate(m['tarih'] as int),

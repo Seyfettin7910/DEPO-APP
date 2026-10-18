@@ -121,7 +121,11 @@ class GuncellemeServisi {
     _calisiyor = true;
     try {
       final (enSon, enDusuk) = await _surumler();
-      final zorunlu = enDusuk != null && dahaYeni(enDusuk, mevcutSurum);
+      // Telefonda, gereken sürümün APK'sı henüz yayınlanmadıysa zorlamayı
+      // beklet (yoksa eski APK'yı tekrar tekrar kurmaya çalışır).
+      final zorunlu = enDusuk != null &&
+          dahaYeni(enDusuk, mevcutSurum) &&
+          (kIsWeb || enSon == null || !dahaYeni(enDusuk, enSon));
       final yeni = enSon != null && dahaYeni(enSon, mevcutSurum);
       if ((!yeni && !zorunlu) || !context.mounted) return;
       final hedef = (yeni ? enSon : enDusuk)!;

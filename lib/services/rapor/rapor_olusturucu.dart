@@ -44,6 +44,7 @@ class RaporOlusturucu {
     'transfer': 'Transfer',
     'kullanim': 'Kullanım',
     'iade': 'İade',
+    'silme': 'Silme',
   };
 
   static String _gunMs(Object? ms) => ms == null

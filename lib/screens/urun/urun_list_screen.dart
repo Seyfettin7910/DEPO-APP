@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../database/models.dart';
 import '../../providers/app_providers.dart';
 import 'urun_form_dialog.dart';
+import '../../widgets/silme_islemleri.dart';
 
 /// Ürünler (modeller), kategoriye göre gruplu; her başlıkta kategori toplamı,
 /// her satırda o modelin tüm depolardaki toplam adedi görünür.
@@ -82,6 +83,20 @@ class UrunListScreen extends ConsumerWidget {
                       ],
                     ),
                     onTap: () => urunFormDialog(context, ref, mevcut: urun),
+                    onLongPress: () async {
+                      final secim = await secenekMenusu(context,
+                          baslik: urun.ad,
+                          secenekler: const [
+                            ('duzenle', Icons.edit_outlined, 'Düzenle'),
+                            ('sil', Icons.delete_outline, 'Ürünü sil'),
+                          ]);
+                      if (!context.mounted) return;
+                      if (secim == 'duzenle') {
+                        urunFormDialog(context, ref, mevcut: urun);
+                      } else if (secim == 'sil') {
+                        await urunSilAkisi(context, ref, urun);
+                      }
+                    },
                   ),
               ],
             ],

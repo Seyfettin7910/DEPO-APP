@@ -9,6 +9,7 @@ import '../cihaz/cihaz_detay_screen.dart';
 import '../cihaz/toplu_giris_screen.dart';
 import '../cihaz/toplu_transfer_screen.dart';
 import '../rapor/sayim_screen.dart';
+import '../../widgets/silme_islemleri.dart';
 
 /// Bir deponun detayı: "Stok" sekmesinde ürünlerin güncel adedi,
 /// "Hareketler" sekmesinde giren/çıkan her işlem görünür.
@@ -240,6 +241,7 @@ class _CihazListesiState extends ConsumerState<_CihazListesi> {
                                   CihazDetayScreen(cihazId: b.cihaz.id),
                             ),
                           ),
+                          onLongPress: () => _cihazMenusu(context, ref, b),
                         );
                       },
                     ),
@@ -364,6 +366,8 @@ class _HareketListesi extends ConsumerWidget {
 
   IconData _ikon(HareketSatiri h) {
     switch (h.tip) {
+      case HareketTipi.silme:
+        return Icons.delete_outline;
       case HareketTipi.girisi:
         return Icons.arrow_downward;
       case HareketTipi.cikis:
@@ -379,6 +383,8 @@ class _HareketListesi extends ConsumerWidget {
 
   String _etiket(HareketSatiri h) {
     switch (h.tip) {
+      case HareketTipi.silme:
+        return 'Silindi';
       case HareketTipi.girisi:
         return 'Giriş';
       case HareketTipi.cikis:
@@ -394,5 +400,24 @@ class _HareketListesi extends ConsumerWidget {
         }
         return 'Sahada kullanıldı: ${h.aracPlaka ?? h.kullanimYeri ?? '-'}';
     }
+  }
+}
+
+
+/// Seri numarası basılı tutulunca: Aç / Sil.
+Future<void> _cihazMenusu(
+    BuildContext context, WidgetRef ref, CihazBilgi b) async {
+  final secim = await secenekMenusu(context,
+      baslik: '${b.urunAdi}\nSN: ${b.cihaz.seriNo}',
+      secenekler: const [
+        ('ac', Icons.open_in_new, 'Cihaz kartını aç'),
+        ('sil', Icons.delete_outline, 'Cihazı sil'),
+      ]);
+  if (!context.mounted) return;
+  if (secim == 'ac') {
+    Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => CihazDetayScreen(cihazId: b.cihaz.id)));
+  } else if (secim == 'sil') {
+    await cihazSilAkisi(context, ref, b);
   }
 }

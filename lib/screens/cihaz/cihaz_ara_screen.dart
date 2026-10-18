@@ -6,6 +6,8 @@ import '../../providers/app_providers.dart';
 import '../../services/ses_servisi.dart';
 import '../../widgets/barkod_okuyucu_sayfasi.dart';
 import 'cihaz_detay_screen.dart';
+import '../../widgets/silme_islemleri.dart';
+import '../urun/urun_form_dialog.dart';
 
 /// Seri numarası (veya model, depo, araç/yer) yazarak ya da okutarak arama.
 /// Sonuçta cihazın hangi modele ait olduğu ve şu an hangi depoda / hangi
@@ -134,6 +136,21 @@ class _Sonuclar extends ConsumerWidget {
                 MaterialPageRoute(
                     builder: (_) => CihazDetayScreen(cihazId: b.cihaz.id)),
               ),
+              onLongPress: () async {
+                final secim = await secenekMenusu(context,
+                    baslik: '${b.urunAdi}\nSN: ${b.cihaz.seriNo}',
+                    secenekler: const [
+                      ('ac', Icons.open_in_new, 'Cihaz kartını aç'),
+                      ('sil', Icons.delete_outline, 'Cihazı sil'),
+                    ]);
+                if (!context.mounted) return;
+                if (secim == 'ac') {
+                  Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => CihazDetayScreen(cihazId: b.cihaz.id)));
+                } else if (secim == 'sil') {
+                  await cihazSilAkisi(context, ref, b);
+                }
+              },
             );
           },
         );
@@ -182,6 +199,20 @@ class _ModelAdetleri extends ConsumerWidget {
               '${toplamlar[u.id] ?? 0}',
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
             ),
+            onLongPress: () async {
+              final secim = await secenekMenusu(context,
+                  baslik: u.ad,
+                  secenekler: const [
+                    ('duzenle', Icons.edit_outlined, 'Düzenle'),
+                    ('sil', Icons.delete_outline, 'Ürünü sil'),
+                  ]);
+              if (!context.mounted) return;
+              if (secim == 'duzenle') {
+                urunFormDialog(context, ref, mevcut: u);
+              } else if (secim == 'sil') {
+                await urunSilAkisi(context, ref, u);
+              }
+            },
           ),
       ],
     );
