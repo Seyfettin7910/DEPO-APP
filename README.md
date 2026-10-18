@@ -5,6 +5,13 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.19.0 – Bildirimler
+- 12 bildirim türü: kritik stok / tükendi, yeni arıza, servis gecikmesi, garanti bitiyor, araca / depoya cihaz geldi, depoya giriş, hurda ve silme, servisten dönüş, hatalı şifre denemeleri, yeni IP'den giriş, gönderilmemiş kayıtlar, günlük özet.
+- Android: uygulama kapalıyken de ~15 dakikada bir kontrol edilir (Firebase gerekmez). Bildirim çubuğunda yeni logo simgesi.
+- Uygulama içinde zil simgesi (Depolar ve Okut ekranı): okunmamış sayısı, bildirim listesi, ayarlar (tür seçimi, gecikme / garanti gün eşiği, izlenen depo-araçlar, özet saati, test bildirimi, pil kısıtlamasını kaldırma).
+- Kendi yaptığınız işlemler için bildirim gelmez. Hatalı şifre ve yeni IP bildirimleri varsayılan kapalı (yönetici açar).
+- 5 dakikalık kilit artık yalnızca ekranı kilitler (yine şifre ister); sunucu oturumu açık kalır ki arka planda kontrol sürebilsin. Tam çıkış için "Çıkış".
+
 ## 1.18.1
 - Yeni logo (tarama çerçevesinde depo): Android simgesi (Android 8+ uyarlanabilir, Android 13+ temalı simge), web sekme simgesi, iPhone "Ana ekrana ekle" simgesi, açılış ve giriş ekranı.
 
