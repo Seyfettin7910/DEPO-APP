@@ -19,5 +19,13 @@ jobs:
       - run: flutter create --platforms=web .
       - run: flutter pub get
       - name: Analiz (yalnızca hatalar durdurur)
-        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+        run: |
+          set +e
+          flutter analyze --no-fatal-infos --no-fatal-warnings > analiz.txt 2>&1
+          durum=$?
+          cat analiz.txt
+          # Hataları tek bir uyarı notu olarak da yaz (Actions özetinde görünür)
+          hatalar=$(grep -E "^\s*error " analiz.txt | head -60 | sed ':a;N;$!ba;s/\n/%0A/g')
+          if [ -n "$hatalar" ]; then echo "::error title=Analiz hataları::$hatalar"; fi
+          exit $durum
       - run: flutter build web --release
