@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -19,8 +20,14 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen>
     with WidgetsBindingObserver {
-  // Açılışta seri no okutma ekranı gelir (en sık yapılan iş).
-  int _index = 2;
+  // Açılış ekranı: telefonda (uygulama veya iPhone/Android tarayıcısı)
+  // seri no okutma; bilgisayar tarayıcısında Depolar.
+  int _index = _bilgisayarTarayicisi ? 0 : 2;
+
+  static bool get _bilgisayarTarayicisi =>
+      kIsWeb &&
+      defaultTargetPlatform != TargetPlatform.android &&
+      defaultTargetPlatform != TargetPlatform.iOS;
 
   static const _screens = [
     DepoListScreen(),

@@ -5,6 +5,9 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.15.3
+- Bilgisayar tarayıcısında açılış ekranı Depolar; telefonda (APK veya telefon tarayıcısı) Okut.
+
 ## 1.15.2
 - "Tarama" sekmesinin adı **Okut** oldu ve uygulama açılınca doğrudan bu ekran gelir.
 
