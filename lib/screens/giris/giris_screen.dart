@@ -182,6 +182,17 @@ class _GirisScreenState extends State<GirisScreen> {
                     textAlign: TextAlign.center,
                     style: const TextStyle(fontSize: 12),
                   ),
+                  const SizedBox(height: 28),
+                  Text(
+                    'Developed by Seyfettin AYDIN',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12,
+                      letterSpacing: 0.5,
+                      fontStyle: FontStyle.italic,
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
+                  ),
                 ],
               ),
             ),
