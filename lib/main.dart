@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'database/platform/db_fabrika.dart';
 
+import 'services/oturum_kilidi.dart';
 import 'services/supabase_service.dart';
 import 'screens/giris/auth_gate.dart';
 
@@ -41,6 +42,12 @@ class DepoApp extends StatelessWidget {
       theme: ThemeData(
         colorSchemeSeed: const Color(0xFF2E6F40),
         useMaterial3: true,
+      ),
+      // Her dokunuş "kullanıcı aktif" sayılır (5 dk hareketsizlik kilidi).
+      builder: (context, child) => Listener(
+        behavior: HitTestBehavior.translucent,
+        onPointerDown: (_) => OturumKilidi.instance.etkinlik(),
+        child: child,
       ),
       home: const BaslangicEkrani(),
     );
@@ -81,6 +88,8 @@ class _BaslangicEkraniState extends State<BaslangicEkrani> {
         onTimeout: () => throw TimeoutException(
             'Sunucu bağlantısı hazırlanırken 20 sn içinde yanıt gelmedi'),
       );
+
+      await OturumKilidi.instance.baslat();
 
       if (mounted) setState(() => _hazir = true);
     } catch (e, st) {

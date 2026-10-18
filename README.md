@@ -5,6 +5,14 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.9.0 – Otomatik oturum kapatma ve Çıkış düğmesi
+- **5 dakika** dokunma/tuş olmazsa oturum kapanır, giriş ekranı gelir (uygulama arka
+  plandayken veya kapalıyken geçen süre de sayılır). Süre `lib/services/oturum_kilidi.dart`
+  içindeki `sure` değeridir.
+- Alt menünün sonunda **Çıkış** düğmesi var (onay sorar).
+- İnternet yokken de kilitlenir; ancak **tekrar giriş için internet gerekir**.
+  Telefondaki gönderilmemiş değişiklikler silinmez, girişten sonra gönderilir.
+
 ## 1.8.0 – Hedef çerçeveli okuma
 - Tüm kamera ekranlarında ortada yeşil bir hedef çerçeve var; **yalnızca çerçevenin
   içindeki kod okunur**. Etikette seri no barkodunun yanında başka barkod/karekod

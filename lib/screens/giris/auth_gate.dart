@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../providers/app_providers.dart';
+import '../../services/oturum_kilidi.dart';
 import '../../services/supabase_service.dart';
 import '../home_screen.dart';
 import 'giris_screen.dart';
@@ -59,6 +60,12 @@ class _AuthGateState extends ConsumerState<AuthGate> {
 
   @override
   Widget build(BuildContext context) {
-    return _oturum == null ? const GirisScreen() : const HomeScreen();
+    return ListenableBuilder(
+      listenable: OturumKilidi.instance,
+      builder: (context, _) =>
+          (_oturum == null || OturumKilidi.instance.kilitli)
+              ? const GirisScreen()
+              : const HomeScreen(),
+    );
   }
 }

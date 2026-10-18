@@ -3,10 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../providers/app_providers.dart';
+import '../services/oturum_kilidi.dart';
 import '../services/supabase_service.dart';
 
-/// AppBar'da senkron durumunu gösterir; menüden elle senkronize etme ve
-/// çıkış yapma sağlar.
+/// AppBar'da senkron durumunu gösterir; menüden elle senkronize etme sağlar.
+/// (Çıkış, alt menüdeki tek "Çıkış" düğmesindedir.)
 class SyncDurumDugmesi extends ConsumerWidget {
   const SyncDurumDugmesi({super.key});
 
@@ -44,26 +45,6 @@ class SyncDurumDugmesi extends ConsumerWidget {
       onSelected: (v) async {
         if (v == 'sync') {
           ref.read(syncServiceProvider).syncNow();
-        } else if (v == 'cikis') {
-          final onay = await showDialog<bool>(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              title: const Text('Çıkış yap'),
-              content: Text(d.bekleyen > 0
-                  ? '${d.bekleyen} değişiklik henüz sunucuya gönderilmedi. '
-                      'Telefonda kalır, tekrar giriş yapınca gönderilir.'
-                  : 'Oturum kapatılacak.'),
-              actions: [
-                TextButton(
-                    onPressed: () => Navigator.pop(ctx, false),
-                    child: const Text('İptal')),
-                FilledButton(
-                    onPressed: () => Navigator.pop(ctx, true),
-                    child: const Text('Çıkış yap')),
-              ],
-            ),
-          );
-          if (onay == true) await SupabaseService.cikisYap();
         }
       },
       itemBuilder: (ctx) => [
@@ -82,8 +63,32 @@ class SyncDurumDugmesi extends ConsumerWidget {
           ),
         ),
         const PopupMenuItem(value: 'sync', child: Text('Şimdi senkronize et')),
-        const PopupMenuItem(value: 'cikis', child: Text('Çıkış yap')),
       ],
     );
   }
+}
+
+/// Onay sorup oturumu kapatır (internet yokken de çalışır).
+Future<void> cikisYapOnayli(BuildContext context, WidgetRef ref) async {
+  final bekleyen = ref.read(syncDurumProvider).bekleyen;
+  final onay = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      icon: const Icon(Icons.logout),
+      title: const Text('Çıkış yap'),
+      content: Text(bekleyen > 0
+          ? '$bekleyen değişiklik henüz sunucuya gönderilmedi. '
+              'Telefonda kalır, tekrar giriş yapınca gönderilir.'
+          : 'Oturum kapatılacak.'),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('İptal')),
+        FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Çıkış yap')),
+      ],
+    ),
+  );
+  if (onay == true) await OturumKilidi.instance.kilitle();
 }

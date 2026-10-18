@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../services/oturum_kilidi.dart';
 import '../../services/supabase_service.dart';
 
 /// E-posta + şifre ile giriş. Kullanıcılar Supabase panelinden
@@ -70,6 +71,7 @@ class _GirisScreenState extends State<GirisScreen> {
     });
     try {
       await SupabaseService.girisYap(email, sifre);
+      await OturumKilidi.instance.kilidiAc();
       await _emailiHatirla(email);
       // Telefona/tarayıcıya "şifreyi kaydet" teklifini göster.
       TextInput.finishAutofillContext();
@@ -83,7 +85,7 @@ class _GirisScreenState extends State<GirisScreen> {
               : 'Giriş yapılamadı: ${e.message}');
     } catch (_) {
       setState(() => _hata =
-          'Sunucuya ulaşılamadı. İlk giriş için internet bağlantısı gerekir.');
+          'Sunucuya ulaşılamadı. Giriş için internet bağlantısı gerekir.');
     } finally {
       if (mounted) setState(() => _yukleniyor = false);
     }
@@ -109,7 +111,23 @@ class _GirisScreenState extends State<GirisScreen> {
                       textAlign: TextAlign.center,
                       style:
                           TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
+                  if (OturumKilidi.instance.sonSebep != null)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.secondaryContainer,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.lock_clock_outlined),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text(OturumKilidi.instance.sonSebep!)),
+                        ],
+                      ),
+                    ),
                   AutofillGroup(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -158,8 +176,7 @@ class _GirisScreenState extends State<GirisScreen> {
                   const SizedBox(height: 16),
                   const Text(
                     'Hesap bilgilerini yöneticinizden alın.\n'
-                    'Bir kez giriş yaptıktan sonra uygulama sizi hatırlar; '
-                    'yalnızca "Çıkış yap" derseniz tekrar sorar.',
+                    'Güvenlik için 5 dakika işlem yapılmazsa oturum kapanır.',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 12),
                   ),
