@@ -5,8 +5,18 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
-## 1.14.1
+## 1.14.1 – Otomatik güncelleme
 - Giriş ekranında "Developed by Seyfettin AYDIN".
+- **Telefon:** yeni sürüm Wi-Fi'deyken arka planda indirilir, sonra "Güncelleme hazır →
+  Şimdi kur" çıkar (veriler korunur). Mobil veride indirmeden önce sorulur. İlk seferde
+  Android "bu kaynaktan yüklemeye izin ver" ister. Kurulum Android PackageInstaller ile
+  yapılır (MainActivity.kt); Android 12+ cihazlarda sonraki güncellemeler, üreticinin izin
+  verdiği telefonlarda onay sormadan kurulabilir.
+- **Web:** açılışta yeni sürüm varsa sayfa kendiliğinden yenilenir (aynı sürüm için bir
+  kez; olmazsa "Yenile" sorulur).
+- **Zorunlu güncelleme:** repodaki `min_surum.txt` değerinin altındaki sürümler
+  "Güncelleme gerekli" ekranında kalır. Sunucuya yeni sütun eklenen sürümlerde bu
+  değer yükseltilir.
 
 ## 1.14.0 – İl / ilçe / mahalle (köy)
 > **Önce Supabase'de `supabase_guncelleme_1_14_0.sql` çalıştırılmalı.**

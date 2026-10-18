@@ -2,6 +2,8 @@
     <!-- Barkod tarama için kamera izni -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Uygulama içi güncelleme: indirilen yeni sürümü kurabilmek için -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- Sahada kullanım / montaj anındaki konum (yalnızca o an, bir kez) -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
@@ -39,5 +41,9 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- Güncelleme kurulum sonucunu alır (MainActivity.kt) -->
+        <receiver
+            android:name=".KurulumAlici"
+            android:exported="false" />
     </application>
 </manifest>

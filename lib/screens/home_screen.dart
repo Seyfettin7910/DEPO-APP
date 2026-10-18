@@ -38,7 +38,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     // Yeni sürüm kontrolü: açılıştan kısa süre sonra ve uygulamaya dönüşte.
     WidgetsBinding.instance.addObserver(this);
     Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) GuncellemeServisi.kontrolEtVeSor(context);
+      if (mounted) GuncellemeServisi.kontrolEt(context, acilis: true);
     });
   }
 
@@ -51,7 +51,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && mounted) {
-      GuncellemeServisi.kontrolEtVeSor(context);
+      GuncellemeServisi.kontrolEt(context);
     }
   }
 
