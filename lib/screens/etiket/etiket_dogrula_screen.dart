@@ -217,7 +217,7 @@ class _EtiketDogrulaScreenState extends ConsumerState<EtiketDogrulaScreen> {
             IconButton(
               icon: const Icon(Icons.flash_on),
               tooltip: 'Flaş',
-              onPressed: () => _kamera!.toggleTorch(),
+              onPressed: () => _kamera.toggleTorch(),
             ),
         ],
       ),
@@ -226,7 +226,7 @@ class _EtiketDogrulaScreenState extends ConsumerState<EtiketDogrulaScreen> {
           if (_kamera != null)
             SizedBox(
               height: (yukseklik * 0.4).clamp(220.0, 380.0),
-              child: HedefliTarayici(controller: _kamera!, onDetect: _okundu),
+              child: HedefliTarayici(controller: _kamera, onDetect: _okundu),
             ),
           Container(
             width: double.infinity,

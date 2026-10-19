@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
+import '../../database/app_database.dart';
 import '../../providers/app_providers.dart';
 import '../../services/etiket/etiket_kodu.dart';
 import '../../services/ses_servisi.dart';
