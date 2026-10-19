@@ -17,6 +17,7 @@ import 'urun/urun_list_screen.dart';
 import 'cihaz/cihaz_ara_screen.dart';
 import 'hareket/barkod_tarama_screen.dart';
 import 'rapor/kullanim_rapor_screen.dart';
+import 'yenilikler_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -54,6 +55,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     WidgetsBinding.instance.addObserver(this);
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted) GuncellemeServisi.kontrolEt(context, acilis: true);
+    });
+    // Güncellemeden sonraki ilk açılışta "Yenilikler" (sürüm notları)
+    Future.delayed(const Duration(milliseconds: 1200), () {
+      if (mounted) yenilikleriGerekirseGoster(context);
     });
 
     // Bildirimler: izin (Android 13+), uygulama kapalıyken arka plan

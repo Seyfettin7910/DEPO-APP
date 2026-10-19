@@ -6,6 +6,8 @@ import '../providers/app_providers.dart';
 import '../services/oturum_kilidi.dart';
 import '../services/supabase_service.dart';
 import '../services/bildirim/web_bildirim.dart';
+import '../services/guncelleme_servisi.dart';
+import '../screens/yenilikler_screen.dart';
 
 /// AppBar'da senkron durumunu gösterir; menüden elle senkronize etme sağlar.
 /// (Çıkış, alt menüdeki tek "Çıkış" düğmesindedir.)
@@ -46,6 +48,9 @@ class SyncDurumDugmesi extends ConsumerWidget {
       onSelected: (v) async {
         if (v == 'sync') {
           ref.read(syncServiceProvider).syncNow();
+        } else if (v == 'yenilikler' && context.mounted) {
+          Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const YeniliklerScreen()));
         }
       },
       itemBuilder: (ctx) => [
@@ -64,6 +69,12 @@ class SyncDurumDugmesi extends ConsumerWidget {
           ),
         ),
         const PopupMenuItem(value: 'sync', child: Text('Şimdi senkronize et')),
+        PopupMenuItem(
+          value: 'yenilikler',
+          child: Text(GuncellemeServisi.mevcutSurum.isEmpty
+              ? 'Yenilikler'
+              : 'Yenilikler (sürüm ${GuncellemeServisi.mevcutSurum})'),
+        ),
       ],
     );
   }
