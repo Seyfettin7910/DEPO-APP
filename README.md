@@ -5,6 +5,14 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.23.0 – Güncelleme altyapısı ve yarım iş koruması
+- Güncelleme penceresi (telefon ve web): "Şimdi güncelle" / "Ertele" (ilk erteleme 10 dk, sonra 30 dk'da bir). Bir işin ortasındayken (sayım, toplu transfer, depoya giriş, sahada kullanım / arıza penceresi) normal güncelleme penceresi o iş bitince gelir. Zorunlu güncellemede pencere kapanmaz; iş önce taslağa yazılır. Uygulama açık kaldıkça 30 dakikada bir denetlenir; bulut menüsünde "Güncellemeleri denetle".
+- Android otomatik kurulum: Wi-Fi'de yeni sürüm önceden arka planda iner; "Şimdi güncelle" deyince (gerekirse indirilip) kendiliğinden kurulur, ikinci bir "Şimdi kur?" sorusu yok. `UPDATE_PACKAGES_WITHOUT_USER_ACTION` izniyle Android 12+ telefonlarda çoğunlukla onay sorulmaz (ilk seferde bir kez sorulabilir; Android 11 ve altı / bazı üreticiler sormaya devam eder). Uygulama kapalıyken indirme biterse "Güncelleme indi · kurmak için dokunun" bildirimi (dokununca kurulur); kurulumdan sonra "Uygulama güncellendi" bildirimi.
+- Yeni sürüm bildirimi (Android, uygulama kapalıyken; arka plan görevi en fazla 3 saatte bir sorar, her sürüm için bir kez; zorunlu güncelleme ayrı metin). Bildirim ayarlarında "Yeni sürüm · her zaman açık" (kapatılamaz).
+- Yarım kalan iş koruması (taslak): sayım, toplu transfer / kullanıma verme / iade, depoya giriş ekranları ile sahada kullanım, depoya geri alma, arıza kaydı, servise gönderme, onarım sonucu ve hurda pencereleri her değişiklikte telefona yazılır. Uygulama kapanır, çöker ya da güncellenirse açılışta "Yarım kalan işler: Devam et / Sil". Ekranlarda geri tuşunda "Taslak olarak sakla / Sil ve çık / Kal". Liste geri yüklenirken yeniden denetlenir (bu arada başka yere giden cihaz atlanır). Taslaklar 7 gün saklanır; bulut menüsünde "Yarım kalan işler". Cihaz kartında yarım kalan pencere için "Devam et" kartı.
+- Yenilikler yeni biçim: kısa maddeler (Yeni / Değişen / Düzeltilen), maddeye dokununca "Nasıl kullanılır?" açıklaması.
+- En düşük sürüm 1.22.0 olarak kaldı (zorunlu değil): eski sürümler zorunlu pencereyle işin ortasında kesilmesin. Supabase değişikliği yok.
+
 ## 1.22.1
 - Depo hareket geçmişinde seri no kopyalama: satırdaki kopyala simgesi veya satıra uzun basma.
 - "Yenilikler" ekranı: güncellemeden sonraki ilk açılışta sürüm notları (bu sürümde önceki özelliklerin özeti de var); bulut simgesinin menüsünden sonradan açılabilir. Notlar: `lib/services/surum_notlari.dart` (her sürümde başa eklenir).

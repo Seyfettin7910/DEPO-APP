@@ -12,6 +12,7 @@ import '../services/bildirim/web_bildirim.dart';
 import '../services/guncelleme_servisi.dart';
 import '../services/supabase_service.dart';
 import '../widgets/sync_durum_dugmesi.dart';
+import '../widgets/yarim_isler.dart';
 import 'depo/depo_list_screen.dart';
 import 'urun/urun_list_screen.dart';
 import 'cihaz/cihaz_ara_screen.dart';
@@ -51,15 +52,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     // Sync servisini başlat (provider okunduğu an .start() tetiklenir).
     Future.microtask(() => ref.read(syncServiceProvider));
 
-    // Yeni sürüm kontrolü: açılıştan kısa süre sonra ve uygulamaya dönüşte.
+    // Açılış sırası: güncellemeden sonraki ilk açılışta "Yenilikler",
+    // sonra yarım kalan işler, sonra yeni sürüm kontrolü. Uygulamaya
+    // dönüşte ve açık kaldıkça 30 dakikada bir sürüm yeniden denetlenir.
     WidgetsBinding.instance.addObserver(this);
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) GuncellemeServisi.kontrolEt(context, acilis: true);
-    });
-    // Güncellemeden sonraki ilk açılışta "Yenilikler" (sürüm notları)
-    Future.delayed(const Duration(milliseconds: 1200), () {
-      if (mounted) yenilikleriGerekirseGoster(context);
-    });
+    unawaited(_acilisSirasi());
+    GuncellemeServisi.baslat();
 
     // Bildirimler: izin (Android 13+), uygulama kapalıyken arka plan
     // kontrolü ve "uygulama açık" işareti (arka plan görevi o sırada durur).
@@ -69,6 +67,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Timer? _onPlanZamanlayici;
+
+  Future<void> _acilisSirasi() async {
+    await Future.delayed(const Duration(milliseconds: 1200));
+    if (!mounted) return;
+    await yenilikleriGerekirseGoster(context);
+    if (!mounted) return;
+    await yarimIsleriGoster(context);
+    if (!mounted) return;
+    await GuncellemeServisi.kontrolEt(acilis: true);
+  }
 
   Future<void> _bildirimleriHazirla() async {
     if (kIsWeb) {
@@ -85,6 +93,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   @override
   void dispose() {
     _onPlanZamanlayici?.cancel();
+    GuncellemeServisi.durdur();
     unawaited(onPlandaIsaretle(false));
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -96,7 +105,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       unawaited(onPlandaIsaretle(true));
       // Arka plan görevi oturumu yenilemiş olabilir.
       unawaited(SupabaseService.oturumuDisktenYenile());
-      GuncellemeServisi.kontrolEt(context);
+      unawaited(GuncellemeServisi.kontrolEt());
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.detached) {
       unawaited(onPlandaIsaretle(false));

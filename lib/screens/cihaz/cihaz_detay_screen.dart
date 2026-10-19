@@ -8,6 +8,7 @@ import '../../database/app_database.dart';
 import '../../database/models.dart';
 import '../../providers/app_providers.dart';
 import '../../services/ses_servisi.dart';
+import '../../services/taslak_servisi.dart';
 import '../../widgets/depo_secici.dart';
 import '../../widgets/alim_bilgisi_alanlari.dart';
 import '../../widgets/iade_sebebi.dart';
@@ -16,6 +17,7 @@ import '../../services/adres_servisi.dart';
 import '../../widgets/silme_islemleri.dart';
 import '../../widgets/servis_islemleri.dart';
 import '../../widgets/etiket_karti.dart';
+import '../../widgets/yarim_isler.dart';
 
 /// Cihazın şu anki konumunu tek satırda anlatır.
 String cihazKonumMetni(CihazBilgi b) {
@@ -68,7 +70,11 @@ IconData cihazDurumIkonu(CihazDurumu d) {
 /// ve cihaz üzerinde transfer / kullanıma verme / çıkış / iade işlemleri.
 class CihazDetayScreen extends ConsumerWidget {
   final String cihazId;
-  const CihazDetayScreen({super.key, required this.cihazId});
+
+  /// Yarım kalan pencere (ör. 'saha') açılışta kendiliğinden açılsın.
+  final String? acilacakTaslak;
+  const CihazDetayScreen(
+      {super.key, required this.cihazId, this.acilacakTaslak});
 
   static final _tarihFormat = DateFormat('dd.MM.yyyy HH:mm');
 
@@ -197,6 +203,11 @@ class CihazDetayScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
+              ),
+              YarimIslemKarti(
+                cihazId: bilgi.cihaz.id,
+                otomatikTur: acilacakTaslak,
+                devamEt: (tur) => _taslaktanDevam(context, ref, tur),
               ),
               ServisKarti(bilgi: bilgi),
               EtiketKarti(bilgi: bilgi),
@@ -392,6 +403,32 @@ class CihazDetayScreen extends ConsumerWidget {
 
   String get _kullanici => 'demo-kullanici';
 
+  /// Yarım kalan pencereyi (taslak bilgileriyle) yeniden açar.
+  Future<void> _taslaktanDevam(
+      BuildContext context, WidgetRef ref, String tur) async {
+    final b = await ref.read(appDatabaseProvider).cihazBilgi(cihazId);
+    if (b == null || !context.mounted) return;
+    switch (tur) {
+      case 'saha':
+        await _sahada(context, ref, b);
+      case 'geri_al':
+        await _iade(context, ref, b);
+      case 'ariza':
+        await arizaliIsaretleAkisi(context, ref, b);
+      case 'servis_gonder':
+        await servisGonderAkisi(context, ref, b);
+      case 'servis_sonuc':
+        final kayitlar = await ref
+            .read(appDatabaseProvider)
+            .cihazServisKayitlari(cihazId);
+        if (!context.mounted) return;
+        await servisSonucuAkisi(
+            context, ref, b, kayitlar.where((k) => k.acik).firstOrNull);
+      case 'hurda':
+        await hurdayaAyirAkisi(context, ref, b);
+    }
+  }
+
   Future<void> _transfer(
           BuildContext context, WidgetRef ref, CihazBilgi bilgi) =>
       _hedefeTasi(context, ref, bilgi, HareketTipi.transfer);
@@ -551,22 +588,43 @@ class CihazDetayScreen extends ConsumerWidget {
   /// araç stoğundan düşer, kullanım yeri kaydedilir ve kullanım raporuna girer.
   Future<void> _sahada(
       BuildContext context, WidgetRef ref, CihazBilgi bilgi) async {
-    final yerCtrl = TextEditingController();
-    final notCtrl = TextEditingController();
+    final taslak = await PencereTaslagi.ac('saha', bilgi.cihaz.id,
+        baslik: 'Sahada kullanıldı · SN ${bilgi.cihaz.seriNo}');
+    if (!context.mounted) {
+      taslak.birak();
+      return;
+    }
+    final yerCtrl = TextEditingController(text: taslak.deger<String>('yer'));
+    final notCtrl = TextEditingController(text: taslak.deger<String>('not'));
     String? hata;
     // Konum, pencere açılır açılmaz arka planda okunmaya başlar.
     final konumIstegi = KonumServisi.konumAl();
-    var konumKaydet = true;
-    final ilCtrl = TextEditingController();
-    final ilceCtrl = TextEditingController();
-    final mahalleCtrl = TextEditingController();
+    var konumKaydet = taslak.deger<bool>('konum') ?? true;
+    final ilCtrl = TextEditingController(text: taslak.deger<String>('il'));
+    final ilceCtrl = TextEditingController(text: taslak.deger<String>('ilce'));
+    final mahalleCtrl =
+        TextEditingController(text: taslak.deger<String>('mahalle'));
     var adresDurumu = 'Konum bekleniyor...';
     var adresIstendi = false;
+    void taslakYaz() => taslak.yaz({
+          'yer': yerCtrl.text,
+          'not': notCtrl.text,
+          'il': ilCtrl.text,
+          'ilce': ilceCtrl.text,
+          'mahalle': mahalleCtrl.text,
+          'konum': konumKaydet,
+        },
+            ozet: yerCtrl.text.trim(),
+            bos: yerCtrl.text.trim().isEmpty && notCtrl.text.trim().isEmpty);
+    for (final c in [yerCtrl, notCtrl, ilCtrl, ilceCtrl, mahalleCtrl]) {
+      c.addListener(taslakYaz);
+    }
 
     final onay = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setState) {
+          taslakYaz();
           // Konum gelince adresi (il/ilçe/mahalle) bir kez sor ve boş alanları doldur.
           if (!adresIstendi) {
             adresIstendi = true;
@@ -603,6 +661,7 @@ class CihazDetayScreen extends ConsumerWidget {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (taslak.geriYuklendi) const GeriYuklendiNotu(),
               Text('${bilgi.urunAdi}\nSN: ${bilgi.cihaz.seriNo}\n'
                   '${bilgi.depoAdi ?? '-'} stoğundan düşülecek.'),
               TextField(
@@ -716,6 +775,7 @@ class CihazDetayScreen extends ConsumerWidget {
         },
       ),
     );
+    await taslak.kapat();
     if (onay != true || !context.mounted) return;
 
     String? bosIseNull(TextEditingController c) =>
@@ -901,16 +961,33 @@ class CihazDetayScreen extends ConsumerWidget {
     final sirali = List<Depo>.of(depolar)
       ..sort((a, b) => (a.arac ? 1 : 0).compareTo(b.arac ? 1 : 0));
     final sabitler = sirali.where((d) => !d.arac).toList();
-    String? hedef = sirali.first.id;
-    String? sebep;
-    String? arizaKarari;
+    final taslak = await PencereTaslagi.ac('geri_al', bilgi.cihaz.id,
+        baslik: 'Depoya geri al · SN ${bilgi.cihaz.seriNo}');
+    if (!context.mounted) {
+      taslak.birak();
+      return;
+    }
+    String? hedef = taslak.deger<String>('hedef') ?? sirali.first.id;
+    String? sebep = taslak.deger<String>('sebep');
+    String? arizaKarari = taslak.deger<String>('arizaKarari');
     String? hata;
-    final notCtrl = TextEditingController();
+    final notCtrl = TextEditingController(text: taslak.deger<String>('not'));
+    void taslakYaz() => taslak.yaz(
+        {
+          'hedef': hedef,
+          'sebep': sebep,
+          'arizaKarari': arizaKarari,
+          'not': notCtrl.text,
+        },
+        ozet: sebep ?? '',
+        bos: sebep == null && notCtrl.text.trim().isEmpty);
+    notCtrl.addListener(taslakYaz);
 
     final onay = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setState) {
+          taslakYaz();
           // Arızalı ve hurda cihazlar araca alınmaz; sabit depoya girer.
           final yalnizDepo = (sebep == 'Arıza' || sebep == omruDolduSebebi) &&
               sabitler.isNotEmpty;
@@ -925,6 +1002,7 @@ class CihazDetayScreen extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (taslak.geriYuklendi) const GeriYuklendiNotu(),
                 Text(
                   '${bilgi.urunAdi} · SN: ${bilgi.cihaz.seriNo}'
                   '${bilgi.cihaz.kullanimYeri == null ? '' : '\nKullanım yeri: ${bilgi.cihaz.kullanimYeri}'}',
@@ -1000,6 +1078,7 @@ class CihazDetayScreen extends ConsumerWidget {
         },
       ),
     );
+    await taslak.kapat();
     if (onay != true || hedef == null || !context.mounted) return;
 
     final db = ref.read(appDatabaseProvider);

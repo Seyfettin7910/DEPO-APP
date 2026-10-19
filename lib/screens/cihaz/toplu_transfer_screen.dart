@@ -6,6 +6,7 @@ import '../../database/app_database.dart';
 import '../../database/models.dart';
 import '../../providers/app_providers.dart';
 import '../../services/ses_servisi.dart';
+import '../../services/taslak_servisi.dart';
 import '../../widgets/depo_secici.dart';
 import '../../widgets/kod_yardimci.dart';
 import 'cihaz_detay_screen.dart';
@@ -28,14 +29,19 @@ class TopluTransferScreen extends ConsumerStatefulWidget {
     this.tip = HareketTipi.transfer,
     this.onceHedefDepoId,
     this.onceSeriNolari = const [],
+    this.taslaktan = false,
   });
+
+  /// Yarım kalan listeye devam etmek için açıldı (soru sorulmaz).
+  final bool taslaktan;
 
   @override
   ConsumerState<TopluTransferScreen> createState() =>
       _TopluTransferScreenState();
 }
 
-class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen> {
+class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen>
+    with YarimIsKorumasi<TopluTransferScreen> {
   final _seriCtrl = TextEditingController();
   final _notCtrl = TextEditingController();
   final _liste = <CihazBilgi>[];
@@ -69,6 +75,79 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen> {
     if (_hedefId != null && _bekleyen.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _bekleyenleriEkle());
     }
+    taslakKorumasiniBaslat(dinlenecekler: [_notCtrl]);
+  }
+
+  String get _baslik => _kullanim
+      ? 'Toplu Kullanıma Ver'
+      : (_iade ? 'Toplu İade' : 'Toplu Transfer');
+
+  @override
+  String get taslakTuru => _kullanim
+      ? 'toplu_kullanim'
+      : (_iade ? 'toplu_iade' : 'toplu_transfer');
+
+  @override
+  bool get taslaktanAcildi => widget.taslaktan;
+
+  @override
+  Taslak? taslakOlustur() {
+    if (_liste.isEmpty && _bekleyen.isEmpty) return null;
+    final hedef = (ref.read(depolarStreamProvider).value ?? <Depo>[])
+        .where((d) => d.id == _hedefId)
+        .firstOrNull;
+    return Taslak(
+      tur: taslakTuru,
+      baslik: '$_baslik${hedef == null ? '' : ' · ${hedef.ad}'}',
+      ozet: '${_liste.length + _bekleyen.length} cihaz',
+      veri: {
+        'hedefId': _hedefId,
+        'seriler': [for (final b in _liste) b.cihaz.seriNo],
+        'bekleyen': List.of(_bekleyen),
+        'sebep': _sebep,
+        'arizaKarari': _arizaKarari,
+        'not': _notCtrl.text,
+      },
+    );
+  }
+
+  @override
+  Future<void> taslagiYukle(Taslak t) async {
+    final v = t.veri;
+    final seriler = [for (final s in (v['seriler'] as List? ?? [])) '$s'];
+    setState(() {
+      _hedefId = v['hedefId'] as String? ?? _hedefId;
+      _sebep = v['sebep'] as String?;
+      _arizaKarari = v['arizaKarari'] as String?;
+      for (final s in (v['bekleyen'] as List? ?? [])) {
+        if (!_bekleyen.contains('$s')) _bekleyen.add('$s');
+      }
+    });
+    _notCtrl.text = v['not'] as String? ?? '';
+    if (_hedefId == null) return;
+    // Liste yeniden denetlenir: bu arada başka yere giden cihaz atlanır.
+    final eklenecek = <CihazBilgi>[];
+    final atlanan = <String>[];
+    for (final s in seriler) {
+      if (eklenecek.any((b) => b.cihaz.seriNo == s)) continue;
+      final (bilgi, hata) = await _kontrol(s);
+      if (bilgi != null) {
+        eklenecek.add(bilgi);
+      } else {
+        atlanan.add(hata!);
+      }
+    }
+    if (!mounted) return;
+    setState(() => _liste.addAll(eklenecek));
+    if (_bekleyen.isNotEmpty) await _bekleyenleriEkle();
+    if (atlanan.isNotEmpty && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('${atlanan.length} cihaz artık eklenemiyor, atlandı:\n'
+            '${atlanan.take(4).join('\n')}'),
+        backgroundColor: Colors.orange.shade800,
+        duration: const Duration(seconds: 6),
+      ));
+    }
   }
 
   Future<void> _bekleyenleriEkle() async {
@@ -85,6 +164,7 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen> {
 
   @override
   void dispose() {
+    taslakKorumasiniBitir(dinlenecekler: [_notCtrl]);
     _seriCtrl.dispose();
     _notCtrl.dispose();
     _kamera?.dispose();
@@ -289,6 +369,7 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen> {
             arizaKarari: _iade && _sebep == 'Arıza' ? _arizaKarari : null,
           );
       SesServisi.basari();
+      await taslakTamamlandi();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(_kullanim
@@ -313,11 +394,10 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen> {
       hedefler.sort((a, b) => (a.arac ? 0 : 1).compareTo(b.arac ? 0 : 1));
     }
 
-    return Scaffold(
+    return yarimIsKapsayici(
+        child: Scaffold(
       appBar: AppBar(
-        title: Text(_kullanim
-            ? 'Toplu Kullanıma Ver'
-            : (_iade ? 'Toplu İade' : 'Toplu Transfer')),
+        title: Text(_baslik),
         actions: [
           IconButton(
             icon: Icon(_kameraAcik ? Icons.videocam_off : Icons.videocam),
@@ -487,6 +567,6 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen> {
           ),
         ],
       ),
-    );
+    ));
   }
 }

@@ -6,6 +6,7 @@ import '../database/app_database.dart';
 import '../database/models.dart';
 import '../providers/app_providers.dart';
 import '../services/ses_servisi.dart';
+import '../services/taslak_servisi.dart';
 import 'alim_bilgisi_alanlari.dart';
 import 'barkod_okuyucu_sayfasi.dart';
 import 'depo_secici.dart';
@@ -159,13 +160,25 @@ Widget _hataMetni(BuildContext ctx, String? hata) => hata == null
 
 Future<void> arizaliIsaretleAkisi(
     BuildContext context, WidgetRef ref, CihazBilgi b) async {
-  String? karar;
+  final taslak = await PencereTaslagi.ac('ariza', b.cihaz.id,
+      baslik: 'Arıza kaydı · SN ${b.cihaz.seriNo}');
+  if (!context.mounted) {
+    taslak.birak();
+    return;
+  }
+  String? karar = taslak.deger<String>('karar');
   String? hata;
-  final notCtrl = TextEditingController();
+  final notCtrl = TextEditingController(text: taslak.deger<String>('not'));
+  void taslakYaz() => taslak.yaz({'karar': karar, 'not': notCtrl.text},
+      ozet: notCtrl.text.trim(),
+      bos: karar == null && notCtrl.text.trim().isEmpty);
+  notCtrl.addListener(taslakYaz);
   final onay = await showDialog<bool>(
     context: context,
     builder: (ctx) => StatefulBuilder(
-      builder: (ctx, setState) => AlertDialog(
+      builder: (ctx, setState) {
+        taslakYaz();
+        return AlertDialog(
         scrollable: true,
         icon: Icon(Icons.build_outlined, color: Colors.orange.shade800),
         title: const Text('Arızalı olarak işaretle'),
@@ -173,6 +186,7 @@ Future<void> arizaliIsaretleAkisi(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (taslak.geriYuklendi) const GeriYuklendiNotu(),
             Text('${b.urunAdi} · SN: ${b.cihaz.seriNo}\n'
                 '${b.depoAdi ?? '-'} içinde'),
             ArizaKarariSecici(
@@ -207,9 +221,11 @@ Future<void> arizaliIsaretleAkisi(
             child: const Text('Kaydet'),
           ),
         ],
-      ),
+      );
+      },
     ),
   );
+  await taslak.kapat();
   if (onay != true || !context.mounted) return;
   await _calistir(
     context,
@@ -234,26 +250,48 @@ Future<void> servisGonderAkisi(
   if (!context.mounted) return;
 
   final c = b.cihaz;
+  final taslak = await PencereTaslagi.ac('servis_gonder', c.id,
+      baslik: 'Servise gönder · SN ${c.seriNo}');
+  if (!context.mounted) {
+    taslak.birak();
+    return;
+  }
   final garantiVar = c.garantiBitis != null &&
       !DateUtils.dateOnly(c.garantiBitis!)
           .isBefore(DateUtils.dateOnly(DateTime.now()));
-  var yer = garantiVar ? 'garanti' : 'ic';
-  var tarih = DateTime.now();
-  var firma = garantiVar ? (c.firma ?? '') : '';
+  var yer = taslak.deger<String>('yer') ?? (garantiVar ? 'garanti' : 'ic');
+  var tarih = taslak.tarih('tarih') ?? DateTime.now();
+  var firma =
+      taslak.deger<String>('firma') ?? (garantiVar ? (c.firma ?? '') : '');
   String? hata;
-  final notCtrl = TextEditingController();
+  final notCtrl = TextEditingController(text: taslak.deger<String>('not'));
   final degisim = c.servisDurumu == ServisDurumu.degisimGerekli;
+  final ilkFirma = firma;
+  void taslakYaz() => taslak.yaz({
+        'yer': yer,
+        'tarih': tarih.millisecondsSinceEpoch,
+        'firma': firma,
+        'not': notCtrl.text,
+      },
+          ozet: firma.trim(),
+          bos: !taslak.geriYuklendi &&
+              firma == ilkFirma &&
+              notCtrl.text.trim().isEmpty);
+  notCtrl.addListener(taslakYaz);
 
   final onay = await showDialog<bool>(
     context: context,
     builder: (ctx) => StatefulBuilder(
-      builder: (ctx, setState) => AlertDialog(
+      builder: (ctx, setState) {
+        taslakYaz();
+        return AlertDialog(
         scrollable: true,
         title: Text(degisim ? 'Değişim için gönder' : 'Onarıma gönder'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (taslak.geriYuklendi) const GeriYuklendiNotu(),
             Text('${b.urunAdi} · SN: ${c.seriNo}'),
             const SizedBox(height: 8),
             Row(
@@ -318,7 +356,10 @@ Future<void> servisGonderAkisi(
                     .where((o) => o.toLowerCase().contains(q))
                     .take(20);
               },
-              onSelected: (v) => firma = v,
+              onSelected: (v) {
+                firma = v;
+                taslakYaz();
+              },
               fieldViewBuilder: (context, ctrl, odak, gonder) => TextField(
                 controller: ctrl,
                 focusNode: odak,
@@ -331,6 +372,7 @@ Future<void> servisGonderAkisi(
                 ),
                 onChanged: (v) {
                   firma = v;
+                  taslakYaz();
                   if (hata != null) setState(() => hata = null);
                 },
               ),
@@ -368,9 +410,11 @@ Future<void> servisGonderAkisi(
             child: Text(yer == 'garanti' ? 'Gönderildi' : 'Onarıma al'),
           ),
         ],
-      ),
+      );
+      },
     ),
   );
+  await taslak.kapat();
   if (onay != true || !context.mounted) return;
   await _calistir(
     context,
@@ -403,27 +447,51 @@ Future<void> servisSonucuAkisi(BuildContext context, WidgetRef ref,
     return;
   }
   final c = b.cihaz;
-  String? hedef = depolar.any((d) => d.id == c.depoId)
-      ? c.depoId
-      : depolar.first.id;
-  var donus = DateTime.now();
-  String? sonuc;
-  var hurda = true;
+  final taslak = await PencereTaslagi.ac('servis_sonuc', c.id,
+      baslik: 'Onarım sonucu · SN ${c.seriNo}');
+  if (!context.mounted) {
+    taslak.birak();
+    return;
+  }
+  final kayitliHedef = taslak.deger<String>('hedef');
+  String? hedef = kayitliHedef != null && depolar.any((d) => d.id == kayitliHedef)
+      ? kayitliHedef
+      : (depolar.any((d) => d.id == c.depoId) ? c.depoId : depolar.first.id);
+  var donus = taslak.tarih('donus') ?? DateTime.now();
+  String? sonuc = taslak.deger<String>('sonuc');
+  var hurda = taslak.deger<bool>('hurda') ?? true;
   String? hata;
-  final aciklamaCtrl = TextEditingController();
-  final yeniSeriCtrl = TextEditingController();
+  final aciklamaCtrl =
+      TextEditingController(text: taslak.deger<String>('aciklama'));
+  final yeniSeriCtrl =
+      TextEditingController(text: taslak.deger<String>('yeniSeri'));
   final gonderim = kayit?.gonderimTarihi;
+  void taslakYaz() => taslak.yaz({
+        'hedef': hedef,
+        'donus': donus.millisecondsSinceEpoch,
+        'sonuc': sonuc,
+        'hurda': hurda,
+        'aciklama': aciklamaCtrl.text,
+        'yeniSeri': yeniSeriCtrl.text,
+      },
+          ozet: servisSonucAdlari[sonuc] ?? '',
+          bos: sonuc == null && aciklamaCtrl.text.trim().isEmpty);
+  aciklamaCtrl.addListener(taslakYaz);
+  yeniSeriCtrl.addListener(taslakYaz);
 
   final onay = await showDialog<bool>(
     context: context,
     builder: (ctx) => StatefulBuilder(
-      builder: (ctx, setState) => AlertDialog(
+      builder: (ctx, setState) {
+        taslakYaz();
+        return AlertDialog(
         scrollable: true,
         title: const Text('Onarım sonucu'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (taslak.geriYuklendi) const GeriYuklendiNotu(),
             Text('${b.urunAdi} · SN: ${c.seriNo}'),
             if (kayit?.firma != null)
               Text('${onarimYeriAdlari[kayit!.onarimYeri] ?? 'Servis'}: '
@@ -616,9 +684,11 @@ Future<void> servisSonucuAkisi(BuildContext context, WidgetRef ref,
             child: const Text('Kaydet'),
           ),
         ],
-      ),
+      );
+      },
     ),
   );
+  await taslak.kapat();
   if (onay != true || !context.mounted) return;
 
   final mesaj = switch (sonuc) {
@@ -649,13 +719,26 @@ Future<void> servisSonucuAkisi(BuildContext context, WidgetRef ref,
 /// true: hurdaya ayrıldı.
 Future<bool> hurdayaAyirAkisi(
     BuildContext context, WidgetRef ref, CihazBilgi b) async {
-  String? sebep = b.cihaz.arizali ? 'Onarılamaz arıza' : null;
+  final taslak = await PencereTaslagi.ac('hurda', b.cihaz.id,
+      baslik: 'Hurdaya ayır · SN ${b.cihaz.seriNo}');
+  if (!context.mounted) {
+    taslak.birak();
+    return false;
+  }
+  final ilkSebep = b.cihaz.arizali ? 'Onarılamaz arıza' : null;
+  String? sebep = taslak.geriYuklendi ? taslak.deger<String>('sebep') : ilkSebep;
   String? hata;
-  final notCtrl = TextEditingController();
+  final notCtrl = TextEditingController(text: taslak.deger<String>('not'));
+  void taslakYaz() => taslak.yaz({'sebep': sebep, 'not': notCtrl.text},
+      ozet: sebep ?? '',
+      bos: sebep == ilkSebep && notCtrl.text.trim().isEmpty);
+  notCtrl.addListener(taslakYaz);
   final onay = await showDialog<bool>(
     context: context,
     builder: (ctx) => StatefulBuilder(
-      builder: (ctx, setState) => AlertDialog(
+      builder: (ctx, setState) {
+        taslakYaz();
+        return AlertDialog(
         scrollable: true,
         icon: Icon(Icons.recycling, color: Colors.brown.shade600, size: 32),
         title: const Text('Hurdaya ayır'),
@@ -663,6 +746,7 @@ Future<bool> hurdayaAyirAkisi(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (taslak.geriYuklendi) const GeriYuklendiNotu(),
             Text('${b.urunAdi} · SN: ${b.cihaz.seriNo}\n'
                 '${b.depoAdi ?? '-'} stoğundan düşülecek. Kayıt ve geçmişi '
                 'silinmez; raporlarda "Hurda" olarak görünür.'),
@@ -717,9 +801,11 @@ Future<bool> hurdayaAyirAkisi(
             child: const Text('Hurdaya ayır'),
           ),
         ],
-      ),
+      );
+      },
     ),
   );
+  await taslak.kapat();
   if (onay != true || !context.mounted) return false;
   return _calistir(
     context,

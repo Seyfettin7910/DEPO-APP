@@ -228,6 +228,15 @@ class _BildirimAyarlariScreenState
                   style: tema.textTheme.titleSmall
                       ?.copyWith(color: tema.colorScheme.primary)),
             ),
+            if (g.key == 'Güvenlik ve sistem' && sistemBildirimiVar)
+              const SwitchListTile(
+                secondary: Icon(Icons.system_update),
+                title: Text('Yeni sürüm'),
+                subtitle: Text('Yeni sürüm ya da zorunlu güncelleme çıkınca. '
+                    'Her zaman açık, kapatılamaz.'),
+                value: true,
+                onChanged: null,
+              ),
             for (final t in g.value) ...[
               SwitchListTile(
                 secondary: Icon(bildirimIkonu(t), color: bildirimRengi(t)),

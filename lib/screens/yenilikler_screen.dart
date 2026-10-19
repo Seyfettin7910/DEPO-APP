@@ -23,7 +23,17 @@ Future<void> yenilikleriGerekirseGoster(BuildContext context) async {
         title: Text('Sürüm $surum: neler var?'),
         content: SizedBox(
           width: 520,
-          child: SingleChildScrollView(child: _NotIcerigi(not: not)),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (not.bolumler.any((b) => b.maddeler.any((m) => m.detay != null)))
+                  Text('Ayrıntı için oklu maddeye dokunun.',
+                      style: Theme.of(ctx).textTheme.bodySmall),
+                _NotIcerigi(not: not),
+              ],
+            ),
+          ),
         ),
         actions: [
           FilledButton(
@@ -95,19 +105,71 @@ class _NotIcerigi extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                     color: tema.colorScheme.primary)),
           ),
-          for (final m in b.maddeler)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Row(
+          for (final m in b.maddeler) _Madde(madde: m),
+        ],
+      ],
+    );
+  }
+}
+
+/// Tek satırlık madde; açıklaması varsa dokununca açılır.
+class _Madde extends StatefulWidget {
+  const _Madde({required this.madde});
+  final NotMaddesi madde;
+
+  @override
+  State<_Madde> createState() => _MaddeState();
+}
+
+class _MaddeState extends State<_Madde> {
+  bool _acik = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final m = widget.madde;
+    final tema = Theme.of(context);
+    final satir = Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('•  '),
+        Expanded(
+          child: Text.rich(TextSpan(children: [
+            TextSpan(
+                text: '${m.ad}: ',
+                style: const TextStyle(fontWeight: FontWeight.bold)),
+            TextSpan(text: m.metin),
+          ])),
+        ),
+        if (m.detay != null)
+          Icon(_acik ? Icons.expand_less : Icons.expand_more,
+              size: 20, color: tema.colorScheme.primary),
+      ],
+    );
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: m.detay == null
+          ? satir
+          : InkWell(
+              borderRadius: BorderRadius.circular(6),
+              onTap: () => setState(() => _acik = !_acik),
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('•  '),
-                  Expanded(child: Text(m)),
+                  satir,
+                  if (_acik)
+                    Container(
+                      margin: const EdgeInsets.fromLTRB(18, 4, 0, 2),
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: tema.colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text('Nasıl kullanılır? ${m.detay}',
+                          style: tema.textTheme.bodySmall),
+                    ),
                 ],
               ),
             ),
-        ],
-      ],
     );
   }
 }

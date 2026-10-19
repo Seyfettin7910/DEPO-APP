@@ -2,20 +2,23 @@
 
 Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlarına taşınır.
 
-## Konuşulan paket ("yap" bekleniyor; Excel dökümü gelince tek güncelleme)
-- [ ] **Excel'den aktarım** (Kamera biriminin demirbaş dökümü): döküm gelince sütun eşleştirmesi, seri nosu boş satırlar, konum (depo / montajlı), demirbaş sicil no kurum kodu olsun mu kararları.
-  - **Not:** Miktarlı ürünlerin (kablo, adaptör…) **ilk stoğu** elle mi girilecek, Excel'den mi gelecek? Döküm gelince karar verilecek.
-- [ ] **Test verisi temizliği + telefonların otomatik sıfırlanması**: sunucuda "veri sürümü" işareti; değişince cihaz göndermeden kendi kopyasını silip temiz veriyi çeker. Temizlik yalnızca SQL ile (uygulamada silme düğmesi yok). Neyin kalacağı tablosu netleşecek.
-- [ ] **Kilit / parmak izi**: oturum açık kalır (Çıkış yapılmadıkça açılınca doğrudan Okut). Açık sorular: otomatik kilit seçilebilir mi olsun (Kapalı / 5 / 30 dk), hassas işlemlerde (silme, hurda, ayarlar) parmak izi olsun mu.
+## 1.24.0 – Saha işleri (07:00'de başlanacak; ayrı dalda hazırlanır, SQL çalıştırılıp "yayınla" denince yayınlanır)
 - [ ] **Tutanak durumu**: Montaj penceresinde zorunlu seçim (Alındı / Alınacak / Kurum içi kullanım); cihaz kartında güncelleme; Ara ekranında ve Kullanım raporunda "Tutanak" sütunu. Geçmiş kurulumlar "Belirtilmemiş".
 - [ ] **Depolar / Araçlar ayrımı**: Depolar ekranında iki sekme (Depolar | Araçlar); "(SEYYAR DEPO)" yazısı kalkar.
 - [ ] **İsimler**: "Kullanıma ver" → **Araca Yükle**; "Sahada kullanıldı" → **Montaj / Kullanıldı** (durum: "Montaj Yapıldı / Kullanıldı"); rapor: **Kullanım Raporu – Montajı Yapılanlar**. Her yerde tutarlı değişecek.
 - [ ] **Miktarlı (seri nosuz) ürünler**: ürün tanımında takip türü (Seri no / Miktar); birimler: adet, metre, paket, top, kutu. Girişte miktar (fabrika barkodu okutularak ürün seçimi), Araca Yükle / transfer miktarla, stokta ve raporda miktar, kritik stok miktara göre, sayımda miktar girişi.
   - Montaj penceresinde **"Kullanılan malzemeler"** bölümü: deneme süreci için kolay olmalı (isteğe bağlı, açılır bölüm, +/- düğmeleri, araçtaki sarf listesi hazır gelir, zorunlu değil).
+- Yenilikler notu yeni yazım kuralıyla; Supabase SQL; en düşük sürüm 1.24.0.
 
-- [ ] **Yeni sürüm bildirimi**: Android'de arka plan kontrolüyle, her sürüm için bir kez ("Zorunlu güncelleme" metni ayrı); bildirim ayarlarında **kapatılamaz** ("Her zaman açık"). Web'de açıkken yeni sürüm çıkarsa üstte "Yeni sürüm var · Yenile" şeridi.
-- [ ] **Otomatik kurulum**: `UPDATE_PACKAGES_WITHOUT_USER_ACTION` izni (Android 12+ onaysız kurulum; ilk seferde bir kez onay gerekebilir, Android 11 ve altı / bazı üreticiler sormaya devam eder); indirme bitince "Şimdi kur?" sorusu kalkar, kurulum kendiliğinden başlar; uygulama kapalıyken indirme biterse "Güncelleme indi · kurmak için dokun" bildirimi; kurulum sonrası "Güncellendi" bildirimi.
-- **Sürüm kararı:** 4–9. maddeler (tutanak, depolar/araçlar, isimler, miktarlı ürünler, yeni sürüm bildirimi, otomatik kurulum) **1.23.0** olarak tek güncellemede; en düşük sürüm 1.23.0; Yenilikler notu + Supabase SQL.
+## Excel dökümü gelince (ayrı paket)
+- [ ] **Excel'den aktarım** (Kamera biriminin demirbaş dökümü): döküm gelince sütun eşleştirmesi, seri nosu boş satırlar, konum (depo / montajlı), demirbaş sicil no kurum kodu olsun mu kararları.
+  - **Not:** Miktarlı ürünlerin (kablo, adaptör…) **ilk stoğu** elle mi girilecek, Excel'den mi gelecek? Döküm gelince karar verilecek.
+- [ ] **Test verisi temizliği + telefonların otomatik sıfırlanması**: sunucuda "veri sürümü" işareti; değişince cihaz göndermeden kendi kopyasını silip temiz veriyi çeker. Temizlik yalnızca SQL ile (uygulamada silme düğmesi yok). Neyin kalacağı tablosu netleşecek.
+- [ ] **Kilit / parmak izi**: oturum açık kalır (Çıkış yapılmadıkça açılınca doğrudan Okut). Açık sorular: otomatik kilit seçilebilir mi olsun (Kapalı / 5 / 30 dk), hassas işlemlerde (silme, hurda, ayarlar) parmak izi olsun mu.
+
+## Yenilikler yazım kuralı
+- Her madde tek satır ve kısa: önce ekrandaki ad (kalın), sonra ne değişti. Ayrıntı "Nasıl kullanılır?" olarak maddeye dokununca açılır.
+- Başlıklar: Yeni · Değişen · Düzeltilen (boş başlık yazılmaz). Teknik kelime yok; düğme adları ekrandaki gibi.
 
 ## Sırada
 - [ ] **Kullanıcı rolleri ve yetkiler** (Yönetici / Depocu / Saha); silme yalnızca yöneticide, hareket kayıtları kimse tarafından silinemez.

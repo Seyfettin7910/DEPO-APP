@@ -8,6 +8,7 @@ import '../../providers/app_providers.dart';
 import '../../widgets/etiket_secimi.dart';
 import '../etiket/etiket_ayarlari_screen.dart';
 import '../../services/ses_servisi.dart';
+import '../../services/taslak_servisi.dart';
 import '../../widgets/depo_secici.dart';
 import '../../widgets/kod_yardimci.dart';
 import '../../widgets/hedefli_tarayici.dart';
@@ -28,13 +29,18 @@ class TopluGirisScreen extends ConsumerStatefulWidget {
     this.onceSeciliUrunId,
     this.onceSeciliDepoId,
     this.onceSeriNolari = const [],
+    this.taslaktan = false,
   });
+
+  /// Yarım kalan girişe devam etmek için açıldı (soru sorulmaz).
+  final bool taslaktan;
 
   @override
   ConsumerState<TopluGirisScreen> createState() => _TopluGirisScreenState();
 }
 
-class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen> {
+class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen>
+    with YarimIsKorumasi<TopluGirisScreen> {
   final _seriCtrl = TextEditingController();
   final _notCtrl = TextEditingController();
   final _seriler = <String>[];
@@ -72,10 +78,98 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen> {
         if (!_seriler.contains(s)) _seriler.add(s);
       }
     }
+    taslakKorumasiniBaslat(dinlenecekler: [_notCtrl]);
+  }
+
+  /// Taslaktan geri yüklenen etiket tercihi, kayıtlı tercihle ezilmesin.
+  bool _etiketTaslaktan = false;
+
+  static int? _ms(DateTime? t) => t?.millisecondsSinceEpoch;
+  static DateTime? _tarih(Object? v) =>
+      v is num ? DateTime.fromMillisecondsSinceEpoch(v.toInt()) : null;
+
+  @override
+  String get taslakTuru => 'giris';
+
+  @override
+  bool get taslaktanAcildi => widget.taslaktan;
+
+  @override
+  Taslak? taslakOlustur() {
+    if (_seriler.isEmpty) return null;
+    final urun = (ref.read(urunlerStreamProvider).value ?? <Urun>[])
+        .where((u) => u.id == _urunId)
+        .firstOrNull;
+    return Taslak(
+      tur: taslakTuru,
+      baslik: 'Depoya giriş${urun == null ? '' : ' · ${urun.ad}'}',
+      ozet: '${_seriler.length} seri no',
+      veri: {
+        'urunId': _urunId,
+        'depoId': _depoId,
+        'seriler': List.of(_seriler),
+        'seriNosuz': _seriNosuz.toList(),
+        'not': _notCtrl.text,
+        'alim': {
+          'tarih': _ms(_alim.alimTarihi),
+          'firma': _alim.firma,
+          'ihale': _alim.ihale,
+          'garanti': _ms(_alim.garantiBitis),
+        },
+        'kurumKoduId': _etiket.kurumKoduId,
+        'kuyruga': _etiket.kuyruga,
+      },
+    );
+  }
+
+  @override
+  Future<void> taslagiYukle(Taslak t) async {
+    final v = t.veri;
+    final a = (v['alim'] as Map?) ?? const {};
+    setState(() {
+      _urunId = v['urunId'] as String? ?? _urunId;
+      _depoId = v['depoId'] as String? ?? _depoId;
+      _alim = AlimBilgisi(
+        alimTarihi: _tarih(a['tarih']),
+        firma: a['firma'] as String? ?? '',
+        ihale: a['ihale'] as String? ?? '',
+        garantiBitis: _tarih(a['garanti']),
+      );
+      _etiketTaslaktan = true;
+      _etiket = EtiketTercihi(
+        kurumKoduId: v['kurumKoduId'] as String?,
+        kuyruga: v['kuyruga'] as bool? ?? true,
+      );
+    });
+    _notCtrl.text = v['not'] as String? ?? '';
+    final nosuz = {for (final s in (v['seriNosuz'] as List? ?? [])) '$s'};
+    // Liste yeniden denetlenir: bu arada başka biri girdiyse atlanır.
+    final atlanan = <String>[];
+    for (final s in [for (final x in (v['seriler'] as List? ?? [])) '$x']) {
+      final engel = await _engel(s);
+      if (!mounted) return;
+      if (engel == null) {
+        setState(() {
+          _seriler.add(s);
+          if (nosuz.contains(s)) _seriNosuz.add(s);
+        });
+      } else {
+        atlanan.add(engel);
+      }
+    }
+    if (atlanan.isNotEmpty && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('${atlanan.length} seri no artık eklenemiyor, atlandı:\n'
+            '${atlanan.take(4).join('\n')}'),
+        backgroundColor: Colors.orange.shade800,
+        duration: const Duration(seconds: 6),
+      ));
+    }
   }
 
   @override
   void dispose() {
+    taslakKorumasiniBitir(dinlenecekler: [_notCtrl]);
     _seriCtrl.dispose();
     _notCtrl.dispose();
     _kamera?.dispose();
@@ -98,7 +192,7 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen> {
     final kodlar =
         await ref.read(appDatabaseProvider).kurumKodlari(sadeceAktif: true);
     final t = await EtiketTercihi.yukle(kodlar);
-    if (mounted) setState(() => _etiket = t);
+    if (mounted && !_etiketTaslaktan) setState(() => _etiket = t);
   }
 
   Future<void> _etiketDuzenle(List<KurumKodu> kodlar) async {
@@ -364,6 +458,7 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen> {
             seriNosuz: Set.of(_seriNosuz),
           );
       SesServisi.basari();
+      await taslakTamamlandi();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('$adet cihaz depoya alındı'
@@ -382,7 +477,8 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen> {
     final urunler = ref.watch(urunlerStreamProvider).value ?? <Urun>[];
     final depolar = ref.watch(depolarStreamProvider).value ?? <Depo>[];
 
-    return Scaffold(
+    return yarimIsKapsayici(
+        child: Scaffold(
       appBar: AppBar(
         title: const Text('Seri No ile Depoya Giriş'),
       ),
@@ -622,6 +718,6 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen> {
           ),
         ],
       ),
-    );
+    ));
   }
 }

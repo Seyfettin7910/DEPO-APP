@@ -6,6 +6,7 @@ import 'package:intl/date_symbol_data_local.dart';
 
 import 'database/platform/db_fabrika.dart';
 
+import 'services/guncelleme_servisi.dart';
 import 'services/oturum_kilidi.dart';
 import 'services/supabase_service.dart';
 import 'screens/giris/auth_gate.dart';
@@ -40,6 +41,8 @@ class DepoApp extends StatelessWidget {
     return MaterialApp(
       title: 'DEPO OTOMASYON SİSTEMİ',
       debugShowCheckedModeBanner: false,
+      // Güncelleme penceresi hangi ekranda olunursa olsun açılabilsin.
+      navigatorKey: GuncellemeServisi.navigatorKey,
       theme: ThemeData(
         colorSchemeSeed: const Color(0xFF2E6F40),
         useMaterial3: true,

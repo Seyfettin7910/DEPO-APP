@@ -7,6 +7,8 @@
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <!-- Uygulama içi güncelleme: indirilen yeni sürümü kurabilmek için -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- Android 12+: kendi güncellemesini onay sormadan kurabilsin -->
+    <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
     <!-- Sahada kullanım / montaj anındaki konum (yalnızca o an, bir kez) -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
@@ -48,5 +50,21 @@
         <receiver
             android:name=".KurulumAlici"
             android:exported="false" />
+        <!-- Güncelleme indirmesi uygulama kapalıyken biterse bildirim -->
+        <receiver
+            android:name=".IndirmeAlici"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.DOWNLOAD_COMPLETE" />
+            </intent-filter>
+        </receiver>
+        <!-- Güncelleme kurulduktan sonra "Güncellendi" bildirimi -->
+        <receiver
+            android:name=".GuncellendiAlici"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

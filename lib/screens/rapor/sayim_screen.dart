@@ -7,6 +7,7 @@ import '../../database/models.dart';
 import '../../providers/app_providers.dart';
 import '../../services/rapor/rapor_olusturucu.dart';
 import '../../services/ses_servisi.dart';
+import '../../services/taslak_servisi.dart';
 import '../../widgets/depo_secici.dart';
 import '../../widgets/hedefli_tarayici.dart';
 import '../../widgets/kod_yardimci.dart';
@@ -19,15 +20,19 @@ import 'rapor_onizleme_screen.dart';
 ///  - Fazla:   okutuldu ama sistemde burada değil (başka yerde / kayıtsız)
 /// Sayım sistemde hiçbir şeyi değiştirmez; sonunda rapor alınır.
 class SayimScreen extends ConsumerStatefulWidget {
-  const SayimScreen({super.key, this.onceSeciliDepoId});
+  const SayimScreen({super.key, this.onceSeciliDepoId, this.taslaktan = false});
 
   final String? onceSeciliDepoId;
+
+  /// Yarım kalan sayıma devam etmek için açıldı (soru sorulmaz).
+  final bool taslaktan;
 
   @override
   ConsumerState<SayimScreen> createState() => _SayimScreenState();
 }
 
-class _SayimScreenState extends ConsumerState<SayimScreen> {
+class _SayimScreenState extends ConsumerState<SayimScreen>
+    with YarimIsKorumasi<SayimScreen> {
   final _seriCtrl = TextEditingController();
   final _seriOdak = FocusNode();
 
@@ -48,10 +53,55 @@ class _SayimScreenState extends ConsumerState<SayimScreen> {
   void initState() {
     super.initState();
     _depoId = widget.onceSeciliDepoId;
+    taslakKorumasiniBaslat();
+  }
+
+  @override
+  String get taslakTuru => 'sayim';
+
+  @override
+  bool get taslaktanAcildi => widget.taslaktan;
+
+  @override
+  Taslak? taslakOlustur() {
+    if (_depoId == null || _okunanlar.isEmpty) return null;
+    final depo = (ref.read(depolarStreamProvider).value ?? <Depo>[])
+        .where((d) => d.id == _depoId)
+        .firstOrNull;
+    return Taslak(
+      tur: taslakTuru,
+      baslik: 'Sayım · ${depo?.ad ?? '-'}',
+      ozet: '${_okunanlar.length} okutma',
+      veri: {
+        'depoId': _depoId,
+        'baslangic': _baslangic.millisecondsSinceEpoch,
+        'seriler': _okunanlar.keys.toList(),
+      },
+    );
+  }
+
+  @override
+  Future<void> taslagiYukle(Taslak t) async {
+    final db = ref.read(appDatabaseProvider);
+    final seriler = [for (final s in (t.veri['seriler'] as List? ?? [])) '$s'];
+    final yeni = <String, CihazBilgi?>{};
+    for (final s in seriler) {
+      yeni[s] = await db.seriNoIleCihazBilgi(s);
+    }
+    if (!mounted) return;
+    setState(() {
+      _depoId = t.veri['depoId'] as String? ?? _depoId;
+      final b = t.veri['baslangic'];
+      if (b is num) _baslangic = DateTime.fromMillisecondsSinceEpoch(b.toInt());
+      _okunanlar
+        ..clear()
+        ..addAll(yeni);
+    });
   }
 
   @override
   void dispose() {
+    taslakKorumasiniBitir();
     _seriCtrl.dispose();
     _seriOdak.dispose();
     _kamera?.dispose();
@@ -265,7 +315,8 @@ class _SayimScreenState extends ConsumerState<SayimScreen> {
         .reversed
         .toList();
 
-    return DefaultTabController(
+    return yarimIsKapsayici(
+        child: DefaultTabController(
       length: 3,
       child: Scaffold(
         appBar: AppBar(
@@ -415,7 +466,7 @@ class _SayimScreenState extends ConsumerState<SayimScreen> {
           ],
         ),
       ),
-    );
+    ));
   }
 
   Widget _sayac(String etiket, int deger, Color renk) => Expanded(

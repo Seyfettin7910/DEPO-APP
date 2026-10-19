@@ -7,8 +7,10 @@ import 'package:workmanager/workmanager.dart';
 
 import '../../database/app_database.dart';
 import '../../database/platform/db_fabrika.dart';
+import '../guncelleme_servisi.dart';
 import '../supabase_service.dart';
 import '../sync_service.dart';
+import 'bildirim_gosterici.dart';
 import 'bildirim_motoru.dart';
 
 const _gorev = 'depo_bildirim_kontrol';
@@ -38,6 +40,13 @@ void arkaPlanGirisi() {
         return true; // uygulama açık; kontrolü o yapıyor
       }
 
+      // Yeni sürüm bildirimi: kapatılamaz, her sürüm için bir kez.
+      try {
+        await _surumBildirimi().timeout(const Duration(seconds: 30));
+      } catch (e) {
+        debugPrint('Sürüm kontrolü: $e');
+      }
+
       veritabaniFabrikasiniAyarla();
       await SupabaseService.init().timeout(const Duration(seconds: 20));
       if (!SupabaseService.girisYapildi) return true; // çıkış yapılmış
@@ -58,6 +67,28 @@ void arkaPlanGirisi() {
     return true;
   });
 }
+
+Future<void> _surumBildirimi() async {
+  final b = await GuncellemeServisi.arkaPlandaDenetle();
+  if (b == null) return;
+  if (b.zorunlu) {
+    await bildirimGoster(
+      _surumBildirimNo,
+      'Zorunlu güncelleme: sürüm ${b.hedef}',
+      'Bu sürüm artık kullanılamıyor. Uygulamayı açıp "Güncelle"ye dokunun. '
+          'Yarım kalan işleriniz kaybolmaz.',
+    );
+  } else {
+    await bildirimGoster(
+      _surumBildirimNo,
+      'Yeni sürüm var: ${b.hedef}',
+      'Uygulamayı açınca güncelleme penceresi gelir. Wi-Fi\'de kendiliğinden '
+          'iner, "Şimdi güncelle" ile kurulur.',
+    );
+  }
+}
+
+const _surumBildirimNo = 7101;
 
 /// Girişten sonra bir kez çağrılır; görev zaten kayıtlıysa korunur.
 Future<void> arkaPlanBaslat() async {

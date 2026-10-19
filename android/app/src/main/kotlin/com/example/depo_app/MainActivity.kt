@@ -1,6 +1,9 @@
 package com.example.depo_app
 
 import android.app.DownloadManager
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -8,6 +11,7 @@ import android.content.Intent
 import android.content.pm.PackageInstaller
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.os.Environment
 import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
@@ -26,6 +30,26 @@ import java.io.File
  * çubuğunda ilerleme görünür.
  */
 class MainActivity : FlutterActivity() {
+    /** "Güncelleme indi · kurmak için dokun" bildirimiyle açıldı mı? */
+    private var bildirimdenKurulum = false
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        niyetiOku(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        niyetiOku(intent)
+    }
+
+    private fun niyetiOku(niyet: Intent?) {
+        if (niyet?.getBooleanExtra(Bildirimler.KUR_EKI, false) == true) {
+            bildirimdenKurulum = true
+            niyet?.removeExtra(Bildirimler.KUR_EKI)
+        }
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "depo_takip/guncelleme")
@@ -100,6 +124,10 @@ class MainActivity : FlutterActivity() {
                         } catch (e: Exception) {
                             result.error("INDIRME", e.message, null)
                         }
+                    }
+                    "bildirimdenKurulum" -> {
+                        result.success(bildirimdenKurulum)
+                        bildirimdenKurulum = false
                     }
                     "indirmeIptal" -> {
                         val id = call.argument<Number>("id")?.toLong()
@@ -194,5 +222,117 @@ class KurulumAlici : BroadcastReceiver() {
                 context.startActivity(onay)
             }
         }
+    }
+}
+
+/** Uygulamanın kendi (yerel) bildirimleri: Flutter'daki kanalla aynı kanal. */
+object Bildirimler {
+    const val KANAL = "depo_bildirim"
+    const val KUR_EKI = "guncelleme_kur"
+    private const val INDI_NO = 7102
+    private const val GUNCELLENDI_NO = 7103
+
+    private fun goster(context: Context, no: Int, baslik: String, govde: String, kur: Boolean) {
+        try {
+            val yonetici =
+                context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+                yonetici.getNotificationChannel(KANAL) == null
+            ) {
+                yonetici.createNotificationChannel(
+                    NotificationChannel(KANAL, "Depo bildirimleri", NotificationManager.IMPORTANCE_HIGH)
+                )
+            }
+            val ac = Intent(context, MainActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                if (kur) putExtra(KUR_EKI, true)
+            }
+            var bayrak = PendingIntent.FLAG_UPDATE_CURRENT
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                bayrak = bayrak or PendingIntent.FLAG_IMMUTABLE
+            }
+            val dokun = PendingIntent.getActivity(context, no, ac, bayrak)
+            var simge = context.resources.getIdentifier("ic_bildirim", "drawable", context.packageName)
+            if (simge == 0) simge = context.applicationInfo.icon
+            val kurucu = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                Notification.Builder(context, KANAL)
+            } else {
+                @Suppress("DEPRECATION")
+                Notification.Builder(context).setPriority(Notification.PRIORITY_HIGH)
+            }
+            val bildirim = kurucu
+                .setSmallIcon(simge)
+                .setColor(0xFF2E6F40.toInt())
+                .setContentTitle(baslik)
+                .setContentText(govde)
+                .setStyle(Notification.BigTextStyle().bigText(govde))
+                .setContentIntent(dokun)
+                .setAutoCancel(true)
+                .build()
+            yonetici.notify(no, bildirim)
+        } catch (_: Exception) {
+        }
+    }
+
+    fun indi(context: Context, surum: String?) = goster(
+        context, INDI_NO,
+        "Güncelleme indi" + (surum?.let { " · sürüm $it" } ?: ""),
+        "Kurmak için dokunun. Yarım kalan işleriniz kaybolmaz.",
+        kur = true,
+    )
+
+    fun guncellendi(context: Context, surum: String?) = goster(
+        context, GUNCELLENDI_NO,
+        "Uygulama güncellendi" + (surum?.let { " · sürüm $it" } ?: ""),
+        "Açmak için dokunun. Yenilikler ilk açılışta gösterilir.",
+        kur = false,
+    )
+}
+
+/**
+ * İndirme yöneticisi bir indirmeyi bitirince çağrılır. Bizim güncelleme
+ * indirmemizse ve uygulama o an açık değilse "Güncelleme indi" bildirimi.
+ */
+class IndirmeAlici : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        try {
+            val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L)
+            val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+            val bizim = try {
+                prefs.getLong("flutter.guncelleme_indirme_id", -2L)
+            } catch (_: ClassCastException) {
+                -2L
+            }
+            if (id < 0 || id != bizim) return
+            // Uygulama açıksa (son 90 sn içinde "ön planda" işareti) pencere
+            // zaten uygulamanın içinde açılır.
+            val onPlan = try {
+                prefs.getLong("flutter.on_plan_ms", 0L)
+            } catch (_: ClassCastException) {
+                0L
+            }
+            if (System.currentTimeMillis() - onPlan < 90_000L) return
+            val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            dm.query(DownloadManager.Query().setFilterById(id)).use { c ->
+                if (c == null || !c.moveToFirst()) return
+                val durum = c.getInt(c.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
+                if (durum != DownloadManager.STATUS_SUCCESSFUL) return
+            }
+            Bildirimler.indi(context, prefs.getString("flutter.guncelleme_indirme_surum", null))
+        } catch (_: Exception) {
+        }
+    }
+}
+
+/** Uygulama güncellenince (yeni sürüm kurulunca) "Güncellendi" bildirimi. */
+class GuncellendiAlici : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action != Intent.ACTION_MY_PACKAGE_REPLACED) return
+        val surum = try {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName
+        } catch (_: Exception) {
+            null
+        }
+        Bildirimler.guncellendi(context, surum)
     }
 }

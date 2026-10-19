@@ -200,6 +200,27 @@ Future<String> _dogrudanIndir(String url, String surum,
   }
 }
 
+/// Bu sürümün indirmesi Wi-Fi beklerken duraklamışsa iptal eder; kullanıcı
+/// şimdi (mobil veriyle) indirmek istediğinde yeniden başlatılır.
+Future<void> duraklamisIseIptal(String surum) async {
+  final k = await _kayitliIndirme(surum);
+  if (k == null || k.$2?['durum'] != 'duraklatildi') return;
+  try {
+    await _kanal.invokeMethod('indirmeIptal', {'id': k.$1});
+  } catch (_) {}
+  await _kaydiSil();
+}
+
+/// Uygulama "Güncelleme indi · kurmak için dokun" bildirimiyle mi açıldı?
+/// (Bir kez true döner.)
+Future<bool> bildirimdenKurulum() async {
+  try {
+    return await _kanal.invokeMethod<bool>('bildirimdenKurulum') ?? false;
+  } catch (_) {
+    return false;
+  }
+}
+
 Future<bool> kurulumIzniVar() async =>
     (await _kanal.invokeMethod<bool>('kurulumIzniVarMi')) ?? false;
 

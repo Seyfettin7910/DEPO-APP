@@ -8,6 +8,7 @@ import '../services/supabase_service.dart';
 import '../services/bildirim/web_bildirim.dart';
 import '../services/guncelleme_servisi.dart';
 import '../screens/yenilikler_screen.dart';
+import 'yarim_isler.dart';
 
 /// AppBar'da senkron durumunu gösterir; menüden elle senkronize etme sağlar.
 /// (Çıkış, alt menüdeki tek "Çıkış" düğmesindedir.)
@@ -51,6 +52,10 @@ class SyncDurumDugmesi extends ConsumerWidget {
         } else if (v == 'yenilikler' && context.mounted) {
           Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const YeniliklerScreen()));
+        } else if (v == 'yarim' && context.mounted) {
+          await yarimIsleriGoster(context, bosIseHaberVer: true);
+        } else if (v == 'guncelleme' && context.mounted) {
+          await GuncellemeServisi.elleDenetle(context);
         }
       },
       itemBuilder: (ctx) => [
@@ -69,6 +74,9 @@ class SyncDurumDugmesi extends ConsumerWidget {
           ),
         ),
         const PopupMenuItem(value: 'sync', child: Text('Şimdi senkronize et')),
+        const PopupMenuItem(value: 'yarim', child: Text('Yarım kalan işler')),
+        const PopupMenuItem(
+            value: 'guncelleme', child: Text('Güncellemeleri denetle')),
         PopupMenuItem(
           value: 'yenilikler',
           child: Text(GuncellemeServisi.mevcutSurum.isEmpty

@@ -12,3 +12,6 @@ Future<bool> kurulumIzniVar() async => false;
 Future<void> kurulumIzniIste() async {}
 Future<void> apkKur(String yol) async =>
     throw UnsupportedError('Web\'de APK kurulmaz');
+
+Future<void> duraklamisIseIptal(String surum) async {}
+Future<bool> bildirimdenKurulum() async => false;
