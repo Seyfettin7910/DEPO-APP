@@ -476,9 +476,16 @@ Future<void> servisSonucuAkisi(BuildContext context, WidgetRef ref,
                           builder: (_) => const BarkodOkuyucuSayfasi()),
                     );
                     if (kod == null || kod.trim().isEmpty) return;
+                    final seriler = seriNolariAyir(kod);
                     setState(() {
-                      yeniSeriCtrl.text = kod.trim().toUpperCase();
-                      hata = null;
+                      if (seriler.length > 1) {
+                        yeniSeriCtrl.clear();
+                        hata = 'Koli karekodu okutuldu (${seriler.length} '
+                            'seri no). Yeni cihazın kendi seri numarasını okutun.';
+                      } else {
+                        yeniSeriCtrl.text = seriler.first;
+                        hata = null;
+                      }
                     });
                   }
 

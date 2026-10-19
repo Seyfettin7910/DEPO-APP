@@ -13,7 +13,8 @@ import '../../widgets/alim_bilgisi_alanlari.dart';
 /// Seri numaralarıyla depoya giriş: model ve depo seçilir, seri numaraları
 /// kamerayla tek tek okutulur, hepsi tek seferde kaydedilir. Hatalı girişi
 /// önlemek için telefonda elle yazma yoktur (bilgisayar tarayıcısında USB
-/// barkod okuyucu için yazma alanı vardır).
+/// barkod okuyucu için yazma alanı vardır). Koli karekodu okutulursa içindeki
+/// bütün seri numaraları ayrı ayrı eklenir.
 class TopluGirisScreen extends ConsumerStatefulWidget {
   final String? onceSeciliUrunId;
   final String? onceSeciliDepoId;
@@ -56,7 +57,11 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen> {
     _onerileriYukle();
     _urunId = widget.onceSeciliUrunId;
     _depoId = widget.onceSeciliDepoId;
-    _seriler.addAll(widget.onceSeriNolari.map(_norm));
+    for (final k in widget.onceSeriNolari) {
+      for (final s in seriNolariAyir(k)) {
+        if (!_seriler.contains(s)) _seriler.add(s);
+      }
+    }
   }
 
   @override
@@ -66,8 +71,6 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen> {
     _kamera?.dispose();
     super.dispose();
   }
-
-  String _norm(String s) => s.trim().toUpperCase();
 
   Future<void> _onerileriYukle() async {
     final db = ref.read(appDatabaseProvider);
@@ -104,37 +107,85 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen> {
       ));
   }
 
+  /// Bir seri numarasının listeye eklenip eklenemeyeceği; eklenemezse sebebi.
+  Future<String?> _engel(String seri) async {
+    if (_seriler.contains(seri)) return '$seri zaten listede';
+    final mevcut =
+        await ref.read(appDatabaseProvider).seriNoIleCihazBilgi(seri);
+    if (mevcut != null) {
+      if (mevcut.cihaz.durum == CihazDurumu.depoda) {
+        return '$seri zaten kayıtlı: ${mevcut.depoAdi ?? '-'} deposunda';
+      }
+      if (mevcut.cihaz.urunId != _urunId) {
+        return '$seri başka modele ait: ${mevcut.urunAdi}';
+      }
+    }
+    return null;
+  }
+
+  /// Koli karekodundaki seri numaralarının hepsini birden ekler; eklenemeyenler
+  /// (zaten kayıtlı, başka model, listede) atlanır ve özetle bildirilir.
+  Future<void> _cokluEkle(List<String> seriler) async {
+    if (_urunId == null) {
+      SesServisi.hata();
+      _mesaj('Önce ürün (model) seçin', hata: true);
+      return;
+    }
+    final eklenecek = <String>[];
+    final atlanan = <String>[];
+    for (final s in seriler) {
+      final engel = eklenecek.contains(s) ? '$s tekrar' : await _engel(s);
+      if (engel == null) {
+        eklenecek.add(s);
+      } else {
+        atlanan.add(engel);
+      }
+    }
+    if (!mounted) return;
+    if (eklenecek.isEmpty) {
+      SesServisi.hata();
+    } else {
+      SesServisi.basari();
+      setState(() => _seriler.insertAll(0, eklenecek.reversed));
+    }
+    final ozet = 'Koli: ${eklenecek.length} seri no eklendi'
+        '${atlanan.isEmpty ? '' : ', ${atlanan.length} atlandı'}';
+    if (atlanan.isEmpty) {
+      _mesaj(ozet, hata: eklenecek.isEmpty);
+      return;
+    }
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Text('$ozet\n${atlanan.take(4).join('\n')}'
+            '${atlanan.length > 4 ? '\n…' : ''}'),
+        backgroundColor: eklenecek.isEmpty ? Colors.red.shade700 : Colors.orange.shade800,
+        duration: const Duration(seconds: 6),
+      ));
+  }
+
   /// Listeye bir seri numarası ekler; geçersizse uyarı sesi verir.
   Future<void> _ekle(String ham) async {
-    final seri = _norm(ham);
-    if (seri.isEmpty) return;
+    final seriler = seriNolariAyir(ham);
+    if (seriler.isEmpty) return;
+    if (seriler.length > 1) {
+      _seriCtrl.clear();
+      await _cokluEkle(seriler);
+      return;
+    }
+    final seri = seriler.first;
 
     if (_urunId == null) {
       SesServisi.hata();
       _mesaj('Önce ürün (model) seçin', hata: true);
       return;
     }
-    if (_seriler.contains(seri)) {
-      SesServisi.hata();
-      _mesaj('$seri zaten listede', hata: true);
-      return;
-    }
-
-    final db = ref.read(appDatabaseProvider);
-    final mevcut = await db.seriNoIleCihazBilgi(seri);
+    final engel = await _engel(seri);
     if (!mounted) return;
-    if (mevcut != null) {
-      if (mevcut.cihaz.durum == CihazDurumu.depoda) {
-        SesServisi.hata();
-        _mesaj('$seri zaten kayıtlı: ${mevcut.depoAdi ?? '-'} deposunda',
-            hata: true);
-        return;
-      }
-      if (mevcut.cihaz.urunId != _urunId) {
-        SesServisi.hata();
-        _mesaj('$seri başka modele ait: ${mevcut.urunAdi}', hata: true);
-        return;
-      }
+    if (engel != null) {
+      SesServisi.hata();
+      _mesaj(engel, hata: true);
+      return;
     }
 
     SesServisi.basari();
@@ -156,7 +207,7 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) => eski?.dispose());
     } else {
       setState(() {
-        _kamera = MobileScannerController();
+        _kamera = tarayiciOlustur();
         _kameraAcik = true;
       });
     }
@@ -294,7 +345,8 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen> {
           ),
           if (_kameraAcik && _kamera != null)
             SizedBox(
-              height: 200,
+              height: (MediaQuery.sizeOf(context).height * 0.34)
+                  .clamp(220.0, 340.0),
               child: Stack(
                 children: [
                   HedefliTarayici(controller: _kamera!, onDetect: _okundu),
@@ -374,7 +426,8 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen> {
                       child: Text(
                         '"Seri no okut" ile kamerayı açıp seri numaralarını '
                         'tek tek okutun. Kamera açık kaldıkça okuttuğunuz her '
-                        'seri listeye eklenir.',
+                        'seri listeye eklenir. Koli karekodu okutursanız '
+                        'kolideki bütün seri numaraları birden eklenir.',
                         textAlign: TextAlign.center,
                       ),
                     ),

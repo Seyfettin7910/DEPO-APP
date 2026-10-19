@@ -5,6 +5,8 @@ import '../../database/models.dart';
 import '../../providers/app_providers.dart';
 import '../../services/ses_servisi.dart';
 import '../../widgets/barkod_okuyucu_sayfasi.dart';
+import '../../widgets/kod_yardimci.dart';
+import '../../widgets/koli_karekodu.dart';
 import 'cihaz_detay_screen.dart';
 import '../../widgets/silme_islemleri.dart';
 import '../urun/urun_form_dialog.dart';
@@ -34,6 +36,15 @@ class _CihazAraScreenState extends ConsumerState<CihazAraScreen> {
       MaterialPageRoute(builder: (_) => const BarkodOkuyucuSayfasi()),
     );
     if (kod == null || !mounted) return;
+
+    // Koli karekodu: içindeki seri numaralarının özeti.
+    final seriler = seriNolariAyir(kod);
+    if (seriler.length > 1) {
+      await koliKarekoduGoster(context, ref, seriler,
+          ac: (ekran) => Navigator.of(context)
+              .push(MaterialPageRoute(builder: (_) => ekran)));
+      return;
+    }
 
     final bilgi =
         await ref.read(appDatabaseProvider).seriNoIleCihazBilgi(kod);

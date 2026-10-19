@@ -12,10 +12,12 @@ import '../cihaz/toplu_transfer_screen.dart';
 import '../../widgets/hedefli_tarayici.dart';
 import '../../widgets/kritik_stok_seridi.dart';
 import '../../widgets/bildirim_dugmesi.dart';
+import '../../widgets/koli_karekodu.dart';
 
 /// Hızlı tarama: seri numarası okutulunca cihazın kartı (hangi ürün, hangi
 /// depoda / araçta) açılır. Kayıtlı değilse uyarı sesi + titreşim verir ve
-/// "Depoya ekle" önerir.
+/// "Depoya ekle" önerir. Koli karekodu (içinde birden çok seri no) okutulursa
+/// seri numaraları ayrılır ve kolinin özeti açılır.
 ///
 /// Not: mobile_scanner iOS ve Android'de kamera ile doğrudan çalışır.
 class BarkodTaramaScreen extends ConsumerStatefulWidget {
@@ -25,28 +27,9 @@ class BarkodTaramaScreen extends ConsumerStatefulWidget {
   ConsumerState<BarkodTaramaScreen> createState() => _BarkodTaramaScreenState();
 }
 
-class _BarkodTaramaScreenState extends ConsumerState<BarkodTaramaScreen>
-    with WidgetsBindingObserver {
-  final _controller = MobileScannerController();
-  bool _baskaSayfada = false;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-  }
-
-  /// Uygulama arka plana gidince kamera bırakılır, dönünce yeniden açılır
-  /// (aksi halde bazı telefonlarda görüntü donuk kalıyor).
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      if (!_baskaSayfada) _baslat();
-    } else if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.hidden) {
-      _durdur();
-    }
-  }
+class _BarkodTaramaScreenState extends ConsumerState<BarkodTaramaScreen> {
+  // Arka plana gidip dönüşte kamerayı HedefliTarayici yönetir.
+  final _controller = tarayiciOlustur();
 
   Future<void> _durdur() async {
     try {
@@ -66,7 +49,6 @@ class _BarkodTaramaScreenState extends ConsumerState<BarkodTaramaScreen>
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     _controller.dispose();
     super.dispose();
   }
@@ -76,11 +58,9 @@ class _BarkodTaramaScreenState extends ConsumerState<BarkodTaramaScreen>
   /// geri dönünce yeniden başlar.
   Future<void> _ac(Widget ekran) async {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    _baskaSayfada = true;
     await _durdur();
     if (!mounted) return;
     await Navigator.of(context).push(MaterialPageRoute(builder: (_) => ekran));
-    _baskaSayfada = false;
     if (!mounted) return;
     _sonZaman = DateTime.now(); // dönüşte aynı kodu hemen tekrar işlemesin
     // Açılan sayfanın kamerası tamamen kapansın, sonra bu ekranınki açılsın.
@@ -104,6 +84,17 @@ class _BarkodTaramaScreenState extends ConsumerState<BarkodTaramaScreen>
     _mesgul = true;
 
     try {
+      // Koli karekodu: içinde kolideki bütün seri numaraları var.
+      final seriler = seriNolariAyir(kod);
+      if (seriler.isEmpty) return;
+      if (seriler.length > 1) {
+        SesServisi.basari();
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        await koliKarekoduGoster(context, ref, seriler, ac: _ac);
+        _sonZaman = DateTime.now(); // kapanınca aynı koliyi hemen tekrar açmasın
+        return;
+      }
+      kod = seriler.first;
       final bilgi =
           await ref.read(appDatabaseProvider).seriNoIleCihazBilgi(kod);
       if (!mounted) return;

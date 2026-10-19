@@ -19,7 +19,7 @@ class BarkodOkuyucuSayfasi extends StatefulWidget {
 }
 
 class _BarkodOkuyucuSayfasiState extends State<BarkodOkuyucuSayfasi> {
-  final _controller = MobileScannerController();
+  final _controller = tarayiciOlustur();
   bool _tamamlandi = false;
   bool _coklu = false;
 

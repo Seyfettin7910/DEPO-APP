@@ -99,7 +99,52 @@ class _SayimScreenState extends ConsumerState<SayimScreen> {
     });
   }
 
+  /// Koli karekodu: kolideki bütün seri numaraları tek seferde sayılır.
+  Future<void> _cokluOkut(List<String> seriler, List<CihazBilgi> beklenen) async {
+    if (_depoId == null) {
+      SesServisi.hata();
+      _mesaj('Önce sayılacak depoyu veya aracı seçin',
+          renk: Colors.red.shade700);
+      return;
+    }
+    var burada = 0, fazla = 0, onceden = 0;
+    final yeniler = <String, CihazBilgi?>{};
+    for (final seri in seriler) {
+      if (_okunanlar.containsKey(seri) || yeniler.containsKey(seri)) {
+        onceden++;
+        continue;
+      }
+      final b = beklenen.where((c) => c.cihaz.seriNo == seri).firstOrNull;
+      if (b != null) {
+        yeniler[seri] = b;
+        burada++;
+      } else {
+        yeniler[seri] =
+            await ref.read(appDatabaseProvider).seriNoIleCihazBilgi(seri);
+        fazla++;
+      }
+    }
+    if (!mounted) return;
+    setState(() => _okunanlar.addAll(yeniler));
+    if (fazla > 0) {
+      SesServisi.hata();
+    } else {
+      SesServisi.basari();
+    }
+    _mesaj(
+        'Koli: $burada sayıldı'
+        '${fazla > 0 ? ' · $fazla fazla' : ''}'
+        '${onceden > 0 ? ' · $onceden zaten sayılmıştı' : ''}',
+        renk: fazla > 0 ? Colors.orange.shade800 : Colors.green.shade700);
+  }
+
   Future<void> _okut(String ham, List<CihazBilgi> beklenen) async {
+    final seriler = seriNolariAyir(ham);
+    if (seriler.length > 1) {
+      _seriCtrl.clear();
+      await _cokluOkut(seriler, beklenen);
+      return;
+    }
     final seri = _norm(ham);
     if (seri.isEmpty) return;
     if (_depoId == null) {
@@ -150,7 +195,7 @@ class _SayimScreenState extends ConsumerState<SayimScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) => eski?.dispose());
     } else {
       setState(() {
-        _kamera = MobileScannerController();
+        _kamera = tarayiciOlustur();
         _kameraAcik = true;
       });
     }
@@ -250,7 +295,8 @@ class _SayimScreenState extends ConsumerState<SayimScreen> {
             ),
             if (_kameraAcik && _kamera != null)
               SizedBox(
-                height: 200,
+                height: (MediaQuery.sizeOf(context).height * 0.34)
+                    .clamp(220.0, 340.0),
                 child: Stack(
                   children: [
                     HedefliTarayici(

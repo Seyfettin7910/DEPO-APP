@@ -5,6 +5,14 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.21.0 – Koli karekodu ve kamera iyileştirmeleri
+- Koli karekodu (içinde kolideki bütün cihazların seri numaraları alt alta) okutulunca seri numaraları ayrı ayrı işlenir:
+  - Okut ekranı: koli özeti açılır (kaç tanesi kayıtlı / kayıtsız, kayıtlılar nerede). "Depoya ekle" kayıtsızları, "Transfer" depodakileri hazır liste olarak ilgili ekrana götürür.
+  - Depoya giriş, toplu transfer / kullanım / iade ve sayım: kolideki bütün seri numaraları tek okutmada listeye eklenir; zaten kayıtlı, başka modele ait vb. olanlar atlanır ve özetle bildirilir.
+  - Ara ekranında da koli özeti açılır. Servis dönüşünde yeni cihaz için koli karekodu okutulursa uyarır.
+- Kamera: daha yüksek çözünürlük (yoğun karekodlar uzaktan okunur), Android'de otomatik yakınlaştırma, ekrana dokununca netleme, kod okunmadıkça ara ara kendiliğinden netleme, iki parmakla veya "Yakınlaştır" düğmesiyle yakınlaştırma, daha büyük karekod çerçevesi ve depoya giriş / transfer / sayım ekranlarında daha büyük kamera alanı.
+- Arka plandan dönüşte kamera, ekran öndeyse kendiliğinden yeniden açılır (tüm okutma ekranlarında).
+
 ## 1.20.0 – iPhone ve bilgisayara bildirim
 - Web sürümü (iPhone'da ana ekrana eklenen uygulama, bilgisayarda Chrome / Edge) uygulama kapalıyken de bildirim alır: Bildirim ayarları → "Bildirimlere izin ver".
 - Bildirimleri Supabase'deki zamanlanmış görev (2 dakikada bir) her abonenin kendi ayarlarına göre gönderir (supabase/functions/bildirim-gonder). Gizli anahtarlar sunucuda kendiliğinden üretilir.
