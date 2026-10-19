@@ -5,6 +5,9 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.22.1
+- Depo hareket geçmişinde seri no kopyalama: satırdaki kopyala simgesi veya satıra uzun basma.
+
 ## 1.22.0 – Kurum etiketi (barkod / karekod)
 - Ayarlardan özelleştirilebilen kurum kodları (ör. `BLD`, `BLD-BIM`). Depoya girişte seçilen kurum koduyla her cihaza benzersiz kod üretilir (`BLD-BIM-7K3Q9X2M`: 7 rastgele + 1 kontrol karakteri, karışan 0/O, 1/I harfleri yok) ve cihazın seri numarasıyla eşleştirilir.
 - Etiketler isteğe bağlı olarak basım kuyruğuna alınır; "Basım bekleyen etiket" bildirimi (bildirim ayarlarından açanlara) gider. Basım yalnızca bilgisayardan (web): varsayılan A4 etiket kağıdı (hazır ölçüler veya özel ölçü), rulo etiket (etiket yazıcısı) isteğe bağlı, hizalama test sayfası ve kaydırma ayarı, başlangıç etiketi seçimi, baskı sonrası "hangileri düzgün basıldı" onayı.

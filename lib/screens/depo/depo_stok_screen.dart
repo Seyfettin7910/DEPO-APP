@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -370,8 +371,21 @@ class _HareketListesi extends ConsumerWidget {
                 ? Colors.blueGrey
                 : (artis ? Colors.green.shade700 : Colors.red.shade700);
 
+            Future<void> kopyala() async {
+              await Clipboard.setData(ClipboardData(text: h.seriNo!));
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context)
+                ..hideCurrentSnackBar()
+                ..showSnackBar(SnackBar(
+                  content: Text('Seri no kopyalandı: ${h.seriNo}'),
+                  duration: const Duration(seconds: 2),
+                ));
+            }
+
             return ListTile(
               leading: Icon(_ikon(h), color: renk),
+              // Seri no: satıra uzun basınca veya kopyala simgesiyle kopyalanır.
+              onLongPress: h.seriNo == null ? null : kopyala,
               title: Text(h.urunAdi),
               subtitle: Text([
                 if (h.seriNo != null) 'SN: ${h.seriNo}',
@@ -380,10 +394,22 @@ class _HareketListesi extends ConsumerWidget {
                 if (h.kullaniciAdi != null) h.kullaniciAdi!,
                 if (h.not_ != null && h.not_!.isNotEmpty) h.not_!,
               ].join(' · ')),
-              trailing: Text(
-                h.miktar == 0 ? '•' : '${artis ? '+' : ''}${h.miktar}',
-                style: TextStyle(
-                    fontWeight: FontWeight.bold, fontSize: 18, color: renk),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (h.seriNo != null)
+                    IconButton(
+                      icon: const Icon(Icons.copy, size: 20),
+                      tooltip: 'Seri noyu kopyala',
+                      visualDensity: VisualDensity.compact,
+                      onPressed: kopyala,
+                    ),
+                  Text(
+                    h.miktar == 0 ? '•' : '${artis ? '+' : ''}${h.miktar}',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 18, color: renk),
+                  ),
+                ],
               ),
             );
           },
