@@ -63,6 +63,16 @@ enum BildirimTuru {
     'Günlük özet',
     'Her sabah: kritik stok, serviste bekleyen, dünkü hareketler',
     'Güvenlik ve sistem',
+  ),
+  etiketBasim(
+    'Basım bekleyen etiket',
+    'Basım kuyruğuna yeni kurum etiketi girince (etiketleri basan kişiler için)',
+    'Kurum etiketi',
+  ),
+  etiketUyusmazlik(
+    'Etiket uyuşmazlığı',
+    'Yapıştırma doğrulamasında etiket ile cihaz eşleşmeyince',
+    'Kurum etiketi',
   );
 
   const BildirimTuru(this.etiket, this.aciklama, this.grup);
@@ -72,8 +82,18 @@ enum BildirimTuru {
 
   /// Herkesi ilgilendirmeyen (yöneticiye yönelik) türler varsayılan kapalı.
   bool get varsayilan =>
-      this != BildirimTuru.hataliSifre && this != BildirimTuru.yeniIpGiris;
+      this != BildirimTuru.hataliSifre &&
+      this != BildirimTuru.yeniIpGiris &&
+      this != BildirimTuru.etiketBasim;
 }
+
+/// 1.19.0'daki türler: kayıtlı ayarda "bilinen" listesi yoksa bunlar
+/// biliniyor sayılır; sonradan eklenen türler varsayılan değeriyle açılır.
+const _ilkTurler = [
+  'kritikStok', 'yeniAriza', 'servisGecikmesi', 'garantiBitiyor', 'cihazGeldi',
+  'depoyaGiris', 'hurdaSilme', 'servisDonus', 'hataliSifre', 'yeniIpGiris',
+  'gonderilmemis', 'gunlukOzet',
+];
 
 class BildirimAyarlari {
   BildirimAyarlari({
@@ -108,11 +128,17 @@ class BildirimAyarlari {
       final metin = prefs.getString(_anahtar);
       if (metin == null) return BildirimAyarlari();
       final m = jsonDecode(metin) as Map<String, dynamic>;
+      final bilinen = {
+        for (final x in (m['bilinen'] as List? ?? _ilkTurler)) '$x'
+      };
       return BildirimAyarlari(
         acik: {
           for (final ad in (m['acik'] as List? ?? const []))
             for (final t in BildirimTuru.values)
               if (t.name == ad) t,
+          // Ayar kaydedildikten sonra eklenen türler varsayılanıyla gelir.
+          for (final t in BildirimTuru.values)
+            if (!bilinen.contains(t.name) && t.varsayilan) t,
         },
         servisGecikmeGun: (m['servisGecikmeGun'] as num?)?.toInt() ?? 15,
         garantiGun: (m['garantiGun'] as num?)?.toInt() ?? 30,
@@ -130,6 +156,7 @@ class BildirimAyarlari {
   /// Sunucuya da (web bildirimi) aynı biçimde gönderilir.
   Map<String, dynamic> toJson() => {
         'acik': [for (final t in acik) t.name],
+        'bilinen': [for (final t in BildirimTuru.values) t.name],
         'servisGecikmeGun': servisGecikmeGun,
         'garantiGun': garantiGun,
         'izlenenDepolar': izlenenDepolar.toList(),

@@ -123,6 +123,17 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen> {
     if (bilgi.cihaz.depoId == _hedefId) {
       return (null, '$seri zaten hedefte: ${bilgi.depoAdi ?? '-'}');
     }
+    // Kurum etiketiyle okutulduysa aynı cihaz listede olabilir.
+    if (_liste.any((b) => b.cihaz.id == bilgi.cihaz.id)) {
+      return (null, '${bilgi.cihaz.seriNo} zaten listede');
+    }
+    // Kurum etiketi engeli (ayarlardan açıksa; iade hariç)
+    if (!_iade) {
+      final engel = await ref
+          .read(appDatabaseProvider)
+          .etiketEngeli(bilgi.cihaz.id);
+      if (engel != null) return (null, engel);
+    }
     return (bilgi, null);
   }
 
@@ -421,8 +432,9 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen> {
                         dense: true,
                         leading: const Icon(Icons.qr_code_2),
                         title: Text(b.cihaz.seriNo),
-                        subtitle:
-                            Text('${b.urunAdi} · ${b.depoAdi ?? '-'} içinde'),
+                        subtitle: Text(
+                            '${b.urunAdi} · ${b.depoAdi ?? '-'} içinde'
+                            '${b.etiketDogrulanmadi ? ' · ⚠ etiket doğrulanmadı' : ''}'),
                         trailing: IconButton(
                           icon: const Icon(Icons.close),
                           onPressed: () => setState(() => _liste.removeAt(i)),

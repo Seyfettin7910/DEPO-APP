@@ -190,6 +190,46 @@ class BildirimMotoru {
     }
 
     // --------------------------------------------------------------
+    // Kurum etiketi olayları (başkalarının yaptığı)
+    // --------------------------------------------------------------
+    final etiketOlaylari = <Map<String, Object?>>[];
+    final etiketGorulen = (await db.bildirimGorulenler('e:')).toSet();
+    for (final h in await db.bildirimEtiketHareketleri(pencere.millisecondsSinceEpoch)) {
+      final anahtar = 'e:${h['id']}';
+      if (etiketGorulen.contains(anahtar)) continue;
+      await db.bildirimGorulduIsaretle(anahtar, (h['tarih'] as num).toInt());
+      if (ilk) continue;
+      if (benimId != null && h['kullanici_id'] == benimId) continue;
+      etiketOlaylari.add(h);
+    }
+    if (ayar.acikMi(BildirimTuru.etiketBasim)) {
+      final l = etiketOlaylari
+          .where((h) => h['islem'] == 'kuyruga' || h['islem'] == 'yenidenBasim')
+          .toList();
+      if (l.isNotEmpty) {
+        final depolar = {for (final h in l) (h['depo_adi'] as String?) ?? '-'};
+        yeni.add(_Yeni(
+          BildirimTuru.etiketBasim,
+          'Basım bekleyen etiket: ${l.length}',
+          '${urunOzeti(l)} · ${depolar.take(2).join(', ')}${kimler(l)}',
+        ));
+      }
+    }
+    if (ayar.acikMi(BildirimTuru.etiketUyusmazlik)) {
+      for (final h in etiketOlaylari.where((h) => h['islem'] == 'uyusmazlik').take(3)) {
+        yeni.add(_Yeni(
+          BildirimTuru.etiketUyusmazlik,
+          'Etiket uyuşmazlığı: ${h['kod']}',
+          [
+            (h['aciklama'] as String?) ?? '',
+            urun(h),
+            kim(h),
+          ].where((x) => x.isNotEmpty).join(' · '),
+        ));
+      }
+    }
+
+    // --------------------------------------------------------------
     // Durum olayları
     // --------------------------------------------------------------
 

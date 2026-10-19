@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../providers/app_providers.dart';
+import '../../services/etiket/etiket_kodu.dart';
 import '../../services/ses_servisi.dart';
 import '../../widgets/kod_yardimci.dart';
 import '../cihaz/cihaz_ara_screen.dart';
@@ -117,6 +118,31 @@ class _BarkodTaramaScreenState extends ConsumerState<BarkodTaramaScreen> {
             ),
           );
         return;
+      }
+
+      // Eski (yenisi basılmış) kurum etiketi okutulduysa uyar.
+      final okuma = EtiketKodu.coz(kod);
+      if (okuma?.surum != null) {
+        final e = await ref.read(appDatabaseProvider).etiketBul(okuma!.kod);
+        if (e != null && okuma.surum! < e.surum && mounted) {
+          SesServisi.hata();
+          await showDialog<void>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              icon: const Icon(Icons.warning_amber, color: Colors.orange),
+              title: const Text('Eski etiket'),
+              content: Text('Bu etiketin yenisi basıldı (sürüm ${e.surum}). '
+                  'Okuttuğunuz etiket sürüm ${okuma.surum}; cihaz üzerindeki '
+                  'eski etiketi yenisiyle değiştirin.\n\n${e.kod} · ${e.seriNo}'),
+              actions: [
+                FilledButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Tamam')),
+              ],
+            ),
+          );
+          if (!mounted) return;
+        }
       }
 
       SesServisi.basari();

@@ -103,3 +103,43 @@ final bildirimListesiProvider =
     StreamProvider<List<Map<String, Object?>>>((ref) {
   return ref.watch(appDatabaseProvider).bildirimListesiStream();
 });
+
+// ---------------------------------------------------------------------
+// Kurum etiketi
+// ---------------------------------------------------------------------
+
+final kurumKodlariProvider = StreamProvider<List<KurumKodu>>((ref) {
+  return ref.watch(appDatabaseProvider).kurumKodlariStream();
+});
+
+/// Kurum genelindeki etiket ayarları (doğrulama / engel).
+final etiketAyarlariProvider = StreamProvider<EtiketAyarlari>((ref) {
+  return ref
+      .watch(appDatabaseProvider)
+      .kurumAyarlariStream()
+      .map(EtiketAyarlari.fromMap);
+});
+
+final etiketSayilariProvider = StreamProvider<Map<EtiketDurumu, int>>((ref) {
+  return ref.watch(appDatabaseProvider).etiketSayilariStream();
+});
+
+final etiketListesiProvider =
+    StreamProvider.autoDispose.family<List<EtiketBilgi>, EtiketDurumu>((ref, d) {
+  return ref.watch(appDatabaseProvider).etiketListesiStream(d);
+});
+
+final cihazEtiketiProvider =
+    StreamProvider.family<EtiketBilgi?, String>((ref, cihazId) {
+  return ref.watch(appDatabaseProvider).cihazEtiketiStream(cihazId);
+});
+
+final etiketGecmisiProvider =
+    StreamProvider.family<List<EtiketHareketSatiri>, String>((ref, cihazId) {
+  return ref.watch(appDatabaseProvider).etiketGecmisiStream(cihazId);
+});
+
+final etiketsizCihazlarProvider =
+    StreamProvider.autoDispose<List<CihazBilgi>>((ref) {
+  return ref.watch(appDatabaseProvider).etiketsizCihazlarStream();
+});

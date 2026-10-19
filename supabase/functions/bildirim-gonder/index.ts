@@ -16,12 +16,20 @@ const GUN = 24 * 3600 * 1000;
 // Telefondaki varsayılanlarla aynı ("gönderilmemiş kayıtlar" telefona özgü)
 const VARSAYILAN_ACIK = [
   "kritikStok", "yeniAriza", "servisGecikmesi", "garantiBitiyor", "cihazGeldi",
-  "depoyaGiris", "hurdaSilme", "servisDonus", "gunlukOzet",
+  "depoyaGiris", "hurdaSilme", "servisDonus", "gunlukOzet", "etiketUyusmazlik",
+];
+// 1.19.0'daki türler: ayarda "bilinen" yoksa bunlar biliniyor sayılır;
+// sonradan eklenen türler varsayılan değeriyle açılır.
+const ILK_TURLER = [
+  "kritikStok", "yeniAriza", "servisGecikmesi", "garantiBitiyor", "cihazGeldi",
+  "depoyaGiris", "hurdaSilme", "servisDonus", "hataliSifre", "yeniIpGiris",
+  "gonderilmemis", "gunlukOzet",
 ];
 
 type Satir = Record<string, any>;
 interface Ayarlar {
   acik?: string[];
+  bilinen?: string[];
   servisGecikmeGun?: number;
   garantiGun?: number;
   izlenenDepolar?: string[];
@@ -173,6 +181,49 @@ async function calistir(db: SupabaseClient, ayar: Record<string, string>) {
     }));
   }
 
+  // 4a) Kurum etiketi olayları (1.22.0 SQL'i çalıştırılmadıysa atlanır)
+  if (ayar.imlec_etiket === undefined) {
+    const r = await db.from("etiket_hareketleri").select("synced_at")
+      .order("synced_at", { ascending: false }).limit(1);
+    ayar.imlec_etiket = String(r.data?.[0]?.synced_at ?? 0);
+    if (!r.error) await ayarYaz(db, "imlec_etiket", ayar.imlec_etiket);
+  }
+  const etiketSorgu = await db.from("etiket_hareketleri")
+    .select("id, islem, tarih, aciklama, kullanici_id, etiket_id, cihaz_id, synced_at")
+    .gt("synced_at", Number(ayar.imlec_etiket)).eq("deleted", 0)
+    .in("islem", ["kuyruga", "yenidenBasim", "uyusmazlik"])
+    .order("synced_at").limit(1000);
+  const hamEtiket: Satir[] = etiketSorgu.error ? [] : (etiketSorgu.data ?? []);
+  let etiketImlec = Number(ayar.imlec_etiket);
+  for (const h of hamEtiket) etiketImlec = Math.max(etiketImlec, Number(h.synced_at));
+  let etiketOlaylari: Satir[] = [];
+  const tazeEtiket = hamEtiket.filter((h) => ms - Number(h.tarih) < 3 * GUN);
+  if (tazeEtiket.length) {
+    const eklenen = v<Satir[]>(await db.from("push_islenen")
+      .upsert(tazeEtiket.map((h) => ({ anahtar: `e:${h.id}` })), { onConflict: "anahtar", ignoreDuplicates: true })
+      .select("anahtar"));
+    const yeni = new Set(eklenen.map((x) => x.anahtar));
+    etiketOlaylari = tazeEtiket.filter((h) => yeni.has(`e:${h.id}`));
+  }
+  if (etiketOlaylari.length) {
+    const etiket = await sozluk(db, "etiketler", "id, kod", etiketOlaylari.map((h) => h.etiket_id));
+    const cihaz = await sozluk(db, "cihazlar", "id, seri_no, urun_id, depo_id", etiketOlaylari.map((h) => h.cihaz_id));
+    const urun = await sozluk(db, "urunler", "id, ad", [...cihaz.values()].map((c) => c.urun_id));
+    const depo = await sozluk(db, "depolar", "id, ad", [...cihaz.values()].map((c) => c.depo_id));
+    const kisi = await sozluk(db, "kullanicilar", "id, ad", etiketOlaylari.map((h) => h.kullanici_id));
+    etiketOlaylari = etiketOlaylari.map((h) => {
+      const c = cihaz.get(h.cihaz_id);
+      return {
+        ...h,
+        kod: etiket.get(h.etiket_id)?.kod ?? "-",
+        seri_no: c?.seri_no ?? "-",
+        urun_adi: urun.get(c?.urun_id)?.ad ?? "-",
+        depo_adi: depo.get(c?.depo_id)?.ad ?? "-",
+        kullanici: kisi.get(h.kullanici_id)?.ad ?? "",
+      };
+    });
+  }
+
   // 4) Yeni giriş kayıtları
   const girisSorgu = await db.from("giris_kayitlari").select("*")
     .gt("id", Number(ayar.imlec_giris)).order("id").limit(500);
@@ -182,10 +233,13 @@ async function calistir(db: SupabaseClient, ayar: Record<string, string>) {
   if (aboneler.length === 0) {
     await ayarYaz(db, "imlec_hareket", String(yeniImlec));
     await ayarYaz(db, "imlec_giris", String(girisImlec));
+    if (!etiketSorgu.error) await ayarYaz(db, "imlec_etiket", String(etiketImlec));
     return { abone: 0, hareket: hareketler.length };
   }
 
-  const acikMi = (a: Ayarlar, t: string) => (a.acik ?? VARSAYILAN_ACIK).includes(t);
+  const acikMi = (a: Ayarlar, t: string) => a.acik
+    ? a.acik.includes(t) || (!(a.bilinen ?? ILK_TURLER).includes(t) && VARSAYILAN_ACIK.includes(t))
+    : VARSAYILAN_ACIK.includes(t);
   const herhangi = (t: string) => aboneler.some((x) => acikMi(x.ayarlar ?? {}, t));
 
   // 5) Ortak durum bilgileri (yalnızca gereken varsa sorgulanır)
@@ -289,6 +343,22 @@ async function calistir(db: SupabaseClient, ayar: Record<string, string>) {
       for (const h of baskasi.filter((h) => h.tip === "servis" &&
         /^(Onarıldı|Değiştirildi|Servisten döndü)/.test(String(h.sebep ?? ""))).slice(0, 5)) {
         ekle("servisDonus", `Servisten döndü: ${h.seri_no}`, [h.urun_adi, h.sebep, h.not_].filter(Boolean).join(" · "));
+      }
+    }
+
+    const baskaEtiket = etiketOlaylari.filter((h) => String(h.kullanici_id) !== benim);
+    if (acikMi(a, "etiketBasim")) {
+      const l = baskaEtiket.filter((h) => h.islem === "kuyruga" || h.islem === "yenidenBasim");
+      if (l.length) {
+        const depolar = [...new Set(l.map((h) => h.depo_adi))];
+        ekle("etiketBasim", `Basım bekleyen etiket: ${l.length}`,
+          `${urunOzeti(l)} · ${depolar.slice(0, 2).join(", ")}${kimler(l)}`);
+      }
+    }
+    if (acikMi(a, "etiketUyusmazlik")) {
+      for (const h of baskaEtiket.filter((h) => h.islem === "uyusmazlik").slice(0, 3)) {
+        ekle("etiketUyusmazlik", `Etiket uyuşmazlığı: ${h.kod}`,
+          [h.aciklama, h.urun_adi, h.kullanici].filter(Boolean).join(" · "));
       }
     }
 
@@ -411,6 +481,7 @@ async function calistir(db: SupabaseClient, ayar: Record<string, string>) {
 
   await ayarYaz(db, "imlec_hareket", String(yeniImlec));
   await ayarYaz(db, "imlec_giris", String(girisImlec));
+  if (!etiketSorgu.error) await ayarYaz(db, "imlec_etiket", String(etiketImlec));
   // Eski işaretleri temizle
   await db.from("push_islenen").delete().lt("tarih", new Date(ms - 5 * GUN).toISOString());
   await db.from("push_gorulen").delete().like("anahtar", "ozet:%").lt("tarih", new Date(ms - 10 * GUN).toISOString());

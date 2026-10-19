@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
+import '../../database/app_database.dart';
 import '../../database/models.dart';
 import '../../providers/app_providers.dart';
+import '../../widgets/etiket_secimi.dart';
+import '../etiket/etiket_ayarlari_screen.dart';
 import '../../services/ses_servisi.dart';
 import '../../widgets/depo_secici.dart';
 import '../../widgets/kod_yardimci.dart';
@@ -51,10 +54,17 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen> {
   List<String> _firmalar = const [];
   List<String> _ihaleler = const [];
 
+  /// Kurum etiketi: hangi kurum koduyla kod üretilecek, kuyruğa alınacak mı.
+  EtiketTercihi _etiket = const EtiketTercihi();
+
+  /// Seri numarası olmayan ürünler için üretilmiş kodlar (seri no yerine).
+  final _seriNosuz = <String>{};
+
   @override
   void initState() {
     super.initState();
     _onerileriYukle();
+    _etiketTercihiYukle();
     _urunId = widget.onceSeciliUrunId;
     _depoId = widget.onceSeciliDepoId;
     for (final k in widget.onceSeriNolari) {
@@ -81,6 +91,91 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen> {
         _firmalar = f;
         _ihaleler = i;
       });
+    }
+  }
+
+  Future<void> _etiketTercihiYukle() async {
+    final kodlar =
+        await ref.read(appDatabaseProvider).kurumKodlari(sadeceAktif: true);
+    final t = await EtiketTercihi.yukle(kodlar);
+    if (mounted) setState(() => _etiket = t);
+  }
+
+  Future<void> _etiketDuzenle(List<KurumKodu> kodlar) async {
+    if (kodlar.isEmpty) {
+      await Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const EtiketAyarlariScreen()));
+      return;
+    }
+    final yeni =
+        await etiketTercihiSec(context, kodlar: kodlar, mevcut: _etiket);
+    if (yeni == null) return;
+    if (yeni.kurumKoduId == null && _seriNosuz.isNotEmpty) {
+      _mesaj('Listede seri nosuz ürün var; kurum kodu gerekli', hata: true);
+      return;
+    }
+    setState(() => _etiket = yeni);
+    await yeni.kaydet();
+  }
+
+  /// Seri numarası olmayan ürünler (kablo, mobilya…): kurum kodu üretilir ve
+  /// seri no yerine kullanılır.
+  Future<void> _seriNosuzEkle() async {
+    if (_urunId == null) {
+      _mesaj('Önce ürün (model) seçin', hata: true);
+      return;
+    }
+    final kurum = _etiket.kurumKoduId;
+    if (kurum == null) {
+      _mesaj('Önce "Kurum etiketi"nden kurum kodu seçin', hata: true);
+      return;
+    }
+    final ctrl = TextEditingController(text: '1');
+    final adet = await showDialog<int>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Seri numarası olmayan ürün'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+                'Her biri için kurum kodu üretilir ve seri numarası yerine '
+                'kullanılır. Etiketi basılıp ürüne yapıştırılır.'),
+            const SizedBox(height: 12),
+            TextField(
+              controller: ctrl,
+              autofocus: true,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Adet (1-200)'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Vazgeç')),
+          FilledButton(
+            onPressed: () {
+              final n = int.tryParse(ctrl.text.trim()) ?? 0;
+              if (n >= 1 && n <= 200) Navigator.pop(ctx, n);
+            },
+            child: const Text('Kod üret'),
+          ),
+        ],
+      ),
+    );
+    ctrl.dispose();
+    if (adet == null) return;
+    try {
+      final kodlar =
+          await ref.read(appDatabaseProvider).seriNosuzKodlarUret(kurum, adet);
+      if (!mounted) return;
+      SesServisi.basari();
+      setState(() {
+        _seriler.insertAll(0, kodlar);
+        _seriNosuz.addAll(kodlar);
+      });
+    } catch (e) {
+      _mesaj(e is StateError ? e.message : 'Kod üretilemedi: $e', hata: true);
     }
   }
 
@@ -133,7 +228,9 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen> {
     }
     final eklenecek = <String>[];
     final atlanan = <String>[];
-    for (final s in seriler) {
+    final db = ref.read(appDatabaseProvider);
+    for (final ham in seriler) {
+      final s = await db.seriyeCevir(ham);
       final engel = eklenecek.contains(s) ? '$s tekrar' : await _engel(s);
       if (engel == null) {
         eklenecek.add(s);
@@ -173,13 +270,15 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen> {
       await _cokluEkle(seriler);
       return;
     }
-    final seri = seriler.first;
-
     if (_urunId == null) {
       SesServisi.hata();
       _mesaj('Önce ürün (model) seçin', hata: true);
       return;
     }
+    // Kurum etiketi okutulduysa cihazın seri numarasına çevrilir.
+    final seri =
+        await ref.read(appDatabaseProvider).seriyeCevir(seriler.first);
+    if (!mounted) return;
     final engel = await _engel(seri);
     if (!mounted) return;
     if (engel != null) {
@@ -252,6 +351,7 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen> {
     setState(() => _kaydediliyor = true);
     try {
       final adet = _seriler.length;
+      final etiketli = _etiket.kurumKoduId != null;
       await ref.read(appDatabaseProvider).cihazlariGirisYap(
             urunId: _urunId!,
             depoId: _depoId!,
@@ -259,11 +359,15 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen> {
             kullaniciId: ref.read(aktifKullaniciIdProvider) ?? 'demo-kullanici',
             not_: _notCtrl.text.trim().isEmpty ? null : _notCtrl.text.trim(),
             alim: _alim.bos ? null : _alim,
+            kurumKoduId: _etiket.kurumKoduId,
+            etiketKuyruga: _etiket.kuyruga,
+            seriNosuz: Set.of(_seriNosuz),
           );
       SesServisi.basari();
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('$adet cihaz depoya alındı')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('$adet cihaz depoya alındı'
+              '${!etiketli ? '' : _etiket.kuyruga ? ' · etiketler basım kuyruğuna alındı' : ' · kurum kodları üretildi'}')));
       Navigator.pop(context);
     } catch (e) {
       SesServisi.hata();
@@ -304,7 +408,10 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen> {
                       ),
                   ],
                   onChanged: (v) => setState(() {
-                    if (_urunId != null && v != _urunId) _seriler.clear();
+                    if (_urunId != null && v != _urunId) {
+                      _seriler.clear();
+                      _seriNosuz.clear();
+                    }
                     _urunId = v;
                   }),
                 ),
@@ -330,6 +437,27 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen> {
                   trailing: const Icon(Icons.edit_outlined),
                   onTap: _alimDuzenle,
                 ),
+                Builder(builder: (context) {
+                  final kodlar = (ref.watch(kurumKodlariProvider).value ??
+                          const <KurumKodu>[])
+                      .where((k) => k.aktif)
+                      .toList();
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    leading: const Icon(Icons.qr_code_2),
+                    title: const Text('Kurum etiketi'),
+                    subtitle: Text(
+                      kodlar.isEmpty
+                          ? 'Kurum kodu tanımlı değil (ayarlamak için dokunun)'
+                          : _etiket.ozet(kodlar),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    trailing: const Icon(Icons.edit_outlined),
+                    onTap: () => _etiketDuzenle(kodlar),
+                  );
+                }),
                 if (urunler.isEmpty || depolar.isEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
@@ -403,6 +531,18 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen> {
                           ),
                   ),
           ),
+          if (_etiket.kurumKoduId != null)
+            Align(
+              alignment: Alignment.centerRight,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: TextButton.icon(
+                  onPressed: _seriNosuzEkle,
+                  icon: const Icon(Icons.qr_code, size: 18),
+                  label: const Text('Seri no yok: kurum kodu üret'),
+                ),
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
             child: Row(
@@ -412,7 +552,10 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen> {
                 const Spacer(),
                 if (_seriler.isNotEmpty)
                   TextButton(
-                    onPressed: () => setState(_seriler.clear),
+                    onPressed: () => setState(() {
+                      _seriler.clear();
+                      _seriNosuz.clear();
+                    }),
                     child: const Text('Listeyi temizle'),
                   ),
               ],
@@ -436,11 +579,17 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen> {
                     itemCount: _seriler.length,
                     itemBuilder: (context, i) => ListTile(
                       dense: true,
-                      leading: const Icon(Icons.qr_code_2),
+                      leading: Icon(_seriNosuz.contains(_seriler[i])
+                          ? Icons.qr_code
+                          : Icons.qr_code_2),
                       title: Text(_seriler[i]),
+                      subtitle: _seriNosuz.contains(_seriler[i])
+                          ? const Text('Seri nosuz ürün · kurum kodu')
+                          : null,
                       trailing: IconButton(
                         icon: const Icon(Icons.close),
-                        onPressed: () => setState(() => _seriler.removeAt(i)),
+                        onPressed: () => setState(
+                            () => _seriNosuz.remove(_seriler.removeAt(i))),
                       ),
                     ),
                   ),

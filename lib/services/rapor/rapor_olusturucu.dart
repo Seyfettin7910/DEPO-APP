@@ -884,6 +884,66 @@ class RaporOlusturucu {
   }
 
   // ------------------------------------------------------------------
+  // Kurum etiketi durumu
+  // ------------------------------------------------------------------
+  static Future<Rapor> etiketDurumu(AppDatabase db) async {
+    final rows = await db.etiketDurumRaporu();
+    final say = <EtiketDurumu, int>{};
+    for (final r in rows) {
+      final d = etiketDurumuCoz(r['durum']);
+      say[d] = (say[d] ?? 0) + 1;
+    }
+    List<Object?> satir(Map<String, Object?> r) => [
+          r['kod'] ?? '',
+          ((r['seri_nosuz'] as num?) ?? 0).toInt() == 1
+              ? '(seri nosuz)'
+              : (r['seri_no'] ?? ''),
+          r['urun_adi'] ?? '',
+          durumEtiketi(r['cihaz_durum'] as String?, r['depo_tur'] as String?,
+              r['servis_durumu']),
+          r['depo_adi'] ?? '',
+          (r['surum'] as num?)?.toInt() ?? 1,
+          _gunMs(r['olusturma']),
+          _tarihMs(r['son_islem']),
+          r['son_kullanici'] ?? '',
+          r['uyusmazlik'] ?? '',
+        ];
+    final sirali = [
+      EtiketDurumu.uyusmazlik,
+      EtiketDurumu.basildi,
+      EtiketDurumu.kuyrukta,
+      EtiketDurumu.kayitli,
+      EtiketDurumu.dogrulandi,
+    ];
+    return Rapor(
+      baslik: 'Etiket Durumu Raporu',
+      altBaslik: _olusturma(),
+      dosyaOn: 'etiket_durumu_raporu',
+      ozet: [
+        MapEntry('Toplam etiket', '${rows.length}'),
+        for (final d in sirali)
+          if ((say[d] ?? 0) > 0) MapEntry(d.etiket, '${say[d]}'),
+      ],
+      sutunlar: const [
+        'Kurum kodu', 'Seri No', 'Ürün', 'Cihaz durumu', 'Depo / araç',
+        'Sürüm', 'Üretim', 'Son işlem', 'Son işlemi yapan', 'Uyuşmazlık'
+      ],
+      genislikler: const [20, 16, 18, 12, 14, 7, 10, 14, 12, 24],
+      bolumler: [
+        for (final d in sirali)
+          if ((say[d] ?? 0) > 0)
+            RaporBolumu(
+              baslik: '${d.etiket} (${say[d]})',
+              satirlar: [
+                for (final r in rows)
+                  if (etiketDurumuCoz(r['durum']) == d) satir(r),
+              ],
+            ),
+      ],
+    );
+  }
+
+  // ------------------------------------------------------------------
   // Giriş kayıtları (sunucudan okunur, internet gerekir)
   // ------------------------------------------------------------------
   static Future<Rapor> girisKayitlari(

@@ -4,7 +4,13 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 
+import '../services/etiket/etiket_kodu.dart';
+import 'etiket_modelleri.dart';
 import 'models.dart';
+
+export 'etiket_modelleri.dart';
+
+part 'app_database_etiket.dart';
 
 const _uuid = Uuid();
 
@@ -207,13 +213,24 @@ class CihazBilgi {
   final String? aracPlaka;
   final bool depoArac; // bulunduğu depo bir araç (seyyar depo) mu
 
+  /// Kurum etiketi (varsa).
+  final String? etiketKodu;
+  final EtiketDurumu? etiketDurumu;
+
   const CihazBilgi({
     required this.cihaz,
     required this.urunAdi,
     this.depoAdi,
     this.aracPlaka,
     this.depoArac = false,
+    this.etiketKodu,
+    this.etiketDurumu,
   });
+
+  /// Basılmış ama yapıştırma doğrulaması yapılmamış (veya uyuşmazlık var).
+  bool get etiketDogrulanmadi =>
+      etiketDurumu == EtiketDurumu.basildi ||
+      etiketDurumu == EtiketDurumu.uyusmazlik;
 
   factory CihazBilgi.fromRow(Map<String, Object?> r) => CihazBilgi(
         cihaz: Cihaz.fromMap(r),
@@ -221,6 +238,10 @@ class CihazBilgi {
         depoAdi: r['depo_adi'] as String?,
         aracPlaka: r['arac_plaka'] as String?,
         depoArac: r['depo_tur'] == 'arac',
+        etiketKodu: r['etiket_kodu'] as String?,
+        etiketDurumu: r['etiket_durumu'] == null
+            ? null
+            : etiketDurumuCoz(r['etiket_durumu']),
       );
 }
 
@@ -341,7 +362,7 @@ class AppDatabase {
         : p.join(await getDatabasesPath(), 'depo_app.sqlite');
     _db = await openDatabase(
       path,
-      version: 10,
+      version: 11,
       onCreate: (db, version) async {
         for (final stmt in _createTablesSql.split(';')) {
           final trimmed = stmt.trim();
@@ -351,6 +372,9 @@ class AppDatabase {
         await db.execute(_servisTabloSql);
         await db.execute(_syncMetaSql);
         for (final t in _bildirimTabloSql) {
+          await db.execute(t);
+        }
+        for (final t in _etiketTabloSql) {
           await db.execute(t);
         }
       },
@@ -405,6 +429,12 @@ class AppDatabase {
         if (oldVersion < 10) {
           // 1.19.0: bildirimler (yalnızca yerel)
           for (final t in _bildirimTabloSql) {
+            await db.execute(t);
+          }
+        }
+        if (oldVersion < 11) {
+          // 1.22.0: kurum etiketi (barkod / karekod)
+          for (final t in _etiketTabloSql) {
             await db.execute(t);
           }
         }
@@ -945,11 +975,14 @@ class AppDatabase {
              c.garanti_bitis AS garanti_bitis, c.servis_durumu AS servis_durumu,
              c.dirty AS dirty, c.deleted AS deleted,
              u.ad AS urun_adi, d.ad AS depo_adi, d.tur AS depo_tur,
-             a.plaka AS arac_plaka
+             a.plaka AS arac_plaka,
+             e.kod AS etiket_kodu, e.durum AS etiket_durumu
       FROM cihazlar c
       JOIN urunler u ON u.id = c.urun_id
       LEFT JOIN depolar d ON d.id = c.depo_id
       LEFT JOIN araclar a ON a.id = c.arac_id
+      LEFT JOIN etiketler e ON e.id = (SELECT x.id FROM etiketler x
+        WHERE x.cihaz_id = c.id AND x.deleted = 0 ORDER BY x.olusturma LIMIT 1)
   ''';
 
   /// Okutulan/yazılan seri numarasına ait cihazı bulur (büyük-küçük harf duyarsız).
@@ -1044,6 +1077,11 @@ class AppDatabase {
     String? not_,
     AlimBilgisi? alim,
     String? sebep,
+    // Kurum etiketi: seçilmişse her cihaza kod üretilir.
+    String? kurumKoduId,
+    bool etiketKuyruga = false,
+    // Seri numarası olmayan ürünler: kurum kodu seri no olarak kullanılır.
+    Set<String> seriNosuz = const {},
   }) async {
     if (seriNolar.every((x) => _normSeri(x).isEmpty)) {
       throw StateError('Hiç seri numarası eklenmedi');
@@ -1061,7 +1099,7 @@ class AppDatabase {
       for (final ham in seriNolar) {
         final seri = _normSeri(ham);
         if (seri.isEmpty || !gorulen.add(seri)) continue;
-        await _girisTxn(txn,
+        final cihazId = await _girisTxn(txn,
             urunId: urunId,
             depoId: depoId,
             seri: seri,
@@ -1070,6 +1108,19 @@ class AppDatabase {
             alim: alim,
             sebep: sebep,
             zaman: simdi);
+        final seriNosuzMu = seriNosuz.contains(seri);
+        if (kurumKoduId != null || seriNosuzMu) {
+          if (kurumKoduId == null) {
+            throw StateError('Seri nosuz ürün için kurum kodu seçin');
+          }
+          await _etiketUretTxn(txn,
+              cihazId: cihazId,
+              kurumKoduId: kurumKoduId,
+              kuyruga: etiketKuyruga,
+              kullaniciId: kullaniciId,
+              zaman: simdi,
+              sabitKod: seriNosuzMu ? seri : null);
+        }
       }
     });
 
@@ -1909,13 +1960,21 @@ class AppDatabase {
   }
 
   /// Okutulan seri numarasının cihaz bilgisini (model, depo, araç) getirir.
+  /// Kurum etiketi (karekod veya kod) okutulduysa etiketin cihazı döner.
   Future<CihazBilgi?> seriNoIleCihazBilgi(String seriNo) async {
     final db = await _database;
     final rows = await db.rawQuery(
         '$_cihazBilgiSelect WHERE c.seri_no = ? AND c.deleted = 0 LIMIT 1',
         [_normSeri(seriNo)]);
-    if (rows.isEmpty) return null;
-    return CihazBilgi.fromRow(rows.first);
+    if (rows.isNotEmpty) return CihazBilgi.fromRow(rows.first);
+    final okuma = EtiketKodu.coz(seriNo);
+    if (okuma == null) return null;
+    final e = await db.rawQuery(
+        '$_cihazBilgiSelect WHERE c.deleted = 0 AND c.id = '
+        '(SELECT cihaz_id FROM etiketler WHERE kod = ? AND deleted = 0 LIMIT 1) '
+        'LIMIT 1',
+        [okuma.kod]);
+    return e.isEmpty ? null : CihazBilgi.fromRow(e.first);
   }
 
   /// Seri no, model adı, depo adı, araç plakası veya kullanım yeri ile arar.
@@ -1929,13 +1988,13 @@ class AppDatabase {
     final rows = await db.rawQuery(
         '$_cihazBilgiSelect WHERE c.deleted = 0 AND ('
         'c.seri_no LIKE ? OR u.ad LIKE ? OR d.ad LIKE ? OR '
-        'a.plaka LIKE ? OR c.kullanim_yeri LIKE ? OR '
+        'a.plaka LIKE ? OR c.kullanim_yeri LIKE ? OR e.kod LIKE ? OR '
         "(c.durum = 'kullanimda' AND EXISTS (SELECT 1 FROM kullanim_kayitlari kk "
         'JOIN stok_hareketleri sh ON sh.id = kk.stok_hareket_id '
         'WHERE sh.cihaz_id = c.id AND (kk.mahalle LIKE ? OR kk.ilce LIKE ? '
         'OR kk.il LIKE ?)))) '
         'ORDER BY (c.seri_no = ?) DESC, u.ad, c.seri_no LIMIT ?',
-        [like, like, like, like, like, like, like, like, _normSeri(q), limit]);
+        [like, like, like, like, like, like, like, like, like, _normSeri(q), limit]);
     return rows.map(CihazBilgi.fromRow).toList();
   }
 
@@ -1990,6 +2049,12 @@ class AppDatabase {
       throw StateError('${c.seriNo} ${c.servisDurumu!.kisa.toLowerCase()}: '
           'transfer, kullanıma verme, sahada kullanım ve çıkış yapılamaz. '
           'Önce cihaz kartından servis işlemini tamamlayın.');
+    }
+    // Kurum etiketi engeli (ayarlardan açılırsa): doğrulanmamış etiketli
+    // cihaz transfer edilemez, kullanıma verilemez, sahada kullanılamaz.
+    if (tip == HareketTipi.transfer || tip == HareketTipi.kullanim) {
+      final engel = await _etiketEngeliTxn(txn, c);
+      if (engel != null) throw StateError(engel);
     }
     final kaynakDepo = c.depoId!;
     final simdi = DateTime.now();
@@ -2259,7 +2324,8 @@ class AppDatabase {
   Future<void> bildirimGorulenEskileriSil(int oncesi) async {
     final db = await _database;
     await db.delete('bildirim_gorulen',
-        where: "anahtar LIKE 'h:%' AND tarih < ?", whereArgs: [oncesi]);
+        where: "(anahtar LIKE 'h:%' OR anahtar LIKE 'e:%') AND tarih < ?",
+        whereArgs: [oncesi]);
   }
 
   /// Bildirim motoru için son hareketler (cihaz, ürün ve depo adlarıyla).
@@ -2371,6 +2437,17 @@ class AppDatabase {
       'sonuc_aciklama', 'yeni_seri_no', 'kapanis', 'kapanis_tarihi',
       'kullanici_id', 'updated_at', 'deleted'
     ],
+    // 1.22.0: kurum etiketi
+    'kurum_kodlari': ['id', 'kod', 'ad', 'aktif', 'sira', 'updated_at', 'deleted'],
+    'kurum_ayarlari': ['id', 'deger', 'updated_at', 'deleted'],
+    'etiketler': [
+      'id', 'cihaz_id', 'kod', 'kurum_kodu_id', 'surum', 'durum', 'seri_nosuz',
+      'olusturma', 'kullanici_id', 'updated_at', 'deleted'
+    ],
+    'etiket_hareketleri': [
+      'id', 'etiket_id', 'cihaz_id', 'islem', 'surum', 'aciklama',
+      'kullanici_id', 'tarih', 'updated_at', 'deleted'
+    ],
   };
 
   /// Yerelde olup sunucuya henüz gönderilmemiş kayıt sayısı.
@@ -2455,6 +2532,17 @@ class AppDatabase {
                 limit: 1);
             if (ayniSeri.isNotEmpty) {
               cakismalar.add('${r['seri_no']}');
+              continue;
+            }
+          }
+          if (tablo == 'etiketler') {
+            final ayniKod = await txn.query('etiketler',
+                columns: ['id'],
+                where: 'kod = ?',
+                whereArgs: [r['kod']],
+                limit: 1);
+            if (ayniKod.isNotEmpty) {
+              cakismalar.add('etiket ${r['kod']}');
               continue;
             }
           }

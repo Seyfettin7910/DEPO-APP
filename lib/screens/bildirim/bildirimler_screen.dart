@@ -20,12 +20,15 @@ IconData bildirimIkonu(BildirimTuru? t) => switch (t) {
       BildirimTuru.yeniIpGiris => Icons.login,
       BildirimTuru.gonderilmemis => Icons.cloud_off,
       BildirimTuru.gunlukOzet => Icons.summarize_outlined,
+      BildirimTuru.etiketBasim => Icons.print_outlined,
+      BildirimTuru.etiketUyusmazlik => Icons.report_gmailerrorred,
       null => Icons.notifications_none,
     };
 
 Color bildirimRengi(BildirimTuru? t) => switch (t) {
       BildirimTuru.kritikStok ||
       BildirimTuru.hataliSifre ||
+      BildirimTuru.etiketUyusmazlik ||
       BildirimTuru.gonderilmemis =>
         Colors.red.shade700,
       BildirimTuru.yeniAriza ||

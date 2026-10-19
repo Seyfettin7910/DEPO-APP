@@ -48,11 +48,36 @@ class SyncService {
     'urunler',
     'araclar',
     'kullanicilar',
+    'kurum_kodlari',
+    'kurum_ayarlari',
     'cihazlar',
     'stok_hareketleri',
     'kullanim_kayitlari',
     'servis_kayitlari',
+    'etiketler',
+    'etiket_hareketleri',
   ];
+
+  /// Sonradan eklenen tablolar ve onları oluşturan Supabase SQL sürümü.
+  /// Sunucuda henüz yoksa diğer tabloların senkronu durmasın.
+  static const _yeniTablolar = {
+    'servis_kayitlari': '1.17.0',
+    'kurum_kodlari': '1.22.0',
+    'kurum_ayarlari': '1.22.0',
+    'etiketler': '1.22.0',
+    'etiket_hareketleri': '1.22.0',
+  };
+
+  static bool _tabloYok(Object e) =>
+      e is PostgrestException &&
+      (e.code == '42P01' ||
+          e.code == 'PGRST205' ||
+          e.message.contains('does not exist') ||
+          e.message.contains('Could not find the table'));
+
+  static String _sqlMesaji(String tablo) =>
+      'Sunucuda "$tablo" tablosu yok: Supabase güncelleme SQL\'ini '
+      '(${_yeniTablolar[tablo]}) çalıştırın';
   static const _sayfa = 500;
   // Commit sırası yüzünden kaçabilecek satırlar için geriye doğru pay (ms).
   static const _binisme = 5000;
@@ -189,7 +214,12 @@ class SyncService {
             await db.senkronEdildi(
                 tablo, r['id'] as String, (r['updated_at'] as num).toInt());
           }
-        } catch (_) {
+        } catch (e) {
+          if (_yeniTablolar.containsKey(tablo) && _tabloYok(e)) {
+            final m = _sqlMesaji(tablo);
+            if (!sorunlar.contains(m)) sorunlar.add(m);
+            break; // kayıtlar yerelde bekler; SQL çalıştırılınca gönderilir
+          }
           // Toplu gönderim başarısız: tek tek dene ki tek bir hatalı kayıt
           // diğerlerini engellemesin.
           for (var i = 0; i < satirlar.length; i++) {
@@ -214,12 +244,12 @@ class SyncService {
     for (final tablo in _tablolar) {
       try {
         await _tabloCek(tablo, sorunlar);
-      } on PostgrestException catch (_) {
+      } on PostgrestException catch (e) {
         // Sunucuda henüz oluşturulmamış yeni tablo diğer tabloların
         // senkronunu durdurmasın.
-        if (tablo != 'servis_kayitlari') rethrow;
-        sorunlar.add('Servis kayıtları sunucuda yok: Supabase güncelleme '
-            'SQL\'ini (1.17.0) çalıştırın');
+        if (!_yeniTablolar.containsKey(tablo)) rethrow;
+        final m = _tabloYok(e) ? _sqlMesaji(tablo) : _hataMetni(e);
+        if (!sorunlar.contains(m)) sorunlar.add(m);
       }
     }
   }

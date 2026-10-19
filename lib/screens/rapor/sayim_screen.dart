@@ -109,7 +109,9 @@ class _SayimScreenState extends ConsumerState<SayimScreen> {
     }
     var burada = 0, fazla = 0, onceden = 0;
     final yeniler = <String, CihazBilgi?>{};
-    for (final seri in seriler) {
+    final db = ref.read(appDatabaseProvider);
+    for (final ham in seriler) {
+      final seri = await db.seriyeCevir(ham);
       if (_okunanlar.containsKey(seri) || yeniler.containsKey(seri)) {
         onceden++;
         continue;
@@ -145,8 +147,11 @@ class _SayimScreenState extends ConsumerState<SayimScreen> {
       await _cokluOkut(seriler, beklenen);
       return;
     }
-    final seri = _norm(ham);
-    if (seri.isEmpty) return;
+    // Kurum etiketi okutulduysa cihazın seri numarasına çevrilir.
+    final seri = ham.trim().isEmpty
+        ? ''
+        : await ref.read(appDatabaseProvider).seriyeCevir(_norm(ham));
+    if (seri.isEmpty || !mounted) return;
     if (_depoId == null) {
       SesServisi.hata();
       _mesaj('Önce sayılacak depoyu veya aracı seçin',

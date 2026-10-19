@@ -5,6 +5,16 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.22.0 – Kurum etiketi (barkod / karekod)
+- Ayarlardan özelleştirilebilen kurum kodları (ör. `BLD`, `BLD-BIM`). Depoya girişte seçilen kurum koduyla her cihaza benzersiz kod üretilir (`BLD-BIM-7K3Q9X2M`: 7 rastgele + 1 kontrol karakteri, karışan 0/O, 1/I harfleri yok) ve cihazın seri numarasıyla eşleştirilir.
+- Etiketler isteğe bağlı olarak basım kuyruğuna alınır; "Basım bekleyen etiket" bildirimi (bildirim ayarlarından açanlara) gider. Basım yalnızca bilgisayardan (web): varsayılan A4 etiket kağıdı (hazır ölçüler veya özel ölçü), rulo etiket (etiket yazıcısı) isteğe bağlı, hizalama test sayfası ve kaydırma ayarı, başlangıç etiketi seçimi, baskı sonrası "hangileri düzgün basıldı" onayı.
+- Etikette karekod (kurum kodu + sürüm + seri no) ve yer yeterliyse çizgi barkod (kurum kodu) birlikte; ürün adı, seri no ve tarih yazılı.
+- Yapıştırma doğrulaması (telefon): önce etiket, sonra cihazın kendi seri no barkodu okutulur. Eşleşmezse alarm, uyuşmazlık kaydı ve bildirim.
+- Engel (kurum genelinde, isteğe bağlı, varsayılan kapalı): açılırsa doğrulanmamış etiketli cihaz transfer edilemez, kullanıma verilemez, sahada kullanılamaz.
+- Seri numarası olmayan ürünler için kurum kodu seri no yerine kullanılır. Mevcut stok için "Etiketsiz cihazlar → toplu kod üret". Cihaz kartında etiket durumu, yeniden basım (sürüm artar, eski etiket okutulunca uyarı) ve etiket geçmişi (silinemez).
+- Okut, Ara, transfer ve sayım ekranlarında kurum etiketi de okutulabilir. Yeni rapor: Etiket durumu (PDF / Excel).
+- Supabase: `supabase_guncelleme_1_22_0.sql` bir kez çalıştırılmalı. En düşük sürüm 1.22.0 (zorunlu güncelleme).
+
 ## 1.21.0 – Koli karekodu ve kamera iyileştirmeleri
 - Koli karekodu (içinde kolideki bütün cihazların seri numaraları alt alta) okutulunca seri numaraları ayrı ayrı işlenir:
   - Okut ekranı: koli özeti açılır (kaç tanesi kayıtlı / kayıtsız, kayıtlılar nerede). "Depoya ekle" kayıtsızları, "Transfer" depodakileri hazır liste olarak ilgili ekrana götürür.

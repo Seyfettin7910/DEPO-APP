@@ -131,6 +131,13 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
               onTap: () => Navigator.pop(ctx, 'kullanim'),
             ),
             ListTile(
+              leading: const Icon(Icons.qr_code_2),
+              title: const Text('Etiket durumu'),
+              subtitle: const Text(
+                  'Kurum etiketleri: kuyrukta, yapıştırma bekleyen, doğrulanan, uyuşmazlık'),
+              onTap: () => Navigator.pop(ctx, 'etiket'),
+            ),
+            ListTile(
               leading: const Icon(Icons.login),
               title: const Text('Giriş kayıtları'),
               subtitle: Text('Kim, ne zaman, hangi IP\'den giriş yaptı · $aralik'),
@@ -216,6 +223,9 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
         case 'hurda':
           rapor = await RaporOlusturucu.hurda(db,
               baslangic: _tarihAraligi?.start, bitis: _bitisGunSonu());
+          break;
+        case 'etiket':
+          rapor = await RaporOlusturucu.etiketDurumu(db);
           break;
         case 'giris':
           rapor = await RaporOlusturucu.girisKayitlari(

@@ -15,6 +15,7 @@ import '../../services/konum_servisi.dart';
 import '../../services/adres_servisi.dart';
 import '../../widgets/silme_islemleri.dart';
 import '../../widgets/servis_islemleri.dart';
+import '../../widgets/etiket_karti.dart';
 
 /// Cihazın şu anki konumunu tek satırda anlatır.
 String cihazKonumMetni(CihazBilgi b) {
@@ -198,6 +199,7 @@ class CihazDetayScreen extends ConsumerWidget {
                 ),
               ),
               ServisKarti(bilgi: bilgi),
+              EtiketKarti(bilgi: bilgi),
               _alimKarti(context, ref, bilgi),
               const SizedBox(height: 12),
               if (bilgi.cihaz.deleted)
