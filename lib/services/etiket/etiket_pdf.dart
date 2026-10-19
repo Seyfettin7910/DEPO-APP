@@ -135,7 +135,14 @@ class EtiketPdf {
               mainAxisAlignment: pw.MainAxisAlignment.center,
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                pw.Text(e.kod, style: kodStil, maxLines: 2),
+                // Kurum kısmı ve 8 haneli kod ayrı satırda (bölünmesin)
+                pw.Text(
+                    e.kod.contains('-')
+                        ? '${e.kod.substring(0, e.kod.lastIndexOf('-') + 1)}\n'
+                            '${e.kod.substring(e.kod.lastIndexOf('-') + 1)}'
+                        : e.kod,
+                    style: kodStil,
+                    maxLines: 2),
                 if (y >= 16)
                   pw.Text(e.urunAdi, style: ufakStil, maxLines: 1),
               ],
@@ -182,12 +189,15 @@ class EtiketPdf {
           ),
           if (cizgi) ...[
             pw.SizedBox(height: 1 * mm),
-            pw.BarcodeWidget(
-              barcode: pw.Barcode.code128(),
-              data: e.kod,
-              width: (g - 2 * bosluk) * mm,
-              height: barkodY * mm,
-              drawText: false,
+            // Okuyucular için her iki yanda boşluk (sessiz bölge) bırakılır.
+            pw.Center(
+              child: pw.BarcodeWidget(
+                barcode: pw.Barcode.code128(),
+                data: e.kod,
+                width: (g - 2 * bosluk - 6) * mm,
+                height: barkodY * mm,
+                drawText: false,
+              ),
             ),
           ],
         ],

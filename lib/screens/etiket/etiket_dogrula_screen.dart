@@ -226,7 +226,13 @@ class _EtiketDogrulaScreenState extends ConsumerState<EtiketDogrulaScreen> {
           if (_kamera != null)
             SizedBox(
               height: (yukseklik * 0.4).clamp(220.0, 380.0),
-              child: HedefliTarayici(controller: _kamera, onDetect: _okundu),
+              // 1. adım kurum etiketi (karekod), 2. adım cihazın kendi
+              // seri no barkodu: çerçeve kendiliğinden değişir.
+              child: HedefliTarayici(
+                controller: _kamera,
+                onDetect: _okundu,
+                mod: ikinci ? TaramaModu.barkod : TaramaModu.karekod,
+              ),
             ),
           Container(
             width: double.infinity,

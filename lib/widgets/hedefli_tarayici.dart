@@ -26,10 +26,15 @@ class HedefliTarayici extends StatefulWidget {
     super.key,
     required this.controller,
     required this.onDetect,
+    this.mod,
   });
 
   final MobileScannerController controller;
   final void Function(BarcodeCapture capture) onDetect;
+
+  /// Verilirse çerçeve bu modda açılır (ör. etiket doğrulamada önce karekod,
+  /// sonra çizgi barkod). Kullanıcı yine de değiştirebilir.
+  final TaramaModu? mod;
 
   @override
   State<HedefliTarayici> createState() => _HedefliTarayiciState();
@@ -50,7 +55,11 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _moduYukle();
+    if (widget.mod != null) {
+      _mod = widget.mod!;
+    } else {
+      _moduYukle();
+    }
     if (!kIsWeb) {
       // Kod okunmadığı sürece ara ara ortaya netle (bazı telefonlarda
       // sürekli otomatik netleme yakın mesafede takılı kalıyor).
@@ -59,6 +68,14 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
           _ortayaNetle(goster: false);
         }
       });
+    }
+  }
+
+  @override
+  void didUpdateWidget(HedefliTarayici eski) {
+    super.didUpdateWidget(eski);
+    if (widget.mod != null && widget.mod != eski.mod) {
+      setState(() => _mod = widget.mod!);
     }
   }
 
