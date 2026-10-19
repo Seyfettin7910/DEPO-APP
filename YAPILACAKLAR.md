@@ -13,6 +13,10 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 - [ ] **Miktarlı (seri nosuz) ürünler**: ürün tanımında takip türü (Seri no / Miktar); birimler: adet, metre, paket, top, kutu. Girişte miktar (fabrika barkodu okutularak ürün seçimi), Araca Yükle / transfer miktarla, stokta ve raporda miktar, kritik stok miktara göre, sayımda miktar girişi.
   - Montaj penceresinde **"Kullanılan malzemeler"** bölümü: deneme süreci için kolay olmalı (isteğe bağlı, açılır bölüm, +/- düğmeleri, araçtaki sarf listesi hazır gelir, zorunlu değil).
 
+- [ ] **Yeni sürüm bildirimi**: Android'de arka plan kontrolüyle, her sürüm için bir kez ("Zorunlu güncelleme" metni ayrı); bildirim ayarlarında **kapatılamaz** ("Her zaman açık"). Web'de açıkken yeni sürüm çıkarsa üstte "Yeni sürüm var · Yenile" şeridi.
+- [ ] **Otomatik kurulum**: `UPDATE_PACKAGES_WITHOUT_USER_ACTION` izni (Android 12+ onaysız kurulum; ilk seferde bir kez onay gerekebilir, Android 11 ve altı / bazı üreticiler sormaya devam eder); indirme bitince "Şimdi kur?" sorusu kalkar, kurulum kendiliğinden başlar; uygulama kapalıyken indirme biterse "Güncelleme indi · kurmak için dokun" bildirimi; kurulum sonrası "Güncellendi" bildirimi.
+- **Sürüm kararı:** 4–9. maddeler (tutanak, depolar/araçlar, isimler, miktarlı ürünler, yeni sürüm bildirimi, otomatik kurulum) **1.23.0** olarak tek güncellemede; en düşük sürüm 1.23.0; Yenilikler notu + Supabase SQL.
+
 ## Sırada
 - [ ] **Kullanıcı rolleri ve yetkiler** (Yönetici / Depocu / Saha); silme yalnızca yöneticide, hareket kayıtları kimse tarafından silinemez.
 - [ ] **Veritabanı yedeği** (gece şifreli otomatik yedek + uygulamadan Excel dışa aktarım).
