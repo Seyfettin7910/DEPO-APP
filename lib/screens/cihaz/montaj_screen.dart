@@ -462,7 +462,8 @@ class _MontajScreenState extends ConsumerState<MontajScreen>
           if (!mounted) return;
           if (secim == 'tekrar') {
             setState(() => _kaydediliyor = false);
-            return _kaydet();
+            await _kaydet();
+            return;
           }
           if (secim != 'konumsuz') return;
           k = null;
