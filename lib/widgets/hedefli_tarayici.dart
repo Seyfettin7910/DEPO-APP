@@ -241,10 +241,15 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
     final adaylar = <(Barcode, Offset?)>[];
     for (final b in capture.barcodes) {
       final v = b.rawValue?.trim() ?? '';
-      if (v.isEmpty || gereksizKod(v)) continue;
-      if (urunBarkoduTuru(b) && !widget.urunBarkodu) {
-        // Ürün barkodu yalnızca kayıtlı malzeme barkoduysa okunur.
-        if (widget.bilinenMi == null || _bilinenler[v] == false) continue;
+      if (v.isEmpty) continue;
+      // Kurum etiketi ve koli karekodu her zaman okunur.
+      if (!_taninan(v)) {
+        if (gereksizKod(v)) continue;
+        if (_kayitliOlmali(b, v)) {
+          // Ürün barkodu / şüpheli kod: yalnızca kayıtlıysa okunur.
+          if (widget.bilinenMi == null && urunBarkoduTuru(b)) continue;
+          if (_bilinenler[v] == false) continue;
+        }
       }
       final m = _merkez(b, goruntu, alan);
       if (kIsWeb && m != null && !pencere.inflate(8).contains(m)) continue;
@@ -294,9 +299,9 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
     _adayKod = secilen;
     if (simdi.difference(_adayBaslangic) < _adayBekleme) return;
 
-    // Ürün barkodunun kayıtlı olup olmadığı henüz belli değilse bekle.
-    if (urunBarkoduTuru(secilen) &&
-        !widget.urunBarkodu &&
+    // Kayıtlı olması gereken kodun cevabı henüz gelmediyse bekle.
+    if (!_taninan(deger) &&
+        _kayitliOlmali(secilen, deger) &&
         _bilinenler[deger] != true) {
       return;
     }
@@ -336,10 +341,25 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
     _calisiyordu = calisiyor;
   }
 
+  /// Bu kod ancak sistemde kayıtlıysa mı okunur? Ürün barkodu (EAN/UPC) ve
+  /// şüpheli kodlar (yalnız rakam, tireli model / parça no) için: Okut gibi
+  /// kayıt kontrolü yapılan ekranlarda evet.
+  bool _kayitliOlmali(Barcode b, String v) {
+    if (widget.urunBarkodu) return false;
+    if (urunBarkoduTuru(b)) return true;
+    return widget.bilinenMi != null && supheliKod(v);
+  }
+
   Duration _beklemeBelirle(String deger, Barcode b) {
     if (_taninan(deger)) return _kisaBekleme;
     final kontrol = widget.bilinenMi;
-    if (kontrol == null) return _kisaBekleme;
+    // Kayıt kontrolü olmayan ekranlarda (ör. depoya giriş) şüpheli kod
+    // daha uzun sabit tutulmalı.
+    if (kontrol == null) {
+      return !widget.urunBarkodu && supheliKod(deger)
+          ? _uzunBekleme
+          : _kisaBekleme;
+    }
     final bilinen = _bilinenler[deger];
     if (bilinen != null) return bilinen ? _kisaBekleme : _uzunBekleme;
     // Sistemde kayıtlı mı? Cevap gelene kadar uzun bekleme varsayılır.

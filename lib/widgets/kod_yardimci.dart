@@ -81,6 +81,9 @@ bool get bilgisayarTarayicisi =>
     defaultTargetPlatform != TargetPlatform.iOS;
 
 final _macAdresi = RegExp(r'^([0-9A-F]{2}[:\-]){5}[0-9A-F]{2}$');
+// Ayırıcısız MAC (ör. B039566EE07D): 12 onaltılık karakter, harf + rakam
+final _macDuz = RegExp(r'^(?=.*[A-F])(?=.*\d)[0-9A-F]{12}$');
+final _yalnizRakam = RegExp(r'^\d+$');
 
 /// Kutu üstündeki ürün barkodu türleri (EAN / UPC). Seri no ya da kurum
 /// etiketi olmaz; yalnızca malzemenin fabrika barkodu olabilir.
@@ -103,5 +106,16 @@ bool gereksizKod(String deger) {
     'MAC:', 'MAC ',
   ];
   if (onEkler.any(k.startsWith)) return true;
-  return _macAdresi.hasMatch(k);
+  // Sipariş no (3000527901/10), "@722363267 ..." gibi kutu kodları
+  if (k.contains('/') || k.startsWith('@')) return true;
+  return _macAdresi.hasMatch(k) || _macDuz.hasMatch(k);
+}
+
+/// Seri no olabilir ama çoğu zaman değildir: yalnızca rakamdan oluşan kodlar
+/// (malzeme kodu, lot no, IMEI) ve tire / boşluk içeren kodlar (model,
+/// parça no: GS1300-10HP-EU0101F). Okut ekranında yalnızca sistemde
+/// kayıtlıysa okunur; diğer ekranlarda daha uzun sabit tutulması gerekir.
+bool supheliKod(String deger) {
+  final v = deger.trim();
+  return _yalnizRakam.hasMatch(v) || v.contains('-') || v.contains(' ');
 }
