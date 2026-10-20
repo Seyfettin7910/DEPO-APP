@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import 'guncelleme_servisi.dart';
+import 'tarayici.dart';
 import 'supabase_service.dart';
 
 /// Giriş kayıtları (kim, ne zaman, hangi IP'den, hangi cihaz / sürümle).
@@ -17,7 +18,9 @@ class GirisKaydiServisi {
       TargetPlatform.linux => 'Linux',
       TargetPlatform.fuchsia => 'Fuchsia',
     };
-    return kIsWeb ? 'Web · $p' : 'Uygulama · $p';
+    if (!kIsWeb) return 'Uygulama · $p';
+    final t = tarayiciAdi(); // "iPhone / iPad · Safari", "Windows · Edge"…
+    return t.isEmpty ? 'Web · $p' : 'Web · $p · $t';
   }
 
   static String get _surum => GuncellemeServisi.mevcutSurum.isEmpty

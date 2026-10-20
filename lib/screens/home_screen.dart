@@ -11,6 +11,8 @@ import '../services/bildirim/bildirim_gosterici.dart';
 import '../services/bildirim/web_bildirim.dart';
 import '../services/guncelleme_servisi.dart';
 import '../services/supabase_service.dart';
+import '../services/tarayici.dart';
+import '../widgets/iphone_rehberi.dart';
 import '../widgets/renkler.dart';
 import '../widgets/yarim_isler.dart';
 import 'depo/depo_list_screen.dart';
@@ -87,11 +89,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     if (!mounted) return;
     await yarimIsleriGoster(context);
     if (!mounted) return;
+    await anaEkranRehberiGerekirseGoster(context);
+    if (!mounted) return;
     await GuncellemeServisi.kontrolEt(acilis: true);
   }
 
   Future<void> _bildirimleriHazirla() async {
     if (kIsWeb) {
+      // Safari kullanılmayan sitelerin verisini silebilir: kalıcı saklama.
+      unawaited(kaliciSaklamaIste());
       // Bu tarayıcı bildirime aboneyse kullanıcı ve ayarlar sunucuda tazelenir.
       unawaited(BildirimAyarlari.yukle().then(WebBildirim.guncelle));
       return;
@@ -130,7 +136,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final secili = _menu[_index];
     return Scaffold(
       body: _screens[_index],
-      bottomNavigationBar: NavigationBar(
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // iPhone'da Safari dışı tarayıcıda: "Safari'de açın" şeridi.
+          const SafariUyarisi(),
+          NavigationBar(
         selectedIndex: _index,
         indicatorColor: secili.$5,
         onDestinationSelected: (i) => setState(() => _index = i),
@@ -141,6 +152,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               selectedIcon: Icon(m.$2, color: m.$4, size: 27),
               label: m.$3,
             ),
+        ],
+      ),
         ],
       ),
     );

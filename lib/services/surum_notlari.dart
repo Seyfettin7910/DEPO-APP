@@ -36,6 +36,29 @@ class NotMaddesi {
 
 const surumNotlari = <SurumNotu>[
   SurumNotu(
+    surum: '1.26.1',
+    tarih: '21.10.2026',
+    bolumler: [
+      NotBolumu('Yeni', [
+        NotMaddesi(
+          'iPhone: Ana Ekrana Ekle',
+          'Safari\'de ilk açılışta adım adım rehber; Ayarlar\'dan da açılır.',
+          'Ana ekrana eklenince bildirimler gelir, telefondaki veriler '
+              'silinmez, kamera / konum izni hatırlanır.',
+        ),
+        NotMaddesi('Görsel onay',
+            'Okutunca kamera çerçevesi yeşil (tamam) ya da kırmızı (hata) yanar.'),
+        NotMaddesi('Giriş kayıtları',
+            'Hangi cihaz ve tarayıcıdan girildiği yazılır (ör. iPhone · Safari).'),
+      ]),
+      NotBolumu('Değişen', [
+        NotMaddesi('iPhone',
+            'Safari dışı tarayıcıda "Safari\'de açın" uyarısı; seri no '
+                'alanlarında otomatik düzeltme kapalı; ilk okutmada da ses.'),
+      ]),
+    ],
+  ),
+  SurumNotu(
     surum: '1.26.0',
     tarih: '21.10.2026',
     bolumler: [

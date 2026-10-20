@@ -30,6 +30,8 @@ class EtiketAyarlariScreen extends ConsumerWidget {
                   controller: kodCtrl,
                   autofocus: true,
                   textCapitalization: TextCapitalization.characters,
+                  autocorrect: false,
+                  enableSuggestions: false,
                   decoration: InputDecoration(
                     labelText: 'Kod (ör. BLD veya BLD-BIM)',
                     helperText: 'Harf, rakam ve tire · en fazla 16 karakter',

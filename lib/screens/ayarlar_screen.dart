@@ -10,6 +10,7 @@ import '../services/supabase_service.dart';
 import '../services/taslak_servisi.dart';
 import '../widgets/renkler.dart';
 import '../widgets/sync_durum_dugmesi.dart';
+import '../widgets/iphone_rehberi.dart';
 import '../widgets/yarim_isler.dart';
 import 'bildirim/bildirim_ayarlari_screen.dart';
 import 'etiket/etiket_ayarlari_screen.dart';
@@ -140,6 +141,15 @@ class AyarlarScreen extends ConsumerWidget {
                   : 'Sürüm ${GuncellemeServisi.mevcutSurum}',
               onTap: () => GuncellemeServisi.elleDenetle(context),
             ),
+            if (iphoneRehberiGoster)
+              _Satir(
+                ikon: Icons.add_to_home_screen,
+                renk: Renkler.okut,
+                zemin: Renkler.okutZemin,
+                baslik: 'Ana ekrana ekle (iPhone)',
+                alt: 'Bildirim ve kalıcı saklama için',
+                onTap: () => anaEkranRehberi(context),
+              ),
             _Satir(
               ikon: Icons.auto_awesome_outlined,
               renk: Renkler.ara,

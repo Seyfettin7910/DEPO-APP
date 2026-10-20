@@ -731,6 +731,8 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen>
                     controller: _seriCtrl,
                     autofocus: true,
                     textCapitalization: TextCapitalization.characters,
+                    autocorrect: false,
+                    enableSuggestions: false,
                     textInputAction: TextInputAction.done,
                     decoration: InputDecoration(
                       labelText: 'Seri numarası (barkod okuyucuyla okutun)',

@@ -426,6 +426,8 @@ class _SayimScreenState extends ConsumerState<SayimScreen>
                 controller: _seriCtrl,
                 focusNode: _seriOdak,
                 textCapitalization: TextCapitalization.characters,
+                autocorrect: false,
+                enableSuggestions: false,
                 decoration: InputDecoration(
                   labelText: 'Seri no (yazın veya USB okuyucuyla okutun)',
                   suffixIcon: IconButton(

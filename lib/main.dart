@@ -7,6 +7,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'database/platform/db_fabrika.dart';
 
 import 'services/gorunum_ayari.dart';
+import 'services/ses_servisi.dart';
 import 'services/guncelleme_servisi.dart';
 import 'services/oturum_kilidi.dart';
 import 'services/supabase_service.dart';
@@ -52,7 +53,10 @@ class DepoApp extends StatelessWidget {
       // Her dokunuş "kullanıcı aktif" sayılır (5 dk hareketsizlik kilidi).
       builder: (context, child) => Listener(
         behavior: HitTestBehavior.translucent,
-        onPointerDown: (_) => OturumKilidi.instance.etkinlik(),
+        onPointerDown: (_) {
+          OturumKilidi.instance.etkinlik();
+          SesServisi.ilkDokunus(); // iPhone: ilk okutmada da ses çıksın
+        },
         child: GorunumAyari.uygula(context, child ?? const SizedBox()),
       ),
       home: const BaslangicEkrani(),

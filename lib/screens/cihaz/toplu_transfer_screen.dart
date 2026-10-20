@@ -504,6 +504,8 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen>
             child: TextField(
               controller: _seriCtrl,
               textCapitalization: TextCapitalization.characters,
+              autocorrect: false,
+              enableSuggestions: false,
               textInputAction: TextInputAction.done,
               decoration: InputDecoration(
                 labelText: 'Seri numarası (elle yaz veya okut)',

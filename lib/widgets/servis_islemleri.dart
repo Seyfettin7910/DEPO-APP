@@ -564,6 +564,8 @@ Future<void> servisSonucuAkisi(BuildContext context, WidgetRef ref,
                     readOnly: !bilgisayarTarayicisi,
                     onTap: bilgisayarTarayicisi ? null : kameraAc,
                     textCapitalization: TextCapitalization.characters,
+                    autocorrect: false,
+                    enableSuggestions: false,
                     decoration: InputDecoration(
                       labelText: 'Yeni cihazın seri numarası',
                       hintText: bilgisayarTarayicisi

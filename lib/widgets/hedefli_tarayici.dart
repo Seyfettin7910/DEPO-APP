@@ -7,6 +7,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/etiket/etiket_kodu.dart';
+import '../services/ses_servisi.dart';
 import 'kod_yardimci.dart';
 
 /// Hedef çerçevenin şekli: ince-uzun (çizgi barkod) veya kare (karekod).
@@ -109,6 +110,7 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     widget.controller.addListener(_kameraDinle);
+    SesServisi.onay.addListener(_onayGeldi);
     if (widget.mod != null) {
       _mod = widget.mod!;
     } else {
@@ -123,6 +125,24 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
         }
       });
     }
+  }
+
+  // Görsel onay: okutma sonucu çerçeve kısa süre yeşil / kırmızı yanar
+  // (iPhone'da titreşim olmadığı için; sessizdeki telefonda da görünür).
+  Color? _yanma;
+  Timer? _yanmaZamanlayici;
+
+  void _onayGeldi() {
+    final o = SesServisi.onay.value;
+    if (o == null || !mounted) return;
+    // Yalnızca ekranda görünen (en üstteki) kamera yansın.
+    if (!(ModalRoute.of(context)?.isCurrent ?? true)) return;
+    setState(() =>
+        _yanma = o.$1 ? const Color(0xFF2E7D32) : const Color(0xFFC62828));
+    _yanmaZamanlayici?.cancel();
+    _yanmaZamanlayici = Timer(const Duration(milliseconds: 450), () {
+      if (mounted) setState(() => _yanma = null);
+    });
   }
 
   @override
@@ -142,6 +162,8 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
     _netleme?.cancel();
     _kayip?.cancel();
     _ipucuZamanlayici?.cancel();
+    _yanmaZamanlayici?.cancel();
+    SesServisi.onay.removeListener(_onayGeldi);
     widget.controller.removeListener(_kameraDinle);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -476,6 +498,17 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
                     minHeight: 5,
                     color: const Color(0xFF4CAF50),
                     backgroundColor: const Color(0x66FFFFFF),
+                  ),
+                ),
+              ),
+            ),
+          if (_yanma != null)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: _yanma!.withOpacity(0.18),
+                    border: Border.all(color: _yanma!, width: 10),
                   ),
                 ),
               ),

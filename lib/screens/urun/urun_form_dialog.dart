@@ -125,6 +125,8 @@ Future<void> urunFormDialog(BuildContext context, WidgetRef ref,
                 TextField(
                   controller: seriCtrl,
                   textCapitalization: TextCapitalization.characters,
+                  autocorrect: false,
+                  enableSuggestions: false,
                   onChanged: (_) => setState(() {}),
                   decoration: InputDecoration(
                     labelText: 'Seri numarası',

@@ -5,6 +5,13 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.26.1 – iPhone (Safari) ve tarayıcılar
+- Hedef tarayıcılar: iPhone → Safari; Windows → Edge / Chrome / Firefox; Android → uygulama.
+- `web/tarayici.js` + `lib/services/tarayici*.dart`: tarayıcı adı, iOS, ana ekranda mı, `navigator.storage.persist()` (açılışta).
+- iPhone Safari'de ana ekrana eklenmemişse bir kez "Ana Ekrana Ekle" rehberi (Ayarlar'dan da). iPhone'da Safari dışı tarayıcıda alt menünün üstünde uyarı şeridi.
+- Giriş kayıtlarında platform: "Web · iPhone / iPad · Safari" gibi (SQL gerekmez).
+- `SesServisi.onay`: okutma sonucu kamera çerçevesi yeşil / kırmızı yanar (iPhone'da titreşim yok); ilk dokunuşta ses hazırlanır (iOS ses kilidi). Seri no alanlarında otomatik düzeltme / öneri kapalı. viewport `maximum-scale=1.0`.
+
 ## 1.26.0 – Okut ile arka arkaya okutma, toplu montaj
 - Okut: `OkutListesi` (lib/services/okut_listesi.dart, testleri test/okut_listesi_test.dart): işlem yokken kayıtlı → kart; 1. kayıtsız → uyarı; 2. kayıtsız → arka arkaya okutma (Depoya giriş listesi); başladıktan sonra kayıtlı atlanır; 1. kayıtsızdan sonra kayıtlı → "Atla / Kartı aç". Hızlı işlemler (Depoya giriş · Transfer · Araca Yükle · Montaj) aynı listeyle; giriş yalnız kayıtsız, diğerleri yalnız kayıtlı alır. Koli karekodu listeye pencere açmadan eklenir. Sınır 100, kamerada "kalan/100". Liste SharedPreferences'ta (`okut_listesi`). Bilgisayarda USB okuyucu için yazma alanı. Sayım Okut'tan kalktı.
 - Montaj ekranı (`MontajScreen`): birden çok cihaz aynı kullanım yeri / tutanak / malzeme / koordinatla; cihaz kartından o cihazla açılır; "Sonraki nokta". Konum `KonumIzleyici` ile ekran açıkken akıştan izlenir, Kaydet anındaki (≤5 sn taze, ≤20 m) konum alınır; yoksa en fazla 20 sn beklenir. Taslak türü `montaj`.
