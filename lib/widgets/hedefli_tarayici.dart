@@ -43,7 +43,11 @@ class HedefliTarayici extends StatefulWidget {
     this.mod,
     this.urunBarkodu = false,
     this.bilinenMi,
+    this.ustOrta,
   });
+
+  /// Kameranın üstünde ortada gösterilecek küçük bilgi (ör. "98/100").
+  final Widget? ustOrta;
 
   final MobileScannerController controller;
   final void Function(BarcodeCapture capture) onDetect;
@@ -475,6 +479,13 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
                   ),
                 ),
               ),
+            ),
+          if (widget.ustOrta != null)
+            Positioned(
+              top: kucuk ? 6 : 12,
+              left: 0,
+              right: 0,
+              child: IgnorePointer(child: Center(child: widget.ustOrta)),
             ),
           if (_ipucu != null)
             Positioned(

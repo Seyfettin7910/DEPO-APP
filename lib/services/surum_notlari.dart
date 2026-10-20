@@ -36,6 +36,67 @@ class NotMaddesi {
 
 const surumNotlari = <SurumNotu>[
   SurumNotu(
+    surum: '1.26.0',
+    tarih: '21.10.2026',
+    bolumler: [
+      NotBolumu('Yeni', [
+        NotMaddesi(
+          'Arka arkaya okutma',
+          'Okut\'ta 2 kayıtsız seri no arka arkaya okutulunca liste başlar; '
+              'bitince "Depoya ekle (N)".',
+          'Liste başladıktan sonra kayıtlı cihaz okutulursa atlanır. İlk '
+              'kayıtsızdan sonra kayıtlı cihaz okutulursa "Atla / Kartı aç" '
+              'diye sorulur. Liste uygulama kapansa da kaybolmaz.',
+        ),
+        NotMaddesi(
+          'Hızlı işlemler',
+          'Depoya giriş · Transfer · Araca Yükle · Montaj: dokunun, arka '
+              'arkaya okutun, düğmeyle ilgili ekran listeyle açılır.',
+          'Depoya girişe yalnız kayıtsız, diğerlerine yalnız kayıtlı cihaz '
+              'girer; uymayan "liste dışı" diye atlanır. Koli karekodları da '
+              'arka arkaya okutulabilir. En fazla 100: kameranın üstünde '
+              '"98/100" gibi görünür.',
+        ),
+        NotMaddesi(
+          'Toplu montaj',
+          'Bir noktaya takılan cihazların hepsi tek seferde, aynı konumla '
+              'kaydedilir.',
+          'Cihaz kartındaki "Montaj / Kullanıldı" o cihazla açılır, "+ Başka '
+              'cihaz okut" ile diğerleri eklenir. Yer, not, tutanak ve '
+              'malzemeler bir kez girilir. Kaydettikten sonra "Sonraki nokta".',
+        ),
+        NotMaddesi(
+          'Konum',
+          'Montajda Kaydet\'e basıldığı andaki konum kaydedilir.',
+          'Ekran açılınca GPS ısınır; üstteki şerit konumun durumunu gösterir '
+              '(aranıyor / zayıf / hazır). Konum hazır değilse en fazla 20 sn '
+              'beklenir.',
+        ),
+        NotMaddesi('Varsayılan giriş deposu',
+            'Ayarlar\'dan seçilir; depoya girişte hazır seçili gelir.'),
+        NotMaddesi('Karışık koli',
+            'Depoya girişte bir seri noya dokunup ona ayrı model seçilebilir.'),
+      ]),
+      NotBolumu('Değişen', [
+        NotMaddesi(
+          'Araçtan depoya transfer',
+          'Normal transfer olarak kaydedilir; "Arızalı" işaretlenirse arıza '
+              'iadesi olur.',
+          'Arıza iadesi için sebep yazılmalı ve karar (tamir / değişim) '
+              'seçilmeli; biri eksikse kaydetmez.',
+        ),
+        NotMaddesi(
+          'Depo ve araç ekranları',
+          'Sağ altta "Sayım" ve "İşlemler" (malzeme işlemleri).',
+          'Cihaz girişi, transfer ve araca yükleme Okut\'tan yapılır. Sayım '
+              'Okut\'tan kalktı; depo / araç ekranında o yer seçili açılır.',
+        ),
+        NotMaddesi('Depoya giriş',
+            'Depolar alt alta görünür; araçlar listelenmez.'),
+      ]),
+    ],
+  ),
+  SurumNotu(
     surum: '1.25.1',
     tarih: '20.10.2026',
     bolumler: [

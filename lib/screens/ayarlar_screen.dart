@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/app_providers.dart';
+import '../database/app_database.dart';
+import '../services/cihaz_tercihleri.dart';
 import '../services/gorunum_ayari.dart';
 import '../services/guncelleme_servisi.dart';
 import '../services/supabase_service.dart';
@@ -98,6 +100,7 @@ class AyarlarScreen extends ConsumerWidget {
           ]),
           const _Baslik('TERCİHLER'),
           _Kutu(children: [
+            const _VarsayilanDepoSatiri(),
             _Satir(
               ikon: Icons.notifications_none,
               renk: Renkler.zil,
@@ -256,6 +259,81 @@ class _Satir extends StatelessWidget {
           : Text(alt!, maxLines: 2, overflow: TextOverflow.ellipsis),
       trailing: sag ?? const Icon(Icons.chevron_right),
       onTap: onTap,
+    );
+  }
+}
+
+
+/// Ayarlar → Varsayılan giriş deposu (bu telefona özel): Depoya girişte hazır
+/// seçili gelir.
+class _VarsayilanDepoSatiri extends ConsumerStatefulWidget {
+  const _VarsayilanDepoSatiri();
+
+  @override
+  ConsumerState<_VarsayilanDepoSatiri> createState() =>
+      _VarsayilanDepoSatiriState();
+}
+
+class _VarsayilanDepoSatiriState extends ConsumerState<_VarsayilanDepoSatiri> {
+  String? _depoId;
+
+  @override
+  void initState() {
+    super.initState();
+    CihazTercihleri.girisDeposu().then((v) {
+      if (mounted) setState(() => _depoId = v);
+    });
+  }
+
+  Future<void> _sec(List<Depo> depolar) async {
+    final secim = await showDialog<String>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('Varsayılan giriş deposu'),
+        children: [
+          for (final d in depolar)
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(ctx, d.id),
+              child: Row(children: [
+                Icon(
+                    d.id == _depoId
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_off,
+                    color: Renkler.okut),
+                const SizedBox(width: 12),
+                Expanded(child: Text(d.ad)),
+              ]),
+            ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(ctx, ''),
+            child: const Row(children: [
+              Icon(Icons.block, color: Renkler.ayar),
+              SizedBox(width: 12),
+              Text('Seçilmesin'),
+            ]),
+          ),
+        ],
+      ),
+    );
+    if (secim == null) return;
+    final id = secim.isEmpty ? null : secim;
+    await CihazTercihleri.girisDeposuAyarla(id);
+    if (mounted) setState(() => _depoId = id);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final depolar = (ref.watch(depolarStreamProvider).valueOrNull ?? <Depo>[])
+        .where((d) => !d.arac)
+        .toList();
+    final ad = depolar.where((d) => d.id == _depoId).firstOrNull?.ad;
+    return _Satir(
+      ikon: Icons.warehouse_outlined,
+      renk: Renkler.okut,
+      zemin: Renkler.okutZemin,
+      baslik: 'Varsayılan giriş deposu',
+      alt: ad ?? 'Seçilmedi · Depoya girişte hazır seçili gelir',
+      onTap: () => _sec(depolar),
     );
   }
 }

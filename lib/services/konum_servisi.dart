@@ -51,6 +51,26 @@ class KonumServisi {
     }
   }
 
+  /// Konum izni / GPS açık mı; değilse kullanıcıya gösterilecek sebep.
+  static Future<String?> izinHatasi() async {
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        return 'Telefonun konum (GPS) özelliği kapalı';
+      }
+      var izin = await Geolocator.checkPermission();
+      if (izin == LocationPermission.denied) {
+        izin = await Geolocator.requestPermission();
+      }
+      if (izin == LocationPermission.denied) return 'Konum izni verilmedi';
+      if (izin == LocationPermission.deniedForever) {
+        return 'Konum izni kapalı (telefon ayarlarından açılabilir)';
+      }
+      return null;
+    } catch (_) {
+      return 'Konum alınamadı';
+    }
+  }
+
   static String koordinat(double enlem, double boylam) =>
       '${enlem.toStringAsFixed(6)}, ${boylam.toStringAsFixed(6)}';
 

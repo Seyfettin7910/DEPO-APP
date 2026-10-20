@@ -7,12 +7,11 @@ import '../../database/app_database.dart';
 import '../../database/models.dart';
 import '../../providers/app_providers.dart';
 import '../cihaz/cihaz_detay_screen.dart';
-import '../cihaz/toplu_giris_screen.dart';
-import '../cihaz/toplu_transfer_screen.dart';
 import '../malzeme/malzeme_islem_screen.dart';
 import '../rapor/sayim_screen.dart';
 import '../../widgets/silme_islemleri.dart';
 import '../../widgets/servis_islemleri.dart';
+import '../../widgets/renkler.dart';
 
 /// Bir deponun detayı: "Stok" sekmesinde ürünlerin güncel adedi,
 /// "Hareketler" sekmesinde giren/çıkan her işlem görünür.
@@ -37,10 +36,28 @@ class DepoStokScreen extends ConsumerWidget {
             ],
           ),
         ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: () => _islemMenusu(context, depoId, depoAdi),
-          icon: const Icon(Icons.qr_code_scanner),
-          label: const Text('İşlemler'),
+        // Cihaz işlemleri (giriş, transfer, araca yükle, montaj) Okut'ta;
+        // burada Sayım ve malzeme işlemleri.
+        floatingActionButton: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FloatingActionButton.extended(
+              heroTag: 'sayim',
+              backgroundColor: Renkler.araZemin,
+              foregroundColor: Renkler.ara,
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => SayimScreen(onceSeciliDepoId: depoId))),
+              icon: const Icon(Icons.fact_check_outlined),
+              label: const Text('Sayım'),
+            ),
+            const SizedBox(width: 10),
+            FloatingActionButton.extended(
+              heroTag: 'islemler',
+              onPressed: () => _islemMenusu(context, depoId, depoAdi),
+              icon: const Icon(Icons.cable_outlined),
+              label: const Text('İşlemler'),
+            ),
+          ],
         ),
         body: TabBarView(
           children: [
@@ -69,40 +86,6 @@ void _islemMenusu(BuildContext context, String depoId, String depoAdi) {
          child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const _MenuBasligi('Seri numaralı cihazlar'),
-            ListTile(
-              leading: const Icon(Icons.add_box_outlined),
-              title: Text('Yeni cihaz girişi ($depoAdi)'),
-              subtitle: const Text('Seri no okutarak bu depoya ekle'),
-              onTap: () => ac(TopluGirisScreen(onceSeciliDepoId: depoId)),
-            ),
-            ListTile(
-              leading: const Icon(Icons.move_to_inbox_outlined),
-              title: Text('Buraya transfer ($depoAdi)'),
-              subtitle: const Text('Başka depo/araçtaki cihazları buraya al'),
-              onTap: () =>
-                  ac(TopluTransferScreen(onceHedefDepoId: depoId)),
-            ),
-            ListTile(
-              leading: const Icon(Icons.assignment_return_outlined),
-              title: Text('Toplu iade ($depoAdi)'),
-              subtitle: const Text('Araçtaki cihazları seri no okutup buraya iade al'),
-              onTap: () => ac(TopluTransferScreen(
-                  tip: HareketTipi.iade, onceHedefDepoId: depoId)),
-            ),
-            ListTile(
-              leading: const Icon(Icons.local_shipping_outlined),
-              title: const Text('Toplu Araca Yükle'),
-              subtitle: const Text('Seri no okutup bir araca (veya depoya) yükle'),
-              onTap: () => ac(const TopluTransferScreen(
-                  tip: HareketTipi.kullanim)),
-            ),
-            ListTile(
-              leading: const Icon(Icons.fact_check_outlined),
-              title: Text('Sayım yap ($depoAdi)'),
-              subtitle: const Text('Cihazları okutup sistemle karşılaştır'),
-              onTap: () => ac(SayimScreen(onceSeciliDepoId: depoId)),
-            ),
             const _MenuBasligi('Malzemeler (kablo, adaptör… miktarla)'),
             ListTile(
               leading: const Icon(Icons.add_circle_outline),
@@ -397,16 +380,7 @@ class _StokSatiri extends StatelessWidget {
         style:
             TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: renk),
       ),
-      onTap: urun == null
-          ? null
-          : () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => TopluGirisScreen(
-                    onceSeciliUrunId: urun!.id,
-                    onceSeciliDepoId: depoId,
-                  ),
-                ),
-              ),
+      // Giriş artık Okut'tan yapılır (burada yalnız görüntüleme).
     );
   }
 }

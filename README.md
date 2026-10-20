@@ -5,6 +5,14 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.26.0 – Okut ile arka arkaya okutma, toplu montaj
+- Okut: `OkutListesi` (lib/services/okut_listesi.dart, testleri test/okut_listesi_test.dart): işlem yokken kayıtlı → kart; 1. kayıtsız → uyarı; 2. kayıtsız → arka arkaya okutma (Depoya giriş listesi); başladıktan sonra kayıtlı atlanır; 1. kayıtsızdan sonra kayıtlı → "Atla / Kartı aç". Hızlı işlemler (Depoya giriş · Transfer · Araca Yükle · Montaj) aynı listeyle; giriş yalnız kayıtsız, diğerleri yalnız kayıtlı alır. Koli karekodu listeye pencere açmadan eklenir. Sınır 100, kamerada "kalan/100". Liste SharedPreferences'ta (`okut_listesi`). Bilgisayarda USB okuyucu için yazma alanı. Sayım Okut'tan kalktı.
+- Montaj ekranı (`MontajScreen`): birden çok cihaz aynı kullanım yeri / tutanak / malzeme / koordinatla; cihaz kartından o cihazla açılır; "Sonraki nokta". Konum `KonumIzleyici` ile ekran açıkken akıştan izlenir, Kaydet anındaki (≤5 sn taze, ≤20 m) konum alınır; yoksa en fazla 20 sn beklenir. Taslak türü `montaj`.
+- Transfer: hedef depo + araçtan gelen cihaz varsa "Arızalı" seçeneği; işaretliyse sebep + karar zorunlu, kayıt `iade` / `Arıza`.
+- Depoya giriş: Ayarlar → Varsayılan giriş deposu (cihaza özel), depolar alt alta (araçlar yok), seri noya özel model (karışık koli; kayıt model gruplarıyla).
+- Depo / araç ekranı: "Sayım" + "İşlemler" (yalnız malzeme). İşlem ekranları kaydedince `true` döner (Okut listesi boşalır).
+- CI: kontrol dalında `flutter test test/okut_listesi_test.dart`.
+
 ## 1.25.1 – Sayım ekranı düzenlemesi
 - Sayım: rapor düğmesi soluk simge yerine yazılı "Bitir" (sayımı bitir, PDF / Excel rapor). Dört sekme (Eksik / Bulunan / Fazla / Malzeme) kaydırmasız ekrana sığar (FittedBox), her sekme ve sayaç kendi renginde; depo seçiminde, ekle düğmesinde ve ilerleme çubuğunda renkli simgeler.
 - Sayım, toplu transfer ve depoya giriş: kamera düğmesi `videocam` yerine `qr_code_scanner` (yeşil), açıkken `no_photography_outlined` (kırmızı).

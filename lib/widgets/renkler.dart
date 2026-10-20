@@ -19,6 +19,8 @@ class Renkler {
   static const ayarZemin = Color(0xFFE2E8F0);
   static const cikis = Color(0xFFC62828);
   static const cikisZemin = Color(0xFFFBDADA);
+  static const montaj = Color(0xFFC2185B);
+  static const montajZemin = Color(0xFFFADCE8);
   static const zil = Color(0xFFD97706);
   static const zilZemin = Color(0xFFFDECC8);
 }

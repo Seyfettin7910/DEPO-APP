@@ -8,6 +8,7 @@ import '../screens/malzeme/malzeme_islem_screen.dart';
 import '../screens/cihaz/cihaz_detay_screen.dart';
 import '../screens/cihaz/toplu_giris_screen.dart';
 import '../screens/cihaz/toplu_transfer_screen.dart';
+import '../screens/cihaz/montaj_screen.dart';
 import '../screens/rapor/sayim_screen.dart';
 import '../services/taslak_servisi.dart';
 
@@ -18,6 +19,7 @@ IconData taslakIkonu(String tur) => switch (tur) {
       'toplu_iade' => Icons.assignment_return_outlined,
       'giris' => Icons.add_box_outlined,
       'saha' => Icons.task_alt,
+      'montaj' => Icons.place_outlined,
       'geri_al' => Icons.assignment_return_outlined,
       'ariza' => Icons.build_outlined,
       'servis_gonder' => Icons.send_outlined,
@@ -46,6 +48,8 @@ Future<void> taslagaDevamEt(BuildContext context, Taslak t) {
             const TopluTransferScreen(tip: HareketTipi.iade, taslaktan: true);
       case 'giris':
         ekran = const TopluGirisScreen(taslaktan: true);
+      case 'montaj':
+        ekran = const MontajScreen(taslaktan: true);
       default:
         final islem = MalzemeIslemi.values
             .where((m) => t.tur == 'malzeme_${m.name}')

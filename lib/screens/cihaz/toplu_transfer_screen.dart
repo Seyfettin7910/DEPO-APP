@@ -49,6 +49,11 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen>
   String? _sebep; // toplu iadede opsiyonel geri alma sebebi
   String? _arizaKarari; // iadede "Arıza" seçildiyse: tamir | degisim
 
+  /// Transferde (araçtan depoya): "Arızalı" işaretlenirse arıza iadesi olur;
+  /// sebep (açıklama) ve karar (tamir / değişim) ikisi de zorunludur.
+  bool _arizali = false;
+  final _arizaCtrl = TextEditingController();
+
   String? _hedefId;
   bool _kameraAcik = false;
   bool _coklu = false;
@@ -59,6 +64,14 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen>
   DateTime _sonZaman = DateTime.fromMillisecondsSinceEpoch(0);
 
   bool get _kullanim => widget.tip == HareketTipi.kullanim;
+
+  /// Düz transferde hedef bir depoysa ve listede araçtan gelen cihaz varsa
+  /// "Arızalı" seçeneği gösterilir.
+  bool _arizaSecenegi(List<Depo> depolar) =>
+      widget.tip == HareketTipi.transfer &&
+      _hedefId != null &&
+      depolar.any((d) => d.id == _hedefId && !d.arac) &&
+      _liste.any((b) => b.depoArac);
   bool get _iade => widget.tip == HareketTipi.iade;
 
   /// Hedef seçilmeden gelen seri numaraları (hedef seçilince eklenir).
@@ -76,7 +89,7 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen>
     if (_hedefId != null && _bekleyen.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _bekleyenleriEkle());
     }
-    taslakKorumasiniBaslat(dinlenecekler: [_notCtrl]);
+    taslakKorumasiniBaslat(dinlenecekler: [_notCtrl, _arizaCtrl]);
   }
 
   String get _baslik => _kullanim
@@ -108,6 +121,8 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen>
         'sebep': _sebep,
         'arizaKarari': _arizaKarari,
         'not': _notCtrl.text,
+        'arizali': _arizali,
+        'ariza': _arizaCtrl.text,
       },
     );
   }
@@ -120,11 +135,13 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen>
       _hedefId = v['hedefId'] as String? ?? _hedefId;
       _sebep = v['sebep'] as String?;
       _arizaKarari = v['arizaKarari'] as String?;
+      _arizali = v['arizali'] as bool? ?? false;
       for (final s in (v['bekleyen'] as List? ?? [])) {
         if (!_bekleyen.contains('$s')) _bekleyen.add('$s');
       }
     });
     _notCtrl.text = v['not'] as String? ?? '';
+    _arizaCtrl.text = v['ariza'] as String? ?? '';
     if (_hedefId == null) return;
     // Liste yeniden denetlenir: bu arada başka yere giden cihaz atlanır.
     final eklenecek = <CihazBilgi>[];
@@ -165,7 +182,8 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen>
 
   @override
   void dispose() {
-    taslakKorumasiniBitir(dinlenecekler: [_notCtrl]);
+    taslakKorumasiniBitir(dinlenecekler: [_notCtrl, _arizaCtrl]);
+    _arizaCtrl.dispose();
     _seriCtrl.dispose();
     _notCtrl.dispose();
     _kamera?.dispose();
@@ -343,6 +361,16 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen>
       _mesaj('Önce seri numarası ekleyin', hata: true);
       return;
     }
+    final depolar = ref.read(depolarStreamProvider).valueOrNull ?? <Depo>[];
+    final arizaIadesi = _arizali && _arizaSecenegi(depolar);
+    if (arizaIadesi &&
+        (_arizaCtrl.text.trim().isEmpty || _arizaKarari == null)) {
+      _mesaj(
+          'Arıza sebebini yazın ve kararı (tamir / değişim) seçin ya da '
+          '"Arızalı" işaretini kaldırın',
+          hata: true);
+      return;
+    }
     if (_iade) {
       final h = iadeSebebiHatasi(_sebep, _notCtrl.text,
           zorunlu: false, arizaKarari: _arizaKarari, arizaSor: true);
@@ -360,14 +388,19 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen>
     setState(() => _kaydediliyor = true);
     try {
       final adet = _liste.length;
+      final not_ = _notCtrl.text.trim();
       await ref.read(appDatabaseProvider).cihazlariTopluHareketKaydet(
             cihazIdleri: [for (final b in _liste) b.cihaz.id],
-            tip: widget.tip,
+            tip: arizaIadesi ? HareketTipi.iade : widget.tip,
             kullaniciId: ref.read(aktifKullaniciIdProvider) ?? 'demo-kullanici',
             hedefDepoId: _hedefId,
-            not_: _notCtrl.text.trim().isEmpty ? null : _notCtrl.text.trim(),
-            sebep: _iade ? _sebep : null,
-            arizaKarari: _iade && _sebep == 'Arıza' ? _arizaKarari : null,
+            not_: arizaIadesi
+                ? [_arizaCtrl.text.trim(), if (not_.isNotEmpty) not_].join(' · ')
+                : (not_.isEmpty ? null : not_),
+            sebep: arizaIadesi ? 'Arıza' : (_iade ? _sebep : null),
+            arizaKarari: arizaIadesi
+                ? _arizaKarari
+                : (_iade && _sebep == 'Arıza' ? _arizaKarari : null),
           );
       SesServisi.basari();
       await taslakTamamlandi();
@@ -375,10 +408,10 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(_kullanim
               ? '$adet cihaz araca yüklendi'
-              : (_iade
-                  ? '$adet cihaz iade edildi'
+              : (_iade || arizaIadesi
+                  ? '$adet cihaz ${arizaIadesi ? 'arızalı olarak ' : ''}iade edildi'
                   : '$adet cihaz transfer edildi'))));
-      Navigator.pop(context);
+      Navigator.pop(context, true);
     } catch (e) {
       SesServisi.hata();
       _mesaj(e is StateError ? e.message : 'Kaydedilemedi: $e', hata: true);
@@ -543,6 +576,31 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen>
                       arizaKarari: _arizaKarari,
                       onArizaKarari: (v) => setState(() => _arizaKarari = v),
                     ),
+                  if (_arizaSecenegi(tumu)) ...[
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                      value: _arizali,
+                      onChanged: (v) => setState(() => _arizali = v ?? false),
+                      secondary: Icon(Icons.build_outlined,
+                          color: _arizali ? Renkler.cikis : null),
+                      title: const Text('Arızalı (arıza iadesi)'),
+                      subtitle: const Text(
+                          'İşaretlenmezse normal transfer olarak kaydedilir'),
+                    ),
+                    if (_arizali) ...[
+                      TextField(
+                        controller: _arizaCtrl,
+                        decoration: const InputDecoration(
+                            labelText: 'Arıza sebebi',
+                            hintText: 'Örn: Görüntü gelmiyor'),
+                      ),
+                      ArizaKarariSecici(
+                        secili: _arizaKarari,
+                        onSecildi: (v) => setState(() => _arizaKarari = v),
+                      ),
+                    ],
+                  ],
                   TextField(
                     controller: _notCtrl,
                     decoration:

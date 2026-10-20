@@ -308,6 +308,14 @@ mixin YarimIsKorumasi<T extends StatefulWidget> on State<T> {
     await TaslakServisi.sil(taslakTuru);
   }
 
+  /// Kaydettikten sonra aynı ekranda yeni işe başlandı (ör. "Sonraki nokta"):
+  /// taslak koruması yeniden açılır.
+  @protected
+  void taslakKorumasiniYenile() {
+    _taslakHazir = true;
+    _taslakDegisti();
+  }
+
   /// Geri tuşu: içi doluysa sor. true dönerse ekran kapanabilir.
   Future<bool> _cikisOnayi() async {
     final t = _taslakHazir ? taslakOlustur() : null;
