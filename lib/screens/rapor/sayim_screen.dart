@@ -351,16 +351,21 @@ class _SayimScreenState extends ConsumerState<SayimScreen>
           title: const Text('Sayım'),
           actions: [
             IconButton(
-              icon: Icon(_kameraAcik ? Icons.videocam_off : Icons.videocam),
+              icon: Icon(_kameraAcik
+                  ? Icons.no_photography_outlined
+                  : Icons.qr_code_scanner),
               tooltip: _kameraAcik ? 'Kamerayı kapat' : 'Kamerayla okut',
               onPressed: _kameraDegistir,
             ),
-            IconButton(
-              icon: const Icon(Icons.summarize_outlined),
-              tooltip: 'Sayımı bitir, rapor al',
-              onPressed: secili == null
-                  ? null
-                  : () => _raporAl(secili.ad, beklenen, malzemeler),
+            Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: TextButton.icon(
+                icon: const Icon(Icons.assignment_turned_in_outlined),
+                label: const Text('Bitir'),
+                onPressed: secili == null
+                    ? null
+                    : () => _raporAl(secili.ad, beklenen, malzemeler),
+              ),
             ),
           ],
         ),
@@ -439,12 +444,24 @@ class _SayimScreenState extends ConsumerState<SayimScreen>
                   minHeight: 6,
                 ),
               ),
-            TabBar(isScrollable: true, tabs: [
-              Tab(text: 'Eksik (${eksik.length})'),
-              Tab(text: 'Bulunan (${bulunan.length})'),
-              Tab(text: 'Fazla (${fazla.length})'),
-              Tab(text: 'Malzeme (${malzemeler.length})'),
-            ]),
+            // Dört sekme de ekrana sığsın: yazı sığmazsa küçülür, kesilmez.
+            TabBar(
+              labelPadding: const EdgeInsets.symmetric(horizontal: 4),
+              tabs: [
+                for (final t in [
+                  'Eksik (${eksik.length})',
+                  'Bulunan (${bulunan.length})',
+                  'Fazla (${fazla.length})',
+                  'Malzeme (${malzemeler.length})',
+                ])
+                  Tab(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(t, maxLines: 1),
+                    ),
+                  ),
+              ],
+            ),
             Expanded(
               child: _depoId == null
                   ? const Center(
@@ -454,7 +471,8 @@ class _SayimScreenState extends ConsumerState<SayimScreen>
                           'Sayılacak depoyu veya aracı seçin, sonra oradaki '
                           'cihazların seri numaralarını tek tek okutun.\n\n'
                           'Sayım sistemde hiçbir şeyi değiştirmez; sonunda '
-                          'sağ üstten raporu (PDF / Excel) alırsınız.',
+                          'sağ üstteki "Bitir" ile raporu (PDF / Excel) '
+                          'alırsınız.',
                           textAlign: TextAlign.center,
                         ),
                       ),

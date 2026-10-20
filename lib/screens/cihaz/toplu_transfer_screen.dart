@@ -400,7 +400,9 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen>
         title: Text(_baslik),
         actions: [
           IconButton(
-            icon: Icon(_kameraAcik ? Icons.videocam_off : Icons.videocam),
+            icon: Icon(_kameraAcik
+                ? Icons.no_photography_outlined
+                : Icons.qr_code_scanner),
             tooltip: _kameraAcik ? 'Kamerayı kapat' : 'Kamerayla okut',
             onPressed: _kameraDegistir,
           ),

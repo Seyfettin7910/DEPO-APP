@@ -619,7 +619,7 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen>
                     child: _kameraAcik
                         ? OutlinedButton.icon(
                             onPressed: _kameraDegistir,
-                            icon: const Icon(Icons.videocam_off),
+                            icon: const Icon(Icons.no_photography_outlined),
                             label: const Text('Okutma bitti, kamerayı kapat'),
                           )
                         : FilledButton.tonalIcon(
