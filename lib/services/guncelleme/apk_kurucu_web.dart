@@ -15,3 +15,9 @@ Future<void> apkKur(String yol) async =>
 
 Future<void> duraklamisIseIptal(String surum) async {}
 Future<bool> bildirimdenKurulum() async => false;
+
+Stream<Map<String, dynamic>> get kurulumOlaylari => const Stream.empty();
+Future<bool> onayEkraniniAc() async => false;
+Future<bool> xiaomiMi() async => false;
+Future<void> izinEkraniniAc() async {}
+Future<void> apkSil(String yol) async {}

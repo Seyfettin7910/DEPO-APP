@@ -5,6 +5,10 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.24.2 – Otomatik kurulum onayı ve hızlı yeni sürüm bildirimi
+- Kurulum onayı (Android): sistemin onay ekranı artık uygulamanın ön plandaki ekranından açılıyor (Xiaomi / HyperOS arka plandan açılan ekranı engelliyordu; 1.23.0→1.24.0 ve 1.24.0→1.24.1 geçişlerinde pencere "Tekrar dene"ye düşüyordu). Uygulama arka plandaysa "Güncellemeyi onaylayın" bildirimi. Onay ekranı 3 sn içinde öne gelmezse pencerede "Onay ekranını aç" ve Xiaomi'de "İzni aç" (Diğer izinler ekranı; dönünce kurulum kendiliğinden yeniden denenir). Kurulum sonucu (onay_bekleniyor, iptal, yer yok, bozuk, uyumsuz, çakışma, engellendi) PackageInstaller'dan anında pencereye gelir; 20 sn bekleme kalktı. Normal güncellemede takılınca "Ertele" görünür.
+- Yeni sürüm bildirimi: Android arka plan görevi her çalışmada (en fazla 10 dk'da bir) yalnızca version.json'a bakar (GitHub API'ye sormaz). Sunucudaki bildirim fonksiyonu (2 dk'da bir) version.json değişince web / iPhone abonelerine "Yeni sürüm var" gönderir (`push_ayar.son_surum`). Bildirim ayarlarında "Yeni sürüm · her zaman açık" web'de de görünür.
+
 ## 1.24.1 – Kamera okuma düzeltmesi
 - Okuma onayı süre yerine okuma sayısıyla: kurum etiketi, koli karekodu ve (Okut'ta) kayıtlı kod ilk okumada; bilinmeyen / şüpheli kod 1,5 sn içinde ikinci okumada kabul edilir. Aradaki kaçırılan kareler sayacı sıfırlamaz (küçük, sık çizgili barkodlar — ör. Mercusys S/N — 1.24.0'da okunmuyordu). Açılış beklemesi 0,5 sn; kamera saniyede daha çok kare dener (120 ms).
 - Seri no ayıklama: "S/N:", "SN:" önekleri ve sondaki ek bilgi ("22440W0015776 EU/3.0" → 22440W0015776) atılır; böyle kodlar koli sanılmaz.

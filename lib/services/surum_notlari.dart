@@ -36,6 +36,31 @@ class NotMaddesi {
 
 const surumNotlari = <SurumNotu>[
   SurumNotu(
+    surum: '1.24.2',
+    tarih: '20.10.2026',
+    bolumler: [
+      NotBolumu('Düzeltilen', [
+        NotMaddesi(
+          'Otomatik kurulum',
+          'Kurulum onay ekranı artık Xiaomi / Redmi telefonlarda da açılıyor.',
+          'Onay ekranı açılamazsa pencerede "Onay ekranını aç" düğmesi '
+              'çıkar; Xiaomi\'de ayrıca "İzni aç" ile gerekli izin ekranı '
+              'açılır. Kurulum sonucu (iptal, yer yok, dosya bozuk…) '
+              'pencerede hemen yazılır. Normal güncellemede bu durumda da '
+              '"Ertele" görünür.',
+        ),
+      ]),
+      NotBolumu('Değişen', [
+        NotMaddesi(
+          'Yeni sürüm bildirimi',
+          'Daha hızlı geliyor: telefonda ~15 dk, web / iPhone\'da birkaç dakika.',
+          'Bildirim ayarlarında "Yeni sürüm · her zaman açık" artık web\'de '
+              'de görünür.',
+        ),
+      ]),
+    ],
+  ),
+  SurumNotu(
     surum: '1.24.1',
     tarih: '20.10.2026',
     bolumler: [

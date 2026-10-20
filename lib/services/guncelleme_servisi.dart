@@ -430,17 +430,21 @@ class GuncellemeServisi {
   static const _arkaSorguAnahtari = 'arka_surum_kontrol_ms';
   static const _bildirilenAnahtari = 'surum_bildirildi';
 
-  /// Arka plan görevinden çağrılır (en fazla 3 saatte bir sorar). Bu sürüm
-  /// için daha önce bildirim gösterilmediyse (hedef, zorunlu) döner.
+  /// Arka plan görevinden çağrılır (görev ~15 dakikada bir çalışır; en fazla
+  /// 10 dakikada bir sorar). Yalnızca kendi sürüm dosyamıza bakar, GitHub'a
+  /// sormaz (aynı internet çıkışındaki çok telefon sorgu sınırına takılmasın).
+  /// Bu sürüm için daha önce bildirim gösterilmediyse (hedef, zorunlu) döner.
   static Future<({String hedef, bool zorunlu})?> arkaPlandaDenetle() async {
     if (mevcutSurum.isEmpty) return null;
     final p = await _prefs();
     if (p == null) return null;
     final simdi = DateTime.now().millisecondsSinceEpoch;
     final son = p.getInt(_arkaSorguAnahtari) ?? 0;
-    if (simdi - son < const Duration(hours: 3).inMilliseconds) return null;
+    if (simdi - son < const Duration(minutes: 10).inMilliseconds) return null;
     await p.setInt(_arkaSorguAnahtari, simdi);
-    final (enSon, enDusuk) = await _surumler();
+    final dosya = await _json(Uri.parse('$_surumDosyasi?t=$simdi'));
+    final enSon = dosya?['surum'] as String?;
+    final enDusuk = dosya?['min'] as String?;
     final b = _degerlendir(enSon, enDusuk);
     if (b == null) return null;
     final isaret = '${b.hedef}${b.zorunlu ? '+z' : ''}';
@@ -481,6 +485,15 @@ class _GuncellemePenceresiState extends State<_GuncellemePenceresi>
   bool _uzunSurdu = false;
   Timer? _kurulumZamanlayici;
 
+  // Kurulum onayı (sistem ekranı) takibi
+  StreamSubscription<Map<String, dynamic>>? _olayAboneligi;
+  bool _onayBekliyor = false;
+  bool _onayAcildi = false; // onay ekranı açıldı (uygulama arka plana geçti)
+  bool _onayAcilmadi = false; // açılamadı: düğmeler gösterilir
+  bool _izinEkranindan = false;
+  bool _xiaomi = false;
+  Timer? _onayZamanlayici;
+
   bool get _android =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
@@ -488,6 +501,10 @@ class _GuncellemePenceresiState extends State<_GuncellemePenceresi>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    if (_android) {
+      _olayAboneligi = apk.kurulumOlaylari.listen(_kurulumOlayi);
+      apk.xiaomiMi().then((v) => _xiaomi = v);
+    }
     if (widget.hemenKur) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _guncelle());
     }
@@ -497,16 +514,76 @@ class _GuncellemePenceresiState extends State<_GuncellemePenceresi>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _kurulumZamanlayici?.cancel();
+    _onayZamanlayici?.cancel();
+    _olayAboneligi?.cancel();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
+      // Onay ekranı öne geldi
+      if (_onayBekliyor) _onayAcildi = true;
+      return;
+    }
+    if (state != AppLifecycleState.resumed) return;
     // Kurulum izni ekranından dönüldü: izin verildiyse hemen kur.
-    if (state == AppLifecycleState.resumed && _asama == _Asama.izin) {
+    if (_asama == _Asama.izin) {
       apk.kurulumIzniVar().then((izinVar) {
         if (izinVar && mounted) _kur();
       });
+    }
+    // Xiaomi izin ekranından dönüldü: kurulumu yeniden dene.
+    if (_izinEkranindan) {
+      _izinEkranindan = false;
+      _kur();
+    }
+  }
+
+  void _kurulumOlayi(Map<String, dynamic> olay) {
+    if (!mounted || _asama != _Asama.kuruluyor) return;
+    final durum = olay['durum'] as String?;
+    final mesaj = (olay['mesaj'] as String?)?.trim();
+    _kurulumZamanlayici?.cancel();
+    switch (durum) {
+      case 'onay_bekleniyor':
+        setState(() {
+          _onayBekliyor = true;
+          _onayAcildi = false;
+          _onayAcilmadi = false;
+        });
+        // 3 sn içinde onay ekranı öne gelmediyse açılamamıştır.
+        _onayZamanlayici?.cancel();
+        _onayZamanlayici = Timer(const Duration(seconds: 3), () {
+          if (mounted && _onayBekliyor && !_onayAcildi) {
+            setState(() => _onayAcilmadi = true);
+          }
+        });
+      case 'basarili':
+        setState(() => _onayBekliyor = false);
+      default:
+        final metin = switch (durum) {
+          'iptal' => 'Kurulum onaylanmadı (iptal edildi).',
+          'yer_yok' => 'Telefonda yeterli boş yer yok. Biraz yer açıp '
+              'tekrar deneyin.',
+          'bozuk' => 'İndirilen dosya bozuk; tekrar denerseniz yeniden '
+              'indirilir.',
+          'uyumsuz' => 'Bu sürüm bu telefona kurulamıyor (uyumsuz).',
+          'cakisma' => 'Kurulum, telefondaki sürümle çakıştı.',
+          'engellendi' => 'Kurulum telefon tarafından engellendi.',
+          _ => 'Kurulum tamamlanamadı.',
+        };
+        if (durum == 'bozuk' && _yol != null) {
+          apk.apkSil(_yol!);
+          _yol = null;
+        }
+        setState(() {
+          _asama = _Asama.hata;
+          _onayBekliyor = false;
+          _hata = mesaj == null || mesaj.isEmpty ? metin : '$metin\n($mesaj)';
+        });
     }
   }
 
@@ -542,23 +619,31 @@ class _GuncellemePenceresiState extends State<_GuncellemePenceresi>
 
   Future<void> _kur() async {
     final yol = _yol;
-    if (yol == null) return;
+    if (yol == null) {
+      await _guncelle();
+      return;
+    }
     try {
       if (!await apk.kurulumIzniVar()) {
         if (mounted) setState(() => _asama = _Asama.izin);
         return;
       }
       await TaslakServisi.bekleyenleriYaz();
-      await apk.apkKur(yol);
       if (!mounted) return;
       setState(() {
         _asama = _Asama.kuruluyor;
         _uzunSurdu = false;
+        _onayBekliyor = false;
+        _onayAcildi = false;
+        _onayAcilmadi = false;
       });
-      // Uygulama kapanmadıysa (onay ekranı kapatıldı vb.) tekrar denetilebilsin.
+      await apk.apkKur(yol);
+      // Hiç sonuç gelmezse (beklenmedik) tekrar denenebilsin.
       _kurulumZamanlayici?.cancel();
-      _kurulumZamanlayici = Timer(const Duration(seconds: 20), () {
-        if (mounted) setState(() => _uzunSurdu = true);
+      _kurulumZamanlayici = Timer(const Duration(seconds: 15), () {
+        if (mounted && _asama == _Asama.kuruluyor && !_onayBekliyor) {
+          setState(() => _uzunSurdu = true);
+        }
       });
     } catch (e) {
       if (mounted) {
@@ -570,9 +655,37 @@ class _GuncellemePenceresiState extends State<_GuncellemePenceresi>
     }
   }
 
+  Future<void> _onayEkraniniAc() async {
+    final acildi = await apk.onayEkraniniAc();
+    if (!mounted) return;
+    if (!acildi) {
+      await _kur(); // onay süresi dolmuş olabilir: yeniden başlat
+      return;
+    }
+    setState(() {
+      _onayAcildi = false;
+      _onayAcilmadi = false;
+    });
+    _onayZamanlayici?.cancel();
+    _onayZamanlayici = Timer(const Duration(seconds: 3), () {
+      if (mounted && _onayBekliyor && !_onayAcildi) {
+        setState(() => _onayAcilmadi = true);
+      }
+    });
+  }
+
+  Future<void> _izniAc() async {
+    _izinEkranindan = true;
+    await apk.izinEkraniniAc();
+  }
+
   String get _boyutMetni => widget.boyut == null
       ? ''
       : GuncellemeServisi.boyutMetni(widget.boyut!);
+
+  /// Kurulum sürerken kullanıcının bir şey yapması gerekiyor mu?
+  bool get _takildi =>
+      _asama == _Asama.kuruluyor && (_onayAcilmadi || _uzunSurdu);
 
   Widget _icerik(BuildContext context) {
     final mevcut = GuncellemeServisi.mevcutSurum;
@@ -629,6 +742,17 @@ class _GuncellemePenceresiState extends State<_GuncellemePenceresi>
             'gerekiyor.\n\nAçılacak ekranda "Bu kaynaktan izin ver"i açıp '
             'geri dönün; kurulum kendiliğinden başlar.');
       case _Asama.kuruluyor:
+        if (_onayAcilmadi) {
+          return Text(
+            'Kurulum onay ekranı açılamadı.\n\n'
+            '"Onay ekranını aç"a dokunun; açılan ekranda "Güncelle"yi '
+            'seçin.'
+            '${_xiaomi ? '\n\nAçılmazsa "İzni aç" ile "Arka planda '
+                'çalışırken açılır pencereleri görüntüle" iznini verip '
+                'geri dönün; kurulum kendiliğinden yeniden denenir.' : ''}',
+            textAlign: TextAlign.center,
+          );
+        }
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -636,11 +760,12 @@ class _GuncellemePenceresiState extends State<_GuncellemePenceresi>
             const SizedBox(height: 12),
             Text(
               _uzunSurdu
-                  ? 'Kurulum tamamlanmadı gibi görünüyor. Onay ekranı '
-                      'çıktıysa "Güncelle"ye dokunun ya da tekrar deneyin.'
-                  : 'Kuruluyor... Uygulama birazdan kapanır. Yeni sürümü '
-                      'açmak için gelen bildirime ya da uygulama simgesine '
-                      'dokunun.',
+                  ? 'Kurulumdan yanıt gelmedi. Tekrar deneyin.'
+                  : _onayBekliyor
+                      ? 'Açılan ekranda "Güncelle"ye dokunun.'
+                      : 'Kuruluyor... Uygulama birazdan kapanır. Yeni sürümü '
+                          'açmak için gelen bildirime ya da uygulama '
+                          'simgesine dokunun.',
               textAlign: TextAlign.center,
             ),
           ],
@@ -652,7 +777,9 @@ class _GuncellemePenceresiState extends State<_GuncellemePenceresi>
   }
 
   List<Widget> _dugmeler() {
-    final ertele = !widget.zorunlu && _asama != _Asama.kuruluyor
+    final erteleGorunur = !widget.zorunlu &&
+        (_asama != _Asama.kuruluyor || _takildi);
+    final ertele = erteleGorunur
         ? TextButton(
             onPressed: () => Navigator.pop(context, true),
             child: Text(_asama == _Asama.indiriliyor
@@ -660,24 +787,40 @@ class _GuncellemePenceresiState extends State<_GuncellemePenceresi>
                 : 'Ertele'),
           )
         : null;
-    final Widget? ana = switch (_asama) {
-      _Asama.soru => FilledButton.icon(
-          onPressed: _guncelle,
-          icon: const Icon(Icons.system_update),
-          label: Text(widget.zorunlu ? 'Güncelle' : 'Şimdi güncelle'),
-        ),
-      _Asama.indiriliyor => null,
-      _Asama.izin => FilledButton(
-          onPressed: apk.kurulumIzniIste,
-          child: const Text('İzin ver'),
-        ),
-      _Asama.kuruluyor => _uzunSurdu
-          ? FilledButton(onPressed: _kur, child: const Text('Tekrar dene'))
-          : null,
-      _Asama.hata => FilledButton(
-          onPressed: _guncelle, child: const Text('Tekrar dene')),
+    final List<Widget> ana = switch (_asama) {
+      _Asama.soru => [
+          FilledButton.icon(
+            onPressed: _guncelle,
+            icon: const Icon(Icons.system_update),
+            label: Text(widget.zorunlu ? 'Güncelle' : 'Şimdi güncelle'),
+          ),
+        ],
+      _Asama.indiriliyor => const [],
+      _Asama.izin => [
+          FilledButton(
+            onPressed: apk.kurulumIzniIste,
+            child: const Text('İzin ver'),
+          ),
+        ],
+      _Asama.kuruluyor => _onayAcilmadi
+          ? [
+              if (_xiaomi)
+                TextButton(onPressed: _izniAc, child: const Text('İzni aç')),
+              FilledButton(
+                  onPressed: _onayEkraniniAc,
+                  child: const Text('Onay ekranını aç')),
+            ]
+          : _uzunSurdu
+              ? [
+                  FilledButton(
+                      onPressed: _kur, child: const Text('Tekrar dene')),
+                ]
+              : const [],
+      _Asama.hata => [
+          FilledButton(onPressed: _kur, child: const Text('Tekrar dene')),
+        ],
     };
-    return [if (ertele != null) ertele, if (ana != null) ana];
+    return [if (ertele != null) ertele, ...ana];
   }
 
   @override
@@ -686,7 +829,9 @@ class _GuncellemePenceresiState extends State<_GuncellemePenceresi>
       canPop: false,
       // Geri tuşu: normal sürümde "Ertele" sayılır; zorunluda kapanmaz.
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && !widget.zorunlu && _asama != _Asama.kuruluyor) {
+        if (!didPop &&
+            !widget.zorunlu &&
+            (_asama != _Asama.kuruluyor || _takildi)) {
           Navigator.pop(context, true);
         }
       },

@@ -13,6 +13,8 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -30,8 +32,80 @@ import java.io.File
  * çubuğunda ilerleme görünür.
  */
 class MainActivity : FlutterActivity() {
+    companion object {
+        /** Ön plandaki ekran: kurulum onayı buradan açılır (Xiaomi gibi
+         *  üreticiler arka plandan açılan ekranı engelliyor). */
+        @Volatile var onde: MainActivity? = null
+
+        /** Sistemin kurulum onay ekranı (henüz onaylanmadıysa). */
+        @Volatile var bekleyenOnay: Intent? = null
+
+        private var kanal: MethodChannel? = null
+        private val ana = Handler(Looper.getMainLooper())
+
+        /** Kurulum sonucunu Flutter'a bildirir (pencere anında gösterir). */
+        fun kurulumDurumu(durum: String, mesaj: String?) {
+            ana.post {
+                try {
+                    kanal?.invokeMethod(
+                        "kurulumDurumu", mapOf("durum" to durum, "mesaj" to mesaj)
+                    )
+                } catch (_: Exception) {
+                }
+            }
+        }
+    }
+
     /** "Güncelleme indi · kurmak için dokun" bildirimiyle açıldı mı? */
     private var bildirimdenKurulum = false
+
+    override fun onResume() {
+        super.onResume()
+        onde = this
+    }
+
+    override fun onPause() {
+        if (onde === this) onde = null
+        super.onPause()
+    }
+
+    override fun onDestroy() {
+        if (onde === this) onde = null
+        super.onDestroy()
+    }
+
+    private fun xiaomiMi(): Boolean =
+        Build.MANUFACTURER.lowercase() in listOf("xiaomi", "redmi", "poco")
+
+    /** Xiaomi'de "Diğer izinler" (arka planda açılır pencere) ekranı;
+     *  açılamazsa uygulama bilgisi ekranı. */
+    private fun izinEkraniniAc() {
+        if (xiaomiMi()) {
+            try {
+                startActivity(
+                    Intent("miui.intent.action.APP_PERM_EDITOR")
+                        .setClassName(
+                            "com.miui.securitycenter",
+                            "com.miui.permcenter.permissions.PermissionsEditorActivity"
+                        )
+                        .putExtra("extra_pkgname", packageName)
+                )
+                return
+            } catch (_: Exception) {
+            }
+            try {
+                startActivity(
+                    Intent("miui.intent.action.APP_PERM_EDITOR")
+                        .putExtra("extra_pkgname", packageName)
+                )
+                return
+            } catch (_: Exception) {
+            }
+        }
+        startActivity(
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
+        )
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,9 +126,31 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "depo_takip/guncelleme")
-            .setMethodCallHandler { call, result ->
+        val k = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "depo_takip/guncelleme")
+        kanal = k
+        k.setMethodCallHandler { call, result ->
                 when (call.method) {
+                    "onayEkraniniAc" -> {
+                        val o = bekleyenOnay
+                        if (o == null) {
+                            result.success(false)
+                        } else {
+                            try {
+                                startActivity(o)
+                                result.success(true)
+                            } catch (e: Exception) {
+                                result.success(false)
+                            }
+                        }
+                    }
+                    "xiaomiMi" -> result.success(xiaomiMi())
+                    "izinEkraniniAc" -> {
+                        try {
+                            izinEkraniniAc()
+                        } catch (_: Exception) {
+                        }
+                        result.success(null)
+                    }
                     "kurulumIzniVarMi" -> result.success(
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                             packageManager.canRequestPackageInstalls()
@@ -214,13 +310,54 @@ class MainActivity : FlutterActivity() {
 class KurulumAlici : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val durum = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, -999)
-        if (durum == PackageInstaller.STATUS_PENDING_USER_ACTION) {
-            @Suppress("DEPRECATION")
-            val onay = intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)
-            if (onay != null) {
+        val mesaj = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)
+        when (durum) {
+            PackageInstaller.STATUS_PENDING_USER_ACTION -> {
+                @Suppress("DEPRECATION")
+                val onay = intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)
+                if (onay == null) {
+                    MainActivity.kurulumDurumu("hata", "Onay ekranı alınamadı")
+                    return
+                }
                 onay.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                context.startActivity(onay)
+                MainActivity.bekleyenOnay = onay
+                val ekran = MainActivity.onde
+                if (ekran != null) {
+                    // Uygulama önde: onay ekranı uygulamanın kendi ekranından
+                    // açılır (üretici engeline takılmaz).
+                    try {
+                        ekran.startActivity(onay)
+                    } catch (_: Exception) {
+                    }
+                } else {
+                    try {
+                        context.startActivity(onay)
+                    } catch (_: Exception) {
+                    }
+                    // Arka plandan açılış engellenmiş olabilir: bildirimle de iste.
+                    Bildirimler.onayIste(context, onay)
+                }
+                MainActivity.kurulumDurumu("onay_bekleniyor", null)
             }
+            PackageInstaller.STATUS_SUCCESS -> {
+                MainActivity.bekleyenOnay = null
+                MainActivity.kurulumDurumu("basarili", null)
+            }
+            PackageInstaller.STATUS_FAILURE_ABORTED -> {
+                MainActivity.bekleyenOnay = null
+                MainActivity.kurulumDurumu("iptal", mesaj)
+            }
+            PackageInstaller.STATUS_FAILURE_STORAGE ->
+                MainActivity.kurulumDurumu("yer_yok", mesaj)
+            PackageInstaller.STATUS_FAILURE_INVALID ->
+                MainActivity.kurulumDurumu("bozuk", mesaj)
+            PackageInstaller.STATUS_FAILURE_INCOMPATIBLE ->
+                MainActivity.kurulumDurumu("uyumsuz", mesaj)
+            PackageInstaller.STATUS_FAILURE_CONFLICT ->
+                MainActivity.kurulumDurumu("cakisma", mesaj)
+            PackageInstaller.STATUS_FAILURE_BLOCKED ->
+                MainActivity.kurulumDurumu("engellendi", mesaj)
+            else -> MainActivity.kurulumDurumu("hata", mesaj)
         }
     }
 }
@@ -231,6 +368,7 @@ object Bildirimler {
     const val KUR_EKI = "guncelleme_kur"
     private const val INDI_NO = 7102
     private const val GUNCELLENDI_NO = 7103
+    private const val ONAY_NO = 7104
 
     private fun goster(context: Context, no: Int, baslik: String, govde: String, kur: Boolean) {
         try {
@@ -280,6 +418,46 @@ object Bildirimler {
         "Kurmak için dokunun. Yarım kalan işleriniz kaybolmaz.",
         kur = true,
     )
+
+    /** Kurulum onayı arka plandan açılamadıysa: dokununca onay ekranı açılır. */
+    fun onayIste(context: Context, onay: Intent) {
+        try {
+            val yonetici =
+                context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+                yonetici.getNotificationChannel(KANAL) == null
+            ) {
+                yonetici.createNotificationChannel(
+                    NotificationChannel(KANAL, "Depo bildirimleri", NotificationManager.IMPORTANCE_HIGH)
+                )
+            }
+            var bayrak = PendingIntent.FLAG_UPDATE_CURRENT
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                bayrak = bayrak or PendingIntent.FLAG_IMMUTABLE
+            }
+            val dokun = PendingIntent.getActivity(context, ONAY_NO, onay, bayrak)
+            var simge = context.resources.getIdentifier("ic_bildirim", "drawable", context.packageName)
+            if (simge == 0) simge = context.applicationInfo.icon
+            val kurucu = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                Notification.Builder(context, KANAL)
+            } else {
+                @Suppress("DEPRECATION")
+                Notification.Builder(context).setPriority(Notification.PRIORITY_HIGH)
+            }
+            yonetici.notify(
+                ONAY_NO,
+                kurucu
+                    .setSmallIcon(simge)
+                    .setColor(0xFF2E6F40.toInt())
+                    .setContentTitle("Güncellemeyi onaylayın")
+                    .setContentText("Kurulumu tamamlamak için dokunun.")
+                    .setContentIntent(dokun)
+                    .setAutoCancel(true)
+                    .build()
+            )
+        } catch (_: Exception) {
+        }
+    }
 
     fun guncellendi(context: Context, surum: String?) = goster(
         context, GUNCELLENDI_NO,

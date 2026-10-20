@@ -108,6 +108,17 @@ Deno.serve(async (req) => {
   }
 });
 
+/** "1.10.0" > "1.9.2" gibi parça parça karşılaştırma. */
+function dahaYeni(a: string, b: string): boolean {
+  const p = (s: string) => s.split("+")[0].split(".").map((x) => parseInt(x, 10) || 0);
+  const x = p(a), y = p(b);
+  for (let i = 0; i < 3; i++) {
+    const xi = x[i] ?? 0, yi = y[i] ?? 0;
+    if (xi !== yi) return xi > yi;
+  }
+  return false;
+}
+
 async function ayarlariOku(db: SupabaseClient): Promise<Record<string, string>> {
   const r = v<Satir[]>(await db.from("push_ayar").select("ad, deger"));
   return Object.fromEntries(r.map((x) => [x.ad, x.deger]));
@@ -145,6 +156,28 @@ async function calistir(db: SupabaseClient, ayar: Record<string, string>) {
   }
 
   const aboneler = v<Satir[]>(await db.from("push_abonelikleri").select("*"));
+
+  // Yeni sürüm: sürüm dosyası değişince herkese bir kez (kapatılamaz).
+  // İlk çalışmada yalnızca mevcut sürüm kaydedilir.
+  let yeniSurum: { surum: string; zorunlu: boolean } | null = null;
+  try {
+    const r = await fetch(`${KONU}version.json?t=${ms}`);
+    if (r.ok) {
+      const j = await r.json();
+      const surum = String(j?.surum ?? "");
+      const min = String(j?.min ?? "");
+      if (surum) {
+        if (ayar.son_surum === undefined) {
+          await ayarYaz(db, "son_surum", surum);
+        } else if (dahaYeni(surum, ayar.son_surum)) {
+          yeniSurum = { surum, zorunlu: !!min && !dahaYeni(surum, min) };
+          await ayarYaz(db, "son_surum", surum);
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Sürüm dosyası okunamadı", e);
+  }
 
   // 3) Yeni hareketler (sunucuya ulaşma sırasına göre)
   const hamHareket = v<Satir[]>(await db.from("stok_hareketleri")
@@ -287,6 +320,13 @@ async function calistir(db: SupabaseClient, ayar: Record<string, string>) {
     const ekle = (tur: string, baslik: string, govde: string) => bildirimler.push({ tur, baslik, govde });
 
     const benim = String(abone.kullanici_id);
+    if (yeniSurum) {
+      ekle("yeniSurum",
+        yeniSurum.zorunlu ? `Zorunlu güncelleme: sürüm ${yeniSurum.surum}` : `Yeni sürüm var: ${yeniSurum.surum}`,
+        yeniSurum.zorunlu
+          ? "Bu sürüm artık kullanılamıyor. Uygulamayı açınca kendiliğinden güncellenir."
+          : "Uygulamayı açınca kendiliğinden güncellenir. Yenilikler ilk açılışta gösterilir.");
+    }
     const baskasi = hareketler.filter((h) => String(h.kullanici_id) !== benim);
     const urunOzeti = (l: Satir[]) => {
       const say = new Map<string, number>();

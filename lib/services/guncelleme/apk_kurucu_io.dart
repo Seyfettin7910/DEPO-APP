@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
@@ -227,3 +228,57 @@ Future<bool> kurulumIzniVar() async =>
 Future<void> kurulumIzniIste() => _kanal.invokeMethod('kurulumIzniIste');
 
 Future<void> apkKur(String yol) => _kanal.invokeMethod('apkKur', {'yol': yol});
+
+// ---------------------------------------------------------------------
+// Kurulum sonucu ve onay ekranı
+// ---------------------------------------------------------------------
+
+final _olaylar = StreamController<Map<String, dynamic>>.broadcast();
+bool _dinleniyor = false;
+
+/// Kurulumun sonucu: {durum: onay_bekleniyor | basarili | iptal | yer_yok |
+/// bozuk | uyumsuz | cakisma | engellendi | hata, mesaj}.
+Stream<Map<String, dynamic>> get kurulumOlaylari {
+  if (!_dinleniyor) {
+    _dinleniyor = true;
+    _kanal.setMethodCallHandler((call) async {
+      if (call.method == 'kurulumDurumu' && call.arguments is Map) {
+        _olaylar.add(Map<String, dynamic>.from(call.arguments as Map));
+      }
+      return null;
+    });
+  }
+  return _olaylar.stream;
+}
+
+/// Bekleyen sistem onay ekranını uygulamanın ekranından yeniden açar.
+Future<bool> onayEkraniniAc() async {
+  try {
+    return await _kanal.invokeMethod<bool>('onayEkraniniAc') ?? false;
+  } catch (_) {
+    return false;
+  }
+}
+
+Future<bool> xiaomiMi() async {
+  try {
+    return await _kanal.invokeMethod<bool>('xiaomiMi') ?? false;
+  } catch (_) {
+    return false;
+  }
+}
+
+/// Xiaomi'de "Diğer izinler" ekranı (arka planda açılır pencere izni).
+Future<void> izinEkraniniAc() async {
+  try {
+    await _kanal.invokeMethod('izinEkraniniAc');
+  } catch (_) {}
+}
+
+/// Bozuk çıkan indirmeyi siler (yeniden indirilsin).
+Future<void> apkSil(String yol) async {
+  try {
+    await File(yol).delete();
+  } catch (_) {}
+  await _kaydiSil();
+}

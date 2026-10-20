@@ -228,7 +228,7 @@ class _BildirimAyarlariScreenState
                   style: tema.textTheme.titleSmall
                       ?.copyWith(color: tema.colorScheme.primary)),
             ),
-            if (g.key == 'Güvenlik ve sistem' && sistemBildirimiVar)
+            if (g.key == 'Güvenlik ve sistem')
               const SwitchListTile(
                 secondary: Icon(Icons.system_update),
                 title: Text('Yeni sürüm'),
