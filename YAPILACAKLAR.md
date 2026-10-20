@@ -8,7 +8,11 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 - [ ] **Hızlı işlemler (2×2):** Depoya giriş · Transfer · Araca Yükle · Montaj / Kullanıldı. **Sayım Okut'tan kalkar.**
 - [ ] **Hiçbir işlem seçilmeden okutunca:**
   - Kayıtlı cihaz → bugünkü gibi **kartı açılır**.
-  - Kayıtsız seri no → uyarı sesi; ekran değişmez, seri no alttaki **kayıtsızlar listesine** eklenir. Arka arkaya okutulur, bitince **"Depoya ekle (N)"** → giriş ekranı hepsiyle açılır. (Okuttukça depo ekleme ekranı açılmaz.)
+  - 1. kayıtsız seri no → bugünkü gibi kırmızı uyarı + "Depoya ekle".
+  - Hemen ardından **2. kayıtsız** okutulursa **arka arkaya okutma başlar** (hızlı işleme dokunmak gerekmez): ikisi de alttaki **kayıtsızlar listesine** girer, okutmaya devam edilir, bitince **"Depoya ekle (N)"** → giriş ekranı hepsiyle açılır. (Okuttukça depo ekleme ekranı açılmaz.)
+  - Arka arkaya okutma başladıktan sonra kayıtlı cihaz → kart açılmaz, "Kayıtlı · atlandı" ile **atlanır**.
+  - 1. kayıtsızdan sonra (henüz başlamadan) kayıtlı cihaz okutulursa **sorulur**: "Kayıtlı cihaz: … — Atla / Kartı aç". Atla → okutmaya devam.
+  - Liste işlenince ya da Temizle ile boşaltılınca Okut normale döner.
 - [ ] **Hızlı işleme dokununca:** arka arkaya okutulur, liste alt alta dolar; bitince işlemin düğmesi ("Transfer et (5)" gibi) ilgili ekranı listeyle **doğrudan** açar.
   - Depoya giriş: yalnız **kayıtsız** girer; kayıtlı okutulursa küçük uyarı, liste dışı.
   - Transfer / Araca Yükle / Montaj: yalnız **kayıtlı** girer; kayıtsız okutulursa küçük uyarı, liste dışı.
