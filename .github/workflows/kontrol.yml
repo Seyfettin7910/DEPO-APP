@@ -30,6 +30,8 @@ jobs:
           uyarilar=$(grep -E "^\s*warning " analiz.txt | head -60 | sed ':a;N;$!ba;s/\n/%0A/g')
           if [ -n "$uyarilar" ]; then echo "::warning title=Analiz uyarıları::$uyarilar"; fi
           exit $durum
+      - name: Testler (Okut kuralları vb.)
+        run: flutter test test/okut_listesi_test.dart
       - run: flutter build web --release
 
   android:
