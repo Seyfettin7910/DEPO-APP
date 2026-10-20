@@ -258,7 +258,8 @@ class _MalzemeIslemScreenState extends ConsumerState<MalzemeIslemScreen>
 
   Future<void> _kameraIleOkut(List<Urun> malzemeler) async {
     final kod = await Navigator.of(context).push<String>(
-        MaterialPageRoute(builder: (_) => const BarkodOkuyucuSayfasi()));
+        MaterialPageRoute(
+            builder: (_) => const BarkodOkuyucuSayfasi(urunBarkodu: true)));
     if (kod != null && mounted) await _barkodIsle(kod, malzemeler);
   }
 

@@ -12,7 +12,11 @@ import 'hedefli_tarayici.dart';
 ///     MaterialPageRoute(builder: (_) => const BarkodOkuyucuSayfasi()),
 ///   );
 class BarkodOkuyucuSayfasi extends StatefulWidget {
-  const BarkodOkuyucuSayfasi({super.key});
+  const BarkodOkuyucuSayfasi({super.key, this.urunBarkodu = false});
+
+  /// true: kutu üstündeki ürün barkodları (EAN / UPC) da okunur (malzemenin
+  /// fabrika barkodu).
+  final bool urunBarkodu;
 
   @override
   State<BarkodOkuyucuSayfasi> createState() => _BarkodOkuyucuSayfasiState();
@@ -60,7 +64,10 @@ class _BarkodOkuyucuSayfasiState extends State<BarkodOkuyucuSayfasi> {
       ),
       body: Stack(
         children: [
-          HedefliTarayici(controller: _controller, onDetect: _okundu),
+          HedefliTarayici(
+              controller: _controller,
+              onDetect: _okundu,
+              urunBarkodu: widget.urunBarkodu),
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(

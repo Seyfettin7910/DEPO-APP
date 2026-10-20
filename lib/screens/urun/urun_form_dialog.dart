@@ -112,7 +112,7 @@ Future<void> urunFormDialog(BuildContext context, WidgetRef ref,
                       onPressed: () async {
                         final kod = await Navigator.of(ctx).push<String>(
                           MaterialPageRoute(
-                            builder: (_) => const BarkodOkuyucuSayfasi(),
+                            builder: (_) => const BarkodOkuyucuSayfasi(urunBarkodu: true),
                           ),
                         );
                         if (kod != null) barkodCtrl.text = kod.trim();

@@ -79,6 +79,15 @@ const surumNotlari = <SurumNotu>[
         ),
         NotMaddesi('Kritik stok',
             'Malzemelerde minimum miktara göre uyarır.'),
+        NotMaddesi(
+          'Kamera okuma',
+          'Çerçeve küçüldü; kod çerçevede kısa süre sabit durunca okunur.',
+          'Kamera açılınca ilk anda okuma yapılmaz. Birden çok kod varsa '
+              'ortadaki alınır. Web adresi, Wi-Fi, MAC adresi ve kutu '
+              'üstündeki ürün barkodları yok sayılır. Çerçevenin altındaki '
+              'çubuk dolunca okunur; kayıtlı kodlar hızlı, bilinmeyen kodlar '
+              'biraz daha geç okunur.',
+        ),
       ]),
     ],
   ),

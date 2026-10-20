@@ -79,3 +79,29 @@ bool get bilgisayarTarayicisi =>
     kIsWeb &&
     defaultTargetPlatform != TargetPlatform.android &&
     defaultTargetPlatform != TargetPlatform.iOS;
+
+final _macAdresi = RegExp(r'^([0-9A-F]{2}[:\-]){5}[0-9A-F]{2}$');
+
+/// Kutu üstündeki ürün barkodu türleri (EAN / UPC). Seri no ya da kurum
+/// etiketi olmaz; yalnızca malzemenin fabrika barkodu olabilir.
+bool urunBarkoduTuru(Barcode b) =>
+    b.format == BarcodeFormat.ean13 ||
+    b.format == BarcodeFormat.ean8 ||
+    b.format == BarcodeFormat.upcA ||
+    b.format == BarcodeFormat.upcE;
+
+/// Seri no / kurum etiketi / koli karekodu olamayacak kodlar: web adresi,
+/// Wi-Fi, kartvizit, telefon, e-posta, MAC adresi, çok kısa kod. Bunlar
+/// okutma ekranlarında sessizce yok sayılır.
+bool gereksizKod(String deger) {
+  final v = deger.trim();
+  if (v.length < 4) return true;
+  final k = v.toUpperCase();
+  const onEkler = [
+    'HTTP://', 'HTTPS://', 'WWW.', 'WIFI:', 'MAILTO:', 'TEL:', 'SMSTO:',
+    'SMS:', 'MATMSG:', 'MECARD:', 'BEGIN:VCARD', 'BEGIN:VEVENT', 'GEO:',
+    'MAC:', 'MAC ',
+  ];
+  if (onEkler.any(k.startsWith)) return true;
+  return _macAdresi.hasMatch(k);
+}

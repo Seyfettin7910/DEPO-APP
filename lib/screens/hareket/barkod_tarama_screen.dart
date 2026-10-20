@@ -228,7 +228,18 @@ class _BarkodTaramaScreenState extends ConsumerState<BarkodTaramaScreen> {
   Widget _kamera() {
     return Stack(
         children: [
-          HedefliTarayici(controller: _controller, onDetect: _okundu),
+          HedefliTarayici(
+            controller: _controller,
+            onDetect: _okundu,
+            // Kayıtlı seri no / kurum etiketi / malzeme barkodu hızlı okunur,
+            // bilinmeyen kod biraz daha uzun sabit tutulmalı.
+            bilinenMi: (kod) async {
+              final db = ref.read(appDatabaseProvider);
+              if (await db.seriNoIleCihazBilgi(kod) != null) return true;
+              final u = await db.barkodIleUrunBul(kod);
+              return u != null && u.miktarli;
+            },
+          ),
           if (_coklu)
             Align(
               alignment: Alignment.bottomCenter,
