@@ -2,10 +2,10 @@
 
 Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlarına taşınır.
 
-## 1.24.0 – Saha işleri (hazır, `surum-1.24.0` dalında; yayın bekliyor)
-- Yayın sırası: 1) Supabase'de `supabase_guncelleme_1_24_0.sql` çalıştırılır (Ctrl+A → Run), 2) "yayınla" denince dal main'e alınır (APK + web + bildirim fonksiyonu), en düşük sürüm 1.24.0.
-- İçerik: miktarlı malzemeler (giriş, Araca Yükle, transfer, iade, Montaj / Kullanıldı, fabrika barkodu, sayım), montajda "Kullanılan malzemeler", tutanak (Alındı / Alınacak / Kurum içi; cihaz kartı, Ara, Kullanım Raporu), Depolar | Araçlar sekmeleri, yeni isimler.
-- Telefonda denenecek: montaj penceresi (tutanak + malzemeler), malzeme ekranı barkod okutma, Araçlar sekmesi.
+## 1.24.1 – Daha hızlı "Yeni sürüm" bildirimi (konuşuldu, "yap" bekleniyor)
+- [ ] **Android:** arka plan görevi her çalışmada (~15 dk, Android'in en sık aralığı) sürümü denetler; 3 saatlik sınır kalkar. Yalnızca kendi sürüm dosyamıza (version.json) bakar, GitHub API'ye sormaz (aynı internet çıkışındaki çok telefonda sorgu sınırına takılmasın). Her sürüm için bir kez.
+- [ ] **Web / iPhone:** sunucudaki bildirim fonksiyonu her çalışmada sürüm dosyasına bakar; yeni sürümde web bildirimine abone herkese "Yeni sürüm var" gönderir (neredeyse yayın anında).
+- Not: Yayın anında (anlık) Android bildirimi için Firebase gerekir; şimdilik gerek görülmedi. Değişiklik telefonlar 1.24.1'i kurunca çalışır.
 
 ## Excel dökümü gelince (ayrı paket)
 - [ ] **Excel'den aktarım** (Kamera biriminin demirbaş dökümü): döküm gelince sütun eşleştirmesi, seri nosu boş satırlar, konum (depo / montajlı), demirbaş sicil no kurum kodu olsun mu kararları.
