@@ -25,14 +25,16 @@ enum TaramaModu { barkod, karekod }
 /// - Uygulama arka plana gidince kamera durur; dönünce, ekran hâlâ öndeyse
 ///   yeniden açılır.
 /// - Yanlış okumayı önlemek için:
-///   * kamera açılınca ilk 0,8 sn hiçbir şey okunmaz (telefon kaldırılırken
+///   * kamera açılınca ilk 0,5 sn hiçbir şey okunmaz (telefon kaldırılırken
 ///     etraftaki kodlar okunmasın),
 ///   * çerçevede birden çok kod varsa ortaya en yakın olanı alınır,
-///   * web adresi, Wi-Fi, MAC adresi, kutu üstündeki ürün barkodu (EAN/UPC)
-///     gibi seri no olamayacak kodlar yok sayılır,
-///   * kod ancak çerçevede bir süre sabit durursa okunur (kurum etiketi,
-///     koli karekodu ve kayıtlı kodlarda kısa, bilinmeyen kodda uzun);
-///     çerçevenin altındaki çubuk dolunca okunur.
+///   * web adresi, Wi-Fi, MAC adresi, sipariş no, kutu üstündeki ürün
+///     barkodu (EAN/UPC) gibi seri no olamayacak kodlar yok sayılır ve
+///     çerçevenin üstünde kısa bir ipucuyla gösterilir,
+///   * kurum etiketi, koli karekodu ve kayıtlı kod ilk okumada; bilinmeyen
+///     kod 1,5 sn içinde ikinci kez okununca kabul edilir,
+///   * "S/N:" öneki ve sondaki ek bilgi ("EU/3.0") atılıp seri no ayıklanır,
+///   * tek parmakla yana kaydırınca Barkod ⇄ Karekod değişir.
 class HedefliTarayici extends StatefulWidget {
   const HedefliTarayici({
     super.key,
@@ -74,21 +76,29 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
   double _zoomBaslangic = 0;
   bool _netleniyor = false;
 
-  // Sabit durma (kilitlenme) beklemesi
-  static const _acilisBeklemesi = Duration(milliseconds: 800);
-  static const _kisaBekleme = Duration(milliseconds: 400);
-  static const _uzunBekleme = Duration(milliseconds: 1000);
-  static const _kayipSuresi = Duration(milliseconds: 700);
+  // Okuma onayı: kurum etiketi, koli karekodu ve kayıtlı kod ilk okumada,
+  // bilinmeyen / şüpheli kod 1,5 sn içinde 2. kez okununca kabul edilir.
+  // (Küçük, sık çizgili barkodlar her karede okunamaz; sayaç aradaki
+  // kaçırılan karelerde sıfırlanmaz.)
+  static const _acilisBeklemesi = Duration(milliseconds: 500);
+  static const _adaySuresi = Duration(milliseconds: 1500);
 
   DateTime _hazir = DateTime.now().add(_acilisBeklemesi);
-  String? _aday; // çerçevede sabit durması beklenen kod
+  String? _aday; // onay bekleyen kod
   Barcode? _adayKod;
-  DateTime _adayBaslangic = DateTime.now();
-  Duration _adayBekleme = _kisaBekleme;
+  int _adaySayi = 0;
+  int _adayGereken = 1;
   String? _okunan; // en son okunan (gönderilen) kod
   DateTime _okunmaZamani = DateTime.fromMillisecondsSinceEpoch(0);
   Timer? _kayip;
   final _bilinenler = <String, bool>{};
+
+  // Yok sayılan kod ipucu ("Yok sayıldı: … (MAC adresi)")
+  String? _ipucu;
+  Timer? _ipucuZamanlayici;
+
+  // Tek parmakla yatay kaydırma: Barkod ⇄ Karekod
+  double _kaydirma = 0;
 
   @override
   void initState() {
@@ -127,6 +137,7 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
   void dispose() {
     _netleme?.cancel();
     _kayip?.cancel();
+    _ipucuZamanlayici?.cancel();
     widget.controller.removeListener(_kameraDinle);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -228,6 +239,25 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
   bool _taninan(String v) =>
       EtiketKodu.coz(v) != null || seriNolariAyir(v).length > 1;
 
+  void _ipucuGoster(String metin) {
+    if (_ipucu != metin && mounted) setState(() => _ipucu = metin);
+    _ipucuZamanlayici?.cancel();
+    _ipucuZamanlayici = Timer(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _ipucu = null);
+    });
+  }
+
+  static String _kisalt(String v) =>
+      v.length > 24 ? '${v.substring(0, 22)}…' : v;
+
+  /// Ayıklanmış (S/N: öneki, sondaki ek bilgi atılmış) barkod.
+  Barcode _ayikla(Barcode b) {
+    final ham = b.rawValue?.trim() ?? '';
+    final v = seriAyikla(ham);
+    if (v == ham) return b;
+    return Barcode(rawValue: v, format: b.format, corners: b.corners);
+  }
+
   void _algilandi(BarcodeCapture capture, Size alan, Rect pencere) {
     final simdi = DateTime.now();
     _sonOkuma = simdi;
@@ -239,23 +269,39 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
 
     // 1) Seri no olamayacak kodları ayıkla; webde çerçeve dışını at.
     final adaylar = <(Barcode, Offset?)>[];
-    for (final b in capture.barcodes) {
+    String? yokSayilan;
+    for (final ham in capture.barcodes) {
+      final b = _ayikla(ham);
       final v = b.rawValue?.trim() ?? '';
       if (v.isEmpty) continue;
-      // Kurum etiketi ve koli karekodu her zaman okunur.
-      if (!_taninan(v)) {
-        if (gereksizKod(v)) continue;
-        if (_kayitliOlmali(b, v)) {
-          // Ürün barkodu / şüpheli kod: yalnızca kayıtlıysa okunur.
-          if (widget.bilinenMi == null && urunBarkoduTuru(b)) continue;
-          if (_bilinenler[v] == false) continue;
-        }
-      }
       final m = _merkez(b, goruntu, alan);
       if (kIsWeb && m != null && !pencere.inflate(8).contains(m)) continue;
+      // Kurum etiketi ve koli karekodu her zaman okunur.
+      if (!_taninan(v)) {
+        final sebep = gereksizSebep(v);
+        if (sebep != null) {
+          yokSayilan ??= '${_kisalt(v)} ($sebep)';
+          continue;
+        }
+        if (_kayitliOlmali(b, v)) {
+          if (widget.bilinenMi == null && urunBarkoduTuru(b)) {
+            yokSayilan ??= '${_kisalt(v)} (ürün barkodu)';
+            continue;
+          }
+          if (_bilinenler[v] == false) {
+            yokSayilan ??= urunBarkoduTuru(b)
+                ? '${_kisalt(v)} (ürün barkodu)'
+                : '${_kisalt(v)} (kayıtlı değil: malzeme / lot / model kodu)';
+            continue;
+          }
+        }
+      }
       adaylar.add((b, m));
     }
-    if (adaylar.isEmpty) return;
+    if (adaylar.isEmpty) {
+      if (yokSayilan != null) _ipucuGoster('Yok sayıldı: $yokSayilan');
+      return;
+    }
 
     // 2) Birden çok kod varsa ortaya en yakını
     Barcode secilen;
@@ -277,58 +323,49 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
     }
     final deger = secilen.rawValue!.trim();
 
-    // 3) Sabit durma: aynı kod yeterince süre çerçevede kalmalı.
-    _kayip?.cancel();
-    _kayip = Timer(_kayipSuresi, () {
-      if (mounted) setState(() => _aday = null);
-    });
+    // 3) Onay: aynı kod gerektiği kadar okununca gönderilir.
     if (deger == _okunan &&
         simdi.difference(_okunmaZamani) < const Duration(seconds: 3)) {
       _okunmaZamani = simdi; // hâlâ çerçevede: tekrar okunmaz
       return;
     }
+    _kayip?.cancel();
+    _kayip = Timer(_adaySuresi, () {
+      if (mounted) setState(() => _aday = null);
+    });
     if (deger != _aday) {
-      setState(() {
-        _aday = deger;
-        _adayKod = secilen;
-        _adayBaslangic = simdi;
-        _adayBekleme = _beklemeBelirle(deger, secilen);
-      });
-      return;
+      _aday = deger;
+      _adaySayi = 1;
+      _adayGereken = _gerekenBelirle(deger, secilen);
+    } else {
+      _adaySayi++;
     }
     _adayKod = secilen;
-    if (simdi.difference(_adayBaslangic) < _adayBekleme) return;
+    _dene();
+  }
 
-    // Kayıtlı olması gereken kodun cevabı henüz gelmediyse bekle.
-    if (!_taninan(deger) &&
-        _kayitliOlmali(secilen, deger) &&
-        _bilinenler[deger] != true) {
+  /// Aday kod onaylandıysa gönderir; değilse göstergeyi günceller.
+  void _dene() {
+    final deger = _aday;
+    final kod = _adayKod;
+    if (deger == null || kod == null || !mounted) return;
+    final bekle = _adaySayi < _adayGereken ||
+        // Kayıtlı olması gereken kodun cevabı henüz gelmedi
+        (!_taninan(deger) &&
+            _kayitliOlmali(kod, deger) &&
+            _bilinenler[deger] != true);
+    if (bekle) {
+      setState(() {});
       return;
     }
-
     _okunan = deger;
-    _okunmaZamani = simdi;
+    _okunmaZamani = DateTime.now();
+    _kayip?.cancel();
     setState(() => _aday = null);
-    widget.onDetect(BarcodeCapture(
-      barcodes: [_adayKod!],
-      image: capture.image,
-      size: capture.size,
-    ));
+    widget.onDetect(BarcodeCapture(barcodes: [kod]));
   }
 
-  double _gecenOran() {
-    final gecen = DateTime.now().difference(_adayBaslangic).inMilliseconds;
-    return (gecen / _adayBekleme.inMilliseconds).clamp(0.0, 1.0);
-  }
-
-  Duration _kalanSure() {
-    final kalan = _adayBekleme - DateTime.now().difference(_adayBaslangic);
-    return kalan > const Duration(milliseconds: 1)
-        ? kalan
-        : const Duration(milliseconds: 1);
-  }
-
-  /// Kamera (yeniden) açılınca: ilk 0,8 sn okuma yok, aynı kod yeniden
+  /// Kamera (yeniden) açılınca: ilk 0,5 sn okuma yok, aynı kod yeniden
   /// okunabilir.
   bool _calisiyordu = false;
   void _kameraDinle() {
@@ -350,28 +387,29 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
     return widget.bilinenMi != null && supheliKod(v);
   }
 
-  Duration _beklemeBelirle(String deger, Barcode b) {
-    if (_taninan(deger)) return _kisaBekleme;
+  /// Kaç okumada kabul edilir: tanınan / kayıtlı kod 1, bilinmeyen 2.
+  int _gerekenBelirle(String deger, Barcode b) {
+    if (_taninan(deger) || widget.urunBarkodu) return 1;
     final kontrol = widget.bilinenMi;
-    // Kayıt kontrolü olmayan ekranlarda (ör. depoya giriş) şüpheli kod
-    // daha uzun sabit tutulmalı.
-    if (kontrol == null) {
-      return !widget.urunBarkodu && supheliKod(deger)
-          ? _uzunBekleme
-          : _kisaBekleme;
-    }
+    if (kontrol == null) return supheliKod(deger) ? 2 : 1;
     final bilinen = _bilinenler[deger];
-    if (bilinen != null) return bilinen ? _kisaBekleme : _uzunBekleme;
-    // Sistemde kayıtlı mı? Cevap gelene kadar uzun bekleme varsayılır.
+    if (bilinen != null) return bilinen ? 1 : 2;
+    // Sistemde kayıtlı mı? Cevap gelince (aday hâlâ buysa) yeniden denenir.
     kontrol(deger).then((v) {
       _bilinenler[deger] = v;
-      if (mounted && _aday == deger && v) {
-        setState(() => _adayBekleme = _kisaBekleme);
+      if (!mounted || _aday != deger) return;
+      if (!v && _kayitliOlmali(_adayKod ?? b, deger)) {
+        setState(() => _aday = null);
+        _ipucuGoster('Yok sayıldı: ${_kisalt(deger)} '
+            '(kayıtlı değil: malzeme / lot / model kodu)');
+        return;
       }
+      _adayGereken = v ? 1 : 2;
+      _dene();
     }).catchError((_) {
       _bilinenler[deger] = false;
     });
-    return _uzunBekleme;
+    return 2;
   }
 
   @override
@@ -386,10 +424,25 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
           GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTapUp: (_) => _ortayaNetle(),
-            onScaleStart: (_) => _zoomBaslangic = _zoom,
+            onScaleStart: (_) {
+              _zoomBaslangic = _zoom;
+              _kaydirma = 0;
+            },
             onScaleUpdate: (d) {
-              if (d.pointerCount < 2) return;
+              if (d.pointerCount < 2) {
+                // Tek parmak: yatay kaydırma miktarı (Barkod ⇄ Karekod)
+                _kaydirma += d.focalPointDelta.dx;
+                return;
+              }
+              _kaydirma = 0;
               _zoomAyarla(_zoomBaslangic + (d.scale - 1) * 0.35);
+            },
+            onScaleEnd: (d) {
+              final hiz = d.velocity.pixelsPerSecond.dx.abs();
+              if (_kaydirma.abs() > 60 || (hiz > 600 && _kaydirma.abs() > 20)) {
+                _modDegistir();
+              }
+              _kaydirma = 0;
             },
             child: MobileScanner(
               controller: widget.controller,
@@ -405,25 +458,43 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
               painter: _CerceveBoyaci(pencere, _netleniyor || _aday != null),
             ),
           ),
-          // Kilitlenme çubuğu: dolunca kod okunur.
+          // Okunuyor göstergesi (bilinmeyen kod 2. okumayı bekliyor)
           if (_aday != null)
             Positioned(
               left: pencere.left + 12,
               width: pencere.width - 24,
               top: pencere.bottom - 10,
               child: IgnorePointer(
-                child: TweenAnimationBuilder<double>(
-                  key: ValueKey('$_aday${_adayBaslangic.millisecondsSinceEpoch}'
-                      '${_adayBekleme.inMilliseconds}'),
-                  tween: Tween(begin: _gecenOran(), end: 1),
-                  duration: _kalanSure(),
-                  builder: (_, v, __) => ClipRRect(
-                    borderRadius: BorderRadius.circular(3),
-                    child: LinearProgressIndicator(
-                      value: v,
-                      minHeight: 5,
-                      color: const Color(0xFF4CAF50),
-                      backgroundColor: const Color(0x66FFFFFF),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(3),
+                  child: LinearProgressIndicator(
+                    value: _adaySayi / math.max(_adayGereken, 1),
+                    minHeight: 5,
+                    color: const Color(0xFF4CAF50),
+                    backgroundColor: const Color(0x66FFFFFF),
+                  ),
+                ),
+              ),
+            ),
+          if (_ipucu != null)
+            Positioned(
+              left: 12,
+              right: 12,
+              top: math.max(pencere.top - 34, 4),
+              child: IgnorePointer(
+                child: Center(
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      _ipucu!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                          color: Color(0xFFBDBDBD), fontSize: 12),
                     ),
                   ),
                 ),
@@ -464,8 +535,8 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
               child: Text(
                 kIsWeb
                     ? 'Yalnızca çerçevenin içindeki kod okunur'
-                    : 'Kodu çerçeveye alıp sabit tutun · 15-25 cm uzakta · '
-                        'netlemek için dokunun',
+                    : 'Kodu çerçeveye alın · 15-25 cm uzakta · netlemek için '
+                        'dokunun · Barkod / Karekod için yana kaydırın',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                     color: Colors.white,

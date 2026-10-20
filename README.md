@@ -5,6 +5,12 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.24.1 – Kamera okuma düzeltmesi
+- Okuma onayı süre yerine okuma sayısıyla: kurum etiketi, koli karekodu ve (Okut'ta) kayıtlı kod ilk okumada; bilinmeyen / şüpheli kod 1,5 sn içinde ikinci okumada kabul edilir. Aradaki kaçırılan kareler sayacı sıfırlamaz (küçük, sık çizgili barkodlar — ör. Mercusys S/N — 1.24.0'da okunmuyordu). Açılış beklemesi 0,5 sn; kamera saniyede daha çok kare dener (120 ms).
+- Seri no ayıklama: "S/N:", "SN:" önekleri ve sondaki ek bilgi ("22440W0015776 EU/3.0" → 22440W0015776) atılır; böyle kodlar koli sanılmaz.
+- Yok sayılan kod çerçevenin üstünde 2 sn gösterilir: "Yok sayıldı: … (MAC adresi / web adresi / sipariş-kutu kodu / ürün barkodu / kayıtlı değil)".
+- Kamerada tek parmakla yana kaydırınca Barkod ⇄ Karekod değişir.
+
 ## 1.24.0 – Saha işleri: malzemeler, tutanak, Araçlar sekmesi, yeni isimler
 - Miktarlı (seri nosuz) ürünler: ürün eklerken takip türü "Seri no ile / Miktarla"; birimler adet, metre, paket, top, kutu; isteğe bağlı fabrika barkodu. Hareketler `stok_hareketleri`'ne `cihaz_id` boş, `miktar` dolu yazılır (yeni tablo yok, silinmez); depo / araç stoğu hareketlerden hesaplanır.
 - Depo → "İşlemler": Malzeme girişi, Malzeme Araca Yükle, transfer, iade (araçtan depoya), Malzeme Montaj / Kullanıldı. Malzeme listeden seçilir ya da fabrika barkodu okutulur (tanımsız barkod bir kez malzemeye bağlanır); +/- ve yazarak miktar. Kaynaktaki miktardan fazlası düşülemez. Yarım iş koruması bu ekranda da var. Okut ekranında fabrika barkodu okutulunca malzeme işlemleri açılır.

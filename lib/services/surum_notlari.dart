@@ -36,6 +36,32 @@ class NotMaddesi {
 
 const surumNotlari = <SurumNotu>[
   SurumNotu(
+    surum: '1.24.1',
+    tarih: '20.10.2026',
+    bolumler: [
+      NotBolumu('Yeni', [
+        NotMaddesi('Kaydırarak geçiş',
+            'Kamerada yana kaydırınca Barkod ⇄ Karekod değişir.'),
+        NotMaddesi(
+          'Yok sayılan kod ipucu',
+          'Okunmayan kod çerçevenin üstünde nedeniyle kısaca görünür.',
+          'Örn. "Yok sayıldı: 30-16-9D-4E-93-F2 (MAC adresi)". Yanlış '
+              'barkoda doğrulttuğunuz hemen anlaşılır.',
+        ),
+      ]),
+      NotBolumu('Düzeltilen', [
+        NotMaddesi(
+          'Kamera okuma',
+          'Küçük ve sık çizgili barkodlar artık hızlı okunuyor.',
+          'Kayıtlı kod, kurum etiketi ve koli karekodu ilk okumada; '
+              'bilinmeyen kod ikinci okumada kabul edilir. Kamera saniyede '
+              'daha çok dener. "S/N:" öneki ve sondaki "EU/3.0" gibi ek '
+              'bilgiler atılır.',
+        ),
+      ]),
+    ],
+  ),
+  SurumNotu(
     surum: '1.24.0',
     tarih: '20.10.2026',
     bolumler: [

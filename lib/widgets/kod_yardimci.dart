@@ -26,7 +26,7 @@ final _rakam = RegExp(r'\d');
 /// satır ayrı bir seri no olarak döner. Tek seri no içeren kodda tek eleman
 /// döner. Sonuç büyük harfe çevrilmiş, tekrarsız ve sıralıdır (koddaki sırayla).
 List<String> seriNolariAyir(String kod) {
-  var parcalar = kod
+  var parcalar = seriAyikla(kod)
       .split(_ayirici)
       .map((s) => s.trim())
       .where((s) => s.isNotEmpty)
@@ -37,7 +37,8 @@ List<String> seriNolariAyir(String kod) {
   if (parcalar.length == 1) {
     final kelimeler = parcalar.first.split(_bosluk);
     if (kelimeler.length > 1 &&
-        kelimeler.every((k) => k.length >= 5 && _rakam.hasMatch(k))) {
+        kelimeler.every((k) =>
+            k.length >= 5 && _rakam.hasMatch(k) && !k.contains('/'))) {
       parcalar = kelimeler;
     }
   }
@@ -69,7 +70,8 @@ MobileScannerController tarayiciOlustur() => MobileScannerController(
       cameraResolution: const Size(1920, 1080),
       autoZoom: true,
       detectionSpeed: DetectionSpeed.normal,
-      detectionTimeoutMs: 250,
+      // Küçük / sık çizgili barkodlar için saniyede daha çok deneme
+      detectionTimeoutMs: 120,
     );
 
 /// Bilgisayar tarayıcısında (web, telefon dışı) kamera genelde yoktur; seri
@@ -95,20 +97,55 @@ bool urunBarkoduTuru(Barcode b) =>
 
 /// Seri no / kurum etiketi / koli karekodu olamayacak kodlar: web adresi,
 /// Wi-Fi, kartvizit, telefon, e-posta, MAC adresi, çok kısa kod. Bunlar
-/// okutma ekranlarında sessizce yok sayılır.
-bool gereksizKod(String deger) {
+/// okutma ekranlarında yok sayılır.
+bool gereksizKod(String deger) => gereksizSebep(deger) != null;
+
+/// Kod neden yok sayılır (ekranda kısa ipucu olarak gösterilir); okunacaksa
+/// null.
+String? gereksizSebep(String deger) {
   final v = deger.trim();
-  if (v.length < 4) return true;
+  if (v.length < 4) return 'çok kısa';
   final k = v.toUpperCase();
-  const onEkler = [
-    'HTTP://', 'HTTPS://', 'WWW.', 'WIFI:', 'MAILTO:', 'TEL:', 'SMSTO:',
-    'SMS:', 'MATMSG:', 'MECARD:', 'BEGIN:VCARD', 'BEGIN:VEVENT', 'GEO:',
-    'MAC:', 'MAC ',
+  const adresler = ['HTTP://', 'HTTPS://', 'WWW.'];
+  if (adresler.any(k.startsWith)) return 'web adresi';
+  if (k.startsWith('WIFI:')) return 'Wi-Fi';
+  const digerleri = [
+    'MAILTO:', 'TEL:', 'SMSTO:', 'SMS:', 'MATMSG:', 'MECARD:', 'BEGIN:VCARD',
+    'BEGIN:VEVENT', 'GEO:',
   ];
-  if (onEkler.any(k.startsWith)) return true;
+  if (digerleri.any(k.startsWith)) return 'iletişim bilgisi';
+  if (k.startsWith('MAC:') || k.startsWith('MAC ') ||
+      _macAdresi.hasMatch(k) || _macDuz.hasMatch(k)) {
+    return 'MAC adresi';
+  }
   // Sipariş no (3000527901/10), "@722363267 ..." gibi kutu kodları
-  if (k.contains('/') || k.startsWith('@')) return true;
-  return _macAdresi.hasMatch(k) || _macDuz.hasMatch(k);
+  if (k.contains('/') || k.startsWith('@')) return 'sipariş / kutu kodu';
+  return null;
+}
+
+final _seriOnEki = RegExp(
+    r'^(?:(?:S\s*/\s*N|SN|SERIAL\s*(?:NO\.?|NUMBER)?)\s*[:#.]\s*|S\s*/\s*N\s+)',
+    caseSensitive: false);
+final _bosluklar = RegExp(r'\s+');
+
+/// Barkodun içindeki seri noyu ayıklar: "S/N:22440W0015776" → seri no;
+/// "22440W0015776 EU/3.0" gibi sonda ek bilgi varsa yalnızca seri no.
+/// Çok satırlı (koli) kodlara dokunmaz.
+String seriAyikla(String deger) {
+  var s = deger.trim();
+  if (s.contains('\n') || s.contains('\r')) return s;
+  s = s.replaceFirst(_seriOnEki, '').trim();
+  if (s.contains(' ')) {
+    final p = s.split(_bosluklar);
+    final ilk = p.first;
+    if (ilk.length >= 5 &&
+        _rakam.hasMatch(ilk) &&
+        !ilk.contains('/') &&
+        p.skip(1).every((x) => x.contains('/') || x.length <= 4)) {
+      return ilk;
+    }
+  }
+  return s;
 }
 
 /// Seri no olabilir ama çoğu zaman değildir: yalnızca rakamdan oluşan kodlar
