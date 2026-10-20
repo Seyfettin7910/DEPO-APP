@@ -2,9 +2,6 @@
 
 Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlarına taşınır.
 
-## İlk güncellemede
-- [ ] **Web giriş ekranına Android APK linki:** bilgisayar / telefon tarayıcısında giriş ekranında "Android uygulamasını indir" bağlantısı → https://github.com/Seyfettin7910/DEPO-APP/releases/latest/download/Depo-Otomasyon-Sistemi.apk (her zaman son sürüm).
-
 ## Excel dökümü gelince (ayrı paket)
 - [ ] **Excel'den aktarım** (Kamera biriminin demirbaş dökümü): döküm gelince sütun eşleştirmesi, seri nosu boş satırlar, konum (depo / montajlı), demirbaş sicil no kurum kodu olsun mu kararları.
   - **Not:** Miktarlı ürünlerin (kablo, adaptör…) **ilk stoğu** elle mi girilecek, Excel'den mi gelecek? Döküm gelince karar verilecek.

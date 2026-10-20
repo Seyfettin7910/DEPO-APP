@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../database/app_database.dart';
@@ -101,7 +102,17 @@ class SyncService {
 
   SyncDurum get durum => _durum;
 
+  static const _sonSenkronAnahtari = 'son_senkron_ms';
+
   void start() {
+    // Son başarılı senkron saati uygulama yeniden açılınca da görünsün.
+    unawaited(SharedPreferences.getInstance().then((p) {
+      final ms = p.getInt(_sonSenkronAnahtari);
+      if (ms != null && _durum.sonBasari == null && !_kapandi) {
+        _yayinla(_durum.kopya(
+            sonBasari: DateTime.fromMillisecondsSinceEpoch(ms)));
+      }
+    }).catchError((_) {}));
     _baglantiSub = Connectivity().onConnectivityChanged.listen((sonuclar) {
       if (sonuclar.any((r) => r != ConnectivityResult.none)) syncNow();
     });
@@ -163,9 +174,13 @@ class SyncService {
       // İnternetsiz kaydedilmiş kurulum noktalarının il/ilçe/mahallesini bul.
       unawaited(AdresTamamlayici.calistir(db));
 
+      final simdi = DateTime.now();
+      unawaited(SharedPreferences.getInstance()
+          .then((p) => p.setInt(_sonSenkronAnahtari, simdi.millisecondsSinceEpoch))
+          .catchError((_) => false));
       _yayinla(SyncDurum(
         bekleyen: await db.bekleyenSayisi(),
-        sonBasari: DateTime.now(),
+        sonBasari: simdi,
         hata: sorunlar.isEmpty ? null : sorunlar.take(3).join('\n'),
       ));
     } catch (e) {

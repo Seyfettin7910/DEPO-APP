@@ -15,7 +15,10 @@ import '../cihaz/toplu_giris_screen.dart';
 import '../cihaz/toplu_transfer_screen.dart';
 import '../../widgets/hedefli_tarayici.dart';
 import '../../widgets/kritik_stok_seridi.dart';
-import '../../widgets/bildirim_dugmesi.dart';
+import '../../widgets/renkler.dart';
+import '../../widgets/sync_durum_dugmesi.dart';
+import '../rapor/sayim_screen.dart';
+import '../../database/models.dart';
 import '../../widgets/koli_karekodu.dart';
 
 /// Hızlı tarama: seri numarası okutulunca cihazın kartı (hangi ürün, hangi
@@ -192,35 +195,129 @@ class _BarkodTaramaScreenState extends ConsumerState<BarkodTaramaScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Seri No Okut'),
-        actions: [
-          const BildirimDugmesi(),
-          IconButton(
-            icon: const Icon(Icons.keyboard),
-            tooltip: 'Seri no yazarak ara',
-            onPressed: () => _ac(const CihazAraScreen()),
-          ),
-          IconButton(
-            icon: const Icon(Icons.add_box_outlined),
-            tooltip: 'Seri no ile depoya giriş',
-            onPressed: () => _ac(const TopluGirisScreen()),
-          ),
-          IconButton(
-            icon: const Icon(Icons.swap_horiz),
-            tooltip: 'Toplu transfer',
-            onPressed: () => _ac(const TopluTransferScreen()),
-          ),
-          IconButton(
-            icon: const Icon(Icons.flash_on),
-            tooltip: 'Flaş',
-            onPressed: () => _controller.toggleTorch(),
-          ),
-        ],
+        actions: ustDugmeler(),
       ),
       body: Column(
         children: [
           const KritikStokSeridi(),
-          Expanded(child: _kamera()),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: _kamera(),
+              ),
+            ),
+          ),
+          _altBolum(),
         ],
+      ),
+    );
+  }
+
+  /// Kameranın altı: "Elle yaz" / "Fener" ve hızlı işlemler (Depoya giriş,
+  /// Transfer, Araca Yükle, Sayım).
+  Widget _altBolum() {
+    final tema = Theme.of(context);
+    Widget ikincil(IconData ikon, Color renk, String ad, VoidCallback f) =>
+        Expanded(
+          child: OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+              foregroundColor: tema.colorScheme.onSurface,
+              side: BorderSide(color: tema.colorScheme.outline, width: 1.2),
+              textStyle:
+                  const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+            ),
+            icon: Icon(ikon, color: renk, size: 22),
+            label: Text(ad),
+            onPressed: f,
+          ),
+        );
+
+    Widget kutu(IconData ikon, Color renk, Color zemin, String ad,
+            VoidCallback f) =>
+        Material(
+          color: zemin,
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: f,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+              child: Row(children: [
+                RenkliSimge(ikon,
+                    renk: renk, zemin: zemin, boyut: 38, dolu: true),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(ad,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.w500)),
+                ),
+              ]),
+            ),
+          ),
+        );
+
+    final kutular = [
+      kutu(Icons.add_box_outlined, Renkler.okut, Renkler.okutZemin,
+          'Depoya giriş', () => _ac(const TopluGirisScreen())),
+      kutu(Icons.swap_horiz, Renkler.depo, Renkler.depoZemin, 'Transfer',
+          () => _ac(const TopluTransferScreen())),
+      kutu(Icons.local_shipping_outlined, Renkler.urun, Renkler.urunZemin,
+          'Araca Yükle',
+          () => _ac(const TopluTransferScreen(tip: HareketTipi.kullanim))),
+      kutu(Icons.fact_check_outlined, Renkler.ara, Renkler.araZemin, 'Sayım',
+          () => _ac(const SayimScreen())),
+    ];
+
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(children: [
+              ikincil(Icons.keyboard_outlined, Renkler.depo, 'Elle yaz',
+                  () => _ac(const CihazAraScreen())),
+              const SizedBox(width: 8),
+              ikincil(Icons.flashlight_on_outlined, Renkler.zil, 'Fener',
+                  () async {
+                try {
+                  await _controller.toggleTorch();
+                } catch (_) {}
+              }),
+            ]),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 12, 4, 6),
+              child: Text('HIZLI İŞLEMLER',
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.4,
+                      color: tema.colorScheme.onSurfaceVariant)),
+            ),
+            LayoutBuilder(builder: (context, c) {
+              // Geniş ekranda (bilgisayar) dördü tek satırda.
+              final sutun = c.maxWidth >= 640 ? 4 : 2;
+              final satirlar = <Widget>[];
+              for (var i = 0; i < kutular.length; i += sutun) {
+                if (i > 0) satirlar.add(const SizedBox(height: 8));
+                satirlar.add(Row(children: [
+                  for (var j = i; j < i + sutun; j++) ...[
+                    if (j > i) const SizedBox(width: 8),
+                    Expanded(child: kutular[j]),
+                  ],
+                ]));
+              }
+              return Column(children: satirlar);
+            }),
+          ],
+        ),
       ),
     );
   }

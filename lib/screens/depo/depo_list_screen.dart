@@ -8,7 +8,6 @@ import '../../widgets/depo_secici.dart';
 import '../../widgets/sync_durum_dugmesi.dart';
 import 'depo_stok_screen.dart';
 import '../../widgets/kritik_stok_seridi.dart';
-import '../../widgets/bildirim_dugmesi.dart';
 import '../../widgets/etiket_karti.dart';
 import '../../widgets/kod_yardimci.dart';
 
@@ -72,8 +71,7 @@ class DepoListScreen extends ConsumerWidget {
             title: const Text('Depolar'),
             actions: [
               EtiketDugmesi(bilgisayar: bilgisayarTarayicisi),
-              const BildirimDugmesi(),
-              const SyncDurumDugmesi(),
+              ...ustDugmeler(),
             ],
             bottom: TabBar(tabs: [
               Tab(

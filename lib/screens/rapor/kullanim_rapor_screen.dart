@@ -8,7 +8,8 @@ import '../../database/models.dart';
 import '../../services/rapor/rapor_modeli.dart';
 import '../../services/rapor/rapor_olusturucu.dart';
 import 'rapor_onizleme_screen.dart';
-import 'sayim_screen.dart';
+import '../../widgets/renkler.dart';
+import '../../widgets/sync_durum_dugmesi.dart';
 
 class KullanimRaporScreen extends ConsumerStatefulWidget {
   const KullanimRaporScreen({super.key});
@@ -330,60 +331,91 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Raporlar'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.date_range),
-            tooltip: 'Tarih aralığı seç',
-            onPressed: _tarihAraligiSec,
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => setState(_yenile),
-          ),
-          IconButton(
-            icon: const Icon(Icons.fact_check_outlined),
-            tooltip: 'Sayım',
-            onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const SayimScreen())),
-          ),
-          IconButton(
-            icon: const Icon(Icons.summarize_outlined),
-            tooltip: 'Rapor oluştur (PDF / Excel)',
-            onPressed: _raporSec,
-          ),
-        ],
+        actions: ustDugmeler(),
       ),
       body: Column(
         children: [
-          if (_tarihAraligi != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                children: [
-                  Icon(Icons.filter_alt_outlined, size: 18, color: Theme.of(context).colorScheme.primary),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      '${DateFormat('dd.MM.yyyy').format(_tarihAraligi!.start)} - '
-                      '${DateFormat('dd.MM.yyyy').format(_tarihAraligi!.end)}',
-                      style: const TextStyle(fontSize: 13),
-                    ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+            child: Row(children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  style: _ikincilStil(context),
+                  icon: const Icon(Icons.date_range, color: Renkler.depo),
+                  label: Text(
+                    _tarihAraligi == null
+                        ? 'Tarih: Tüm zamanlar'
+                        : '${DateFormat('dd.MM.yy').format(_tarihAraligi!.start)} - '
+                            '${DateFormat('dd.MM.yy').format(_tarihAraligi!.end)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  TextButton(
-                    onPressed: () => setState(() {
-                      _tarihAraligi = null;
-                      _yenile();
-                    }),
-                    child: const Text('Temizle'),
-                  ),
-                ],
+                  onPressed: _tarihAraligiSec,
+                ),
+              ),
+              if (_tarihAraligi != null) ...[
+                const SizedBox(width: 4),
+                IconButton(
+                  tooltip: 'Tarih filtresini temizle',
+                  icon: const Icon(Icons.close),
+                  onPressed: () => setState(() {
+                    _tarihAraligi = null;
+                    _yenile();
+                  }),
+                ),
+              ],
+              const SizedBox(width: 8),
+              OutlinedButton.icon(
+                style: _ikincilStil(context),
+                icon: const Icon(Icons.refresh, color: Renkler.okut),
+                label: const Text('Yenile'),
+                onPressed: () => setState(_yenile),
+              ),
+            ]),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text('SON KULLANIMLAR',
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.4,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant)),
+            ),
+          ),
+          Expanded(child: _raporListesi()),
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Renkler.rapor,
+                  minimumSize: const Size.fromHeight(54),
+                  textStyle: const TextStyle(
+                      fontSize: 17, fontWeight: FontWeight.w500),
+                ),
+                icon: const Icon(Icons.summarize_outlined),
+                label: const Text('Rapor oluştur (PDF / Excel)'),
+                onPressed: _raporSec,
               ),
             ),
-          Expanded(child: _raporListesi()),
+          ),
         ],
       ),
     );
   }
+
+  static ButtonStyle _ikincilStil(BuildContext context) =>
+      OutlinedButton.styleFrom(
+        minimumSize: const Size(0, 48),
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
+        side: BorderSide(
+            color: Theme.of(context).colorScheme.outline, width: 1.2),
+        textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+      );
 
   Widget _raporListesi() {
     return FutureBuilder<List<KullanimRaporSatiri>>(
@@ -407,7 +439,8 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
               final s = satirlar[i];
               final hedef = s.aracPlaka ?? s.kullanimYeri ?? 'Belirtilmedi';
               return ListTile(
-                leading: const Icon(Icons.local_shipping_outlined),
+                leading: const Icon(Icons.local_shipping_outlined,
+                    color: Renkler.urun),
                 title: Text(s.seriNo == null ? '${s.urunAdi} · ${s.miktar} adet' : s.urunAdi),
                 subtitle: Text([
                   if (s.seriNo != null) 'SN: ${s.seriNo}',

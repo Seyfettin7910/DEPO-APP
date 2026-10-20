@@ -10,6 +10,7 @@ import '../../widgets/koli_karekodu.dart';
 import 'cihaz_detay_screen.dart';
 import '../../widgets/silme_islemleri.dart';
 import '../urun/urun_form_dialog.dart';
+import '../../widgets/sync_durum_dugmesi.dart';
 
 /// Seri numarası (veya model, depo, araç/yer) yazarak ya da okutarak arama.
 /// Sonuçta cihazın hangi modele ait olduğu ve şu an hangi depoda / hangi
@@ -72,7 +73,7 @@ class _CihazAraScreenState extends ConsumerState<CihazAraScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Cihaz Ara')),
+      appBar: AppBar(title: const Text('Cihaz Ara'), actions: ustDugmeler()),
       body: Column(
         children: [
           Padding(

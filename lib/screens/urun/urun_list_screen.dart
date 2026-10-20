@@ -5,6 +5,7 @@ import '../../database/models.dart';
 import '../../providers/app_providers.dart';
 import 'urun_form_dialog.dart';
 import '../../widgets/silme_islemleri.dart';
+import '../../widgets/sync_durum_dugmesi.dart';
 
 /// Ürünler (modeller), kategoriye göre gruplu; her başlıkta kategori toplamı,
 /// her satırda o modelin tüm depolardaki toplam adedi görünür.
@@ -22,7 +23,7 @@ class UrunListScreen extends ConsumerWidget {
     };
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Ürünler')),
+      appBar: AppBar(title: const Text('Ürünler'), actions: ustDugmeler()),
       floatingActionButton: FloatingActionButton(
         onPressed: () => urunFormDialog(context, ref),
         child: const Icon(Icons.add),

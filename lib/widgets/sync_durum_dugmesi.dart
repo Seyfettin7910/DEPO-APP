@@ -6,84 +6,113 @@ import '../providers/app_providers.dart';
 import '../services/oturum_kilidi.dart';
 import '../services/supabase_service.dart';
 import '../services/bildirim/web_bildirim.dart';
-import '../services/guncelleme_servisi.dart';
-import '../screens/yenilikler_screen.dart';
-import 'yarim_isler.dart';
+import 'bildirim_dugmesi.dart';
+import 'renkler.dart';
 
-/// AppBar'da senkron durumunu gösterir; menüden elle senkronize etme sağlar.
-/// (Çıkış, alt menüdeki tek "Çıkış" düğmesindedir.)
+/// Üst çubuktaki iki düğme: senkron göstergesi ve bildirim zili.
+List<Widget> ustDugmeler() => const [
+      SyncDurumDugmesi(),
+      BildirimDugmesi(),
+      SizedBox(width: 4),
+    ];
+
+/// Üst çubukta senkron durumu: simge + son senkron saati (ya da bekleyen
+/// kayıt sayısı / çevrimdışı). Dokununca hemen senkronize eder.
+/// Diğer menüler (yarım işler, güncelleme, yenilikler…) Ayarlar sekmesinde.
 class SyncDurumDugmesi extends ConsumerWidget {
   const SyncDurumDugmesi({super.key});
+
+  static String saatMetni(DateTime? t) {
+    if (t == null) return '—';
+    final simdi = DateTime.now();
+    final bugun = DateTime(simdi.year, simdi.month, simdi.day);
+    final gun = DateTime(t.year, t.month, t.day);
+    final saat = DateFormat('HH:mm').format(t);
+    if (gun == bugun) return saat;
+    if (bugun.difference(gun).inDays == 1) return 'Dün $saat';
+    return '${DateFormat('dd.MM').format(t)} $saat';
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final d = ref.watch(syncDurumProvider);
+    final cevrimdisi = d.hata?.startsWith('Çevrimdışı') ?? false;
 
     IconData ikon;
-    Color? renk;
+    Color renk;
+    Color zemin;
+    String metin;
     String ipucu;
     if (d.calisiyor) {
       ikon = Icons.sync;
-      ipucu = 'Senkronize ediliyor...';
-    } else if (d.hata != null) {
+      renk = Renkler.depo;
+      zemin = Renkler.depoZemin;
+      metin = 'Gönderiliyor…';
+      ipucu = 'Senkronize ediliyor';
+    } else if (cevrimdisi) {
       ikon = Icons.cloud_off;
-      renk = Colors.orange.shade800;
-      ipucu = 'Senkron sorunu';
+      renk = Renkler.cikis;
+      zemin = Renkler.cikisZemin;
+      metin = 'Çevrimdışı';
+      ipucu = d.hata!;
     } else if (d.bekleyen > 0) {
       ikon = Icons.cloud_upload_outlined;
-      renk = Colors.orange.shade800;
+      renk = Renkler.urun;
+      zemin = Renkler.urunZemin;
+      metin = '${d.bekleyen} bekliyor';
       ipucu = '${d.bekleyen} değişiklik gönderilecek';
+    } else if (d.hata != null) {
+      ikon = Icons.cloud_off;
+      renk = Renkler.urun;
+      zemin = Renkler.urunZemin;
+      metin = 'Sorun';
+      ipucu = d.hata!;
     } else {
       ikon = Icons.cloud_done_outlined;
-      renk = Colors.green.shade700;
-      ipucu = 'Güncel';
+      renk = Renkler.okut;
+      zemin = Renkler.okutZemin;
+      metin = saatMetni(d.sonBasari);
+      ipucu = d.sonBasari == null
+          ? 'Henüz senkronize edilmedi'
+          : 'Güncel · son senkron ${DateFormat('dd.MM.yyyy HH:mm').format(d.sonBasari!)}';
     }
 
-    return PopupMenuButton<String>(
-      tooltip: ipucu,
-      icon: Badge(
-        isLabelVisible: d.bekleyen > 0,
-        label: Text('${d.bekleyen}'),
-        child: Icon(ikon, color: renk),
-      ),
-      onSelected: (v) async {
-        if (v == 'sync') {
-          ref.read(syncServiceProvider).syncNow();
-        } else if (v == 'yenilikler' && context.mounted) {
-          Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const YeniliklerScreen()));
-        } else if (v == 'yarim' && context.mounted) {
-          await yarimIsleriGoster(context, bosIseHaberVer: true);
-        } else if (v == 'guncelleme' && context.mounted) {
-          await GuncellemeServisi.elleDenetle(context);
-        }
-      },
-      itemBuilder: (ctx) => [
-        PopupMenuItem(
-          enabled: false,
-          child: Text(
-            [
-              SupabaseService.kullanici?.email ?? '',
-              if (d.bekleyen > 0) 'Bekleyen: ${d.bekleyen}',
-              d.sonBasari == null
-                  ? 'Henüz senkronize edilmedi'
-                  : 'Son senkron: ${DateFormat('HH:mm:ss').format(d.sonBasari!)}',
-              if (d.hata != null) d.hata!,
-            ].where((e) => e.isNotEmpty).join('\n'),
-            style: const TextStyle(fontSize: 12),
+    return Tooltip(
+      message: ipucu,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        child: Material(
+          color: zemin,
+          shape: const StadiumBorder(),
+          child: InkWell(
+            customBorder: const StadiumBorder(),
+            onTap: () {
+              ref.read(syncServiceProvider).syncNow();
+              if (d.hata != null) {
+                ScaffoldMessenger.of(context)
+                  ..hideCurrentSnackBar()
+                  ..showSnackBar(SnackBar(content: Text(d.hata!)));
+              }
+            },
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(8, 6, 10, 6),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(ikon, color: renk, size: 22),
+                  const SizedBox(width: 5),
+                  Text(metin,
+                      maxLines: 1,
+                      style: TextStyle(
+                          color: renk,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14)),
+                ],
+              ),
+            ),
           ),
         ),
-        const PopupMenuItem(value: 'sync', child: Text('Şimdi senkronize et')),
-        const PopupMenuItem(value: 'yarim', child: Text('Yarım kalan işler')),
-        const PopupMenuItem(
-            value: 'guncelleme', child: Text('Güncellemeleri denetle')),
-        PopupMenuItem(
-          value: 'yenilikler',
-          child: Text(GuncellemeServisi.mevcutSurum.isEmpty
-              ? 'Yenilikler'
-              : 'Yenilikler (sürüm ${GuncellemeServisi.mevcutSurum})'),
-        ),
-      ],
+      ),
     );
   }
 }

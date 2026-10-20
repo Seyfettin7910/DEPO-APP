@@ -36,6 +36,47 @@ class NotMaddesi {
 
 const surumNotlari = <SurumNotu>[
   SurumNotu(
+    surum: '1.25.0',
+    tarih: '20.10.2026',
+    bolumler: [
+      NotBolumu('Yeni', [
+        NotMaddesi(
+          'Ayarlar sekmesi',
+          'Alt menüde; yarım kalan işler, bildirim ve etiket ayarları, '
+              'güncelleme, yenilikler burada.',
+          'Çıkış da artık Ayarlar\'ın en altındaki "Çıkış yap" düğmesinde.',
+        ),
+        NotMaddesi(
+          'Hızlı işlemler',
+          'Okut ekranında: Depoya giriş, Transfer, Araca Yükle, Sayım.',
+          'Kameranın altındaki "Elle yaz" seri no ile arar, "Fener" ışığı '
+              'açar.',
+        ),
+        NotMaddesi(
+          'Son senkron saati',
+          'Üst çubukta bulut simgesinin yanında görünür.',
+          'Yeşil saat: güncel. Turuncu "3 bekliyor": gönderilmemiş kayıt '
+              'var. Kırmızı "Çevrimdışı": internet yok, kayıtlar telefonda '
+              'bekler. Dokununca hemen senkronize eder.',
+        ),
+        NotMaddesi('Büyük yazı',
+            'Ayarlar → Büyük yazı ile yazılar ve simgeler büyür.'),
+        NotMaddesi('Android indirme linki',
+            'Web giriş ekranında "Android uygulamasını indir (APK)".'),
+      ]),
+      NotBolumu('Değişen', [
+        NotMaddesi('Renkli simgeler',
+            'Her bölüm kendi renginde; simgeler daha büyük ve okunur.'),
+        NotMaddesi(
+          'Raporlar',
+          'Tarih ve Yenile yazılı düğme; altta büyük "Rapor oluştur".',
+          'Sayım, Okut ekranındaki hızlı işlemlere ve depo → İşlemler '
+              'menüsüne taşındı.',
+        ),
+      ]),
+    ],
+  ),
+  SurumNotu(
     surum: '1.24.3',
     tarih: '20.10.2026',
     bolumler: [

@@ -1,9 +1,11 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../services/guncelleme_servisi.dart';
 import '../../services/oturum_kilidi.dart';
@@ -196,6 +198,19 @@ class _GirisScreenState extends State<GirisScreen> {
                     textAlign: TextAlign.center,
                     style: const TextStyle(fontSize: 12),
                   ),
+                  // Web'den (iPhone hariç) Android uygulamasını indirme linki.
+                  if (kIsWeb && defaultTargetPlatform != TargetPlatform.iOS) ...[
+                    const SizedBox(height: 12),
+                    Center(
+                      child: TextButton.icon(
+                        icon: const Icon(Icons.android, color: Color(0xFF1E7B3A)),
+                        label: const Text('Android uygulamasını indir (APK)'),
+                        onPressed: () => launchUrl(
+                            Uri.parse(GuncellemeServisi.apkLinki),
+                            mode: LaunchMode.externalApplication),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 28),
                   Text(
                     'Developed by Seyfettin AYDIN',

@@ -6,6 +6,7 @@ import 'package:intl/date_symbol_data_local.dart';
 
 import 'database/platform/db_fabrika.dart';
 
+import 'services/gorunum_ayari.dart';
 import 'services/guncelleme_servisi.dart';
 import 'services/oturum_kilidi.dart';
 import 'services/supabase_service.dart';
@@ -30,6 +31,7 @@ Future<void> main() async {
   // Uygulama hemen açılır; Supabase ve veritabanı hazırlığı açılış
   // ekranında yapılır. Böylece takılan/çöken bir adım beyaz ekran yerine
   // anlaşılır bir hata mesajı olarak görünür.
+  await GorunumAyari.yukle();
   runApp(const ProviderScope(child: DepoApp()));
 }
 
@@ -51,7 +53,7 @@ class DepoApp extends StatelessWidget {
       builder: (context, child) => Listener(
         behavior: HitTestBehavior.translucent,
         onPointerDown: (_) => OturumKilidi.instance.etkinlik(),
-        child: child,
+        child: GorunumAyari.uygula(context, child ?? const SizedBox()),
       ),
       home: const BaslangicEkrani(),
     );

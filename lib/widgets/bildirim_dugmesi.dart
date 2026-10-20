@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/app_providers.dart';
 import '../screens/bildirim/bildirimler_screen.dart';
+import 'renkler.dart';
 
 /// Üst çubuktaki zil: okunmamış bildirim sayısını gösterir.
 class BildirimDugmesi extends ConsumerWidget {
@@ -16,9 +17,12 @@ class BildirimDugmesi extends ConsumerWidget {
       icon: Badge(
         isLabelVisible: sayi > 0,
         label: Text(sayi > 99 ? '99+' : '$sayi'),
-        child: Icon(sayi > 0
-            ? Icons.notifications_active_outlined
-            : Icons.notifications_none),
+        child: Icon(
+            sayi > 0
+                ? Icons.notifications_active
+                : Icons.notifications_none,
+            color: Renkler.zil,
+            size: 26),
       ),
       onPressed: () => Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => const BildirimlerScreen()),

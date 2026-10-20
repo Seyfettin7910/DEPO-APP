@@ -11,13 +11,14 @@ import '../services/bildirim/bildirim_gosterici.dart';
 import '../services/bildirim/web_bildirim.dart';
 import '../services/guncelleme_servisi.dart';
 import '../services/supabase_service.dart';
-import '../widgets/sync_durum_dugmesi.dart';
+import '../widgets/renkler.dart';
 import '../widgets/yarim_isler.dart';
 import 'depo/depo_list_screen.dart';
 import 'urun/urun_list_screen.dart';
 import 'cihaz/cihaz_ara_screen.dart';
 import 'hareket/barkod_tarama_screen.dart';
 import 'rapor/kullanim_rapor_screen.dart';
+import 'ayarlar_screen.dart';
 import 'yenilikler_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -44,6 +45,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     BarkodTaramaScreen(),
     CihazAraScreen(),
     KullanimRaporScreen(),
+    AyarlarScreen(),
+  ];
+
+  /// Alt menü: her bölüm kendi renginde; seçili olanın simgesi dolu.
+  static const _menu = [
+    (Icons.warehouse_outlined, Icons.warehouse, 'Depolar', Renkler.depo, Renkler.depoZemin),
+    (Icons.inventory_2_outlined, Icons.inventory_2, 'Ürünler', Renkler.urun, Renkler.urunZemin),
+    (Icons.qr_code_scanner, Icons.qr_code_scanner, 'Okut', Renkler.okut, Renkler.okutZemin),
+    (Icons.search, Icons.search, 'Ara', Renkler.ara, Renkler.araZemin),
+    (Icons.bar_chart_outlined, Icons.bar_chart, 'Raporlar', Renkler.rapor, Renkler.raporZemin),
+    (Icons.settings_outlined, Icons.settings, 'Ayarlar', Renkler.ayar, Renkler.ayarZemin),
   ];
 
   @override
@@ -112,33 +124,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     }
   }
 
-  /// Son öğe ("Çıkış") sekme değil; onay sorup oturumu kapatır.
-  void _sec(int i) {
-    if (i == _screens.length) {
-      cikisYapOnayli(context, ref);
-      return;
-    }
-    setState(() => _index = i);
-  }
-
   @override
   Widget build(BuildContext context) {
-    // Menü telefonda da bilgisayarda da (web) altta.
-    const destinations = [
-      NavigationDestination(icon: Icon(Icons.warehouse_outlined), label: 'Depolar'),
-      NavigationDestination(icon: Icon(Icons.inventory_2_outlined), label: 'Ürünler'),
-      NavigationDestination(icon: Icon(Icons.qr_code_scanner), label: 'Okut'),
-      NavigationDestination(icon: Icon(Icons.search), label: 'Ara'),
-      NavigationDestination(icon: Icon(Icons.bar_chart_outlined), label: 'Raporlar'),
-      NavigationDestination(icon: Icon(Icons.logout), label: 'Çıkış'),
-    ];
-
+    // Menü telefonda da bilgisayarda da (web) altta. Çıkış: Ayarlar'da.
+    final secili = _menu[_index];
     return Scaffold(
       body: _screens[_index],
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
-        onDestinationSelected: _sec,
-        destinations: destinations,
+        indicatorColor: secili.$5,
+        onDestinationSelected: (i) => setState(() => _index = i),
+        destinations: [
+          for (final m in _menu)
+            NavigationDestination(
+              icon: Icon(m.$1, color: m.$4, size: 27),
+              selectedIcon: Icon(m.$2, color: m.$4, size: 27),
+              label: m.$3,
+            ),
+        ],
       ),
     );
   }
