@@ -5,6 +5,7 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 ## 1.24.1 – Daha hızlı "Yeni sürüm" bildirimi (konuşuldu, "yap" bekleniyor)
 - [ ] **Android:** arka plan görevi her çalışmada (~15 dk, Android'in en sık aralığı) sürümü denetler; 3 saatlik sınır kalkar. Yalnızca kendi sürüm dosyamıza (version.json) bakar, GitHub API'ye sormaz (aynı internet çıkışındaki çok telefonda sorgu sınırına takılmasın). Her sürüm için bir kez.
 - [ ] **Web / iPhone:** sunucudaki bildirim fonksiyonu her çalışmada sürüm dosyasına bakar; yeni sürümde web bildirimine abone herkese "Yeni sürüm var" gönderir (neredeyse yayın anında).
+- [ ] **Otomatik kurulum onayı (Xiaomi / HyperOS sorunu):** 1.23.0 → 1.24.0 ilk kendi kendine güncellemede pencere "Tekrar dene"ye düştü (onay ekranı arka plandaki alıcıdan açılamadı; Xiaomi "arka planda açılır pencere" iznini kapalı tutuyor). Düzeltme: onay ekranı uygulamanın açık ekranından açılır; uygulama kapalıysa "Güncellemeyi onaylamak için dokunun" bildirimi; kurulum sonucu (onay reddedildi, yer yok, dosya bozuk…) pencerede anında gösterilir, 20 sn bekleme kalkar.
 - Not: Yayın anında (anlık) Android bildirimi için Firebase gerekir; şimdilik gerek görülmedi. Değişiklik telefonlar 1.24.1'i kurunca çalışır.
 
 ## Excel dökümü gelince (ayrı paket)
