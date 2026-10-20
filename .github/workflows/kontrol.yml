@@ -33,6 +33,11 @@ jobs:
       - name: Testler (Okut kuralları vb.)
         run: flutter test test/okut_listesi_test.dart
       - run: flutter build web --release
+      - name: Web duman testi (giriş ekranı, tarayıcı tanıma)
+        run: |
+          pip install --quiet playwright==1.47.0
+          python -m playwright install --with-deps chromium > /dev/null
+          python3 tool/web_duman_testi.py
 
   android:
     runs-on: ubuntu-latest
