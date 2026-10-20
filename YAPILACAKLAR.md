@@ -2,13 +2,10 @@
 
 Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlarına taşınır.
 
-## 1.24.0 – Saha işleri (07:00'de başlanacak; ayrı dalda hazırlanır, SQL çalıştırılıp "yayınla" denince yayınlanır)
-- [ ] **Tutanak durumu**: Montaj penceresinde zorunlu seçim (Alındı / Alınacak / Kurum içi kullanım); cihaz kartında güncelleme; Ara ekranında ve Kullanım raporunda "Tutanak" sütunu. Geçmiş kurulumlar "Belirtilmemiş".
-- [ ] **Depolar / Araçlar ayrımı**: Depolar ekranında iki sekme (Depolar | Araçlar); "(SEYYAR DEPO)" yazısı kalkar.
-- [ ] **İsimler**: "Kullanıma ver" → **Araca Yükle**; "Sahada kullanıldı" → **Montaj / Kullanıldı** (durum: "Montaj Yapıldı / Kullanıldı"); rapor: **Kullanım Raporu – Montajı Yapılanlar**. Her yerde tutarlı değişecek.
-- [ ] **Miktarlı (seri nosuz) ürünler**: ürün tanımında takip türü (Seri no / Miktar); birimler: adet, metre, paket, top, kutu. Girişte miktar (fabrika barkodu okutularak ürün seçimi), Araca Yükle / transfer miktarla, stokta ve raporda miktar, kritik stok miktara göre, sayımda miktar girişi.
-  - Montaj penceresinde **"Kullanılan malzemeler"** bölümü: deneme süreci için kolay olmalı (isteğe bağlı, açılır bölüm, +/- düğmeleri, araçtaki sarf listesi hazır gelir, zorunlu değil).
-- Yenilikler notu yeni yazım kuralıyla; Supabase SQL; en düşük sürüm 1.24.0.
+## 1.24.0 – Saha işleri (hazır, `surum-1.24.0` dalında; yayın bekliyor)
+- Yayın sırası: 1) Supabase'de `supabase_guncelleme_1_24_0.sql` çalıştırılır (Ctrl+A → Run), 2) "yayınla" denince dal main'e alınır (APK + web + bildirim fonksiyonu), en düşük sürüm 1.24.0.
+- İçerik: miktarlı malzemeler (giriş, Araca Yükle, transfer, iade, Montaj / Kullanıldı, fabrika barkodu, sayım), montajda "Kullanılan malzemeler", tutanak (Alındı / Alınacak / Kurum içi; cihaz kartı, Ara, Kullanım Raporu), Depolar | Araçlar sekmeleri, yeni isimler.
+- Telefonda denenecek: montaj penceresi (tutanak + malzemeler), malzeme ekranı barkod okutma, Araçlar sekmesi.
 
 ## Excel dökümü gelince (ayrı paket)
 - [ ] **Excel'den aktarım** (Kamera biriminin demirbaş dökümü): döküm gelince sütun eşleştirmesi, seri nosu boş satırlar, konum (depo / montajlı), demirbaş sicil no kurum kodu olsun mu kararları.
