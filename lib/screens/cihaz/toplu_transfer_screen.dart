@@ -12,6 +12,7 @@ import '../../widgets/kod_yardimci.dart';
 import 'cihaz_detay_screen.dart';
 import '../../widgets/hedefli_tarayici.dart';
 import '../../widgets/iade_sebebi.dart';
+import '../../widgets/renkler.dart';
 
 /// Birden çok cihazı seri numarasıyla okutup tek seferde bir depoya veya
 /// araca taşır. [tip] transfer, Araca Yükle ya da iade olabilir;
@@ -400,9 +401,12 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen>
         title: Text(_baslik),
         actions: [
           IconButton(
-            icon: Icon(_kameraAcik
-                ? Icons.no_photography_outlined
-                : Icons.qr_code_scanner),
+            icon: Icon(
+                _kameraAcik
+                    ? Icons.no_photography_outlined
+                    : Icons.qr_code_scanner,
+                color: _kameraAcik ? Renkler.cikis : Renkler.okut,
+                size: 26),
             tooltip: _kameraAcik ? 'Kamerayı kapat' : 'Kamerayla okut',
             onPressed: _kameraDegistir,
           ),
@@ -471,7 +475,7 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen>
               decoration: InputDecoration(
                 labelText: 'Seri numarası (elle yaz veya okut)',
                 suffixIcon: IconButton(
-                  icon: const Icon(Icons.add_circle),
+                  icon: const Icon(Icons.add_circle, color: Renkler.okut),
                   tooltip: 'Listeye ekle',
                   onPressed: () => _ekle(_seriCtrl.text),
                 ),

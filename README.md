@@ -5,6 +5,16 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.25.1 – Sayım ekranı düzenlemesi
+- Sayım: rapor düğmesi soluk simge yerine yazılı "Bitir" (sayımı bitir, PDF / Excel rapor). Dört sekme (Eksik / Bulunan / Fazla / Malzeme) kaydırmasız ekrana sığar (FittedBox), her sekme ve sayaç kendi renginde; depo seçiminde, ekle düğmesinde ve ilerleme çubuğunda renkli simgeler.
+- Sayım, toplu transfer ve depoya giriş: kamera düğmesi `videocam` yerine `qr_code_scanner` (yeşil), açıkken `no_photography_outlined` (kırmızı).
+
+## 1.25.0 – Ayarlar sekmesi ve yeni görünüm
+- Alt menüde "Çıkış" yerine "Ayarlar" sekmesi (hesap, yarım kalan işler, senkron, bildirim / etiket ayarları, büyük yazı, güncelleme, yenilikler, çıkış).
+- Üst çubukta senkron göstergesi: son senkron saati / "N bekliyor" / "Gönderiliyor…" / "Çevrimdışı"; dokununca senkronize eder. Son senkron saati cihazda saklanır.
+- Okut ekranında "Elle yaz", "Fener" ve hızlı işlemler (Depoya giriş, Transfer, Araca Yükle, Sayım). Raporlar'da yazılı Tarih / Yenile ve büyük "Rapor oluştur".
+- Renkli bölüm simgeleri (`Renkler`), "Büyük yazı" (yazı ölçeği ×1.2), web giriş ekranında Android APK linki.
+
 ## 1.24.3 – "database_closed" düzeltmesi
 - Android arka plan görevi (senkron + bildirim) iş bitince veritabanını kapatıyordu; sqflite aynı dosya için uygulamayla aynı yerel bağlantıyı paylaştığından arka planda açık duran uygulamanın bağlantısı da kapanıyor, dönünce "DatabaseException(database_closed)" ekran hatası çıkıyordu. Görev artık kapatmıyor.
 - `AppDatabase` bağlantı kapanmışsa kendiliğinden yeniden açar (eşzamanlı açılışlar tek seferde) ve açık ekranları tazeler.

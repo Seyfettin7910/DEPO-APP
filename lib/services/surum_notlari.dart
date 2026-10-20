@@ -36,6 +36,27 @@ class NotMaddesi {
 
 const surumNotlari = <SurumNotu>[
   SurumNotu(
+    surum: '1.25.1',
+    tarih: '20.10.2026',
+    bolumler: [
+      NotBolumu('Değişen', [
+        NotMaddesi(
+          'Sayım',
+          'Sağ üstte yazılı "Bitir" düğmesi: sayımı bitirip raporu '
+              '(PDF / Excel) alır.',
+          'Sekmeler (Eksik, Bulunan, Fazla, Malzeme) artık ekrana sığıyor '
+              've her biri kendi renginde; sayaçlarla aynı renkler.',
+        ),
+        NotMaddesi(
+          'Kamera düğmesi',
+          'Sayım, transfer ve depoya girişte okutma simgesiyle görünür.',
+          'Yeşil: kamerayla okut. Kırmızı: kamerayı kapat. (Eskiden video '
+              'kamerası simgesiydi, video çekecek sanılıyordu.)',
+        ),
+      ]),
+    ],
+  ),
+  SurumNotu(
     surum: '1.25.0',
     tarih: '20.10.2026',
     bolumler: [

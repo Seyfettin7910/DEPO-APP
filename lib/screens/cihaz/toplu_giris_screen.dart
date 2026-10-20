@@ -13,6 +13,7 @@ import '../../widgets/depo_secici.dart';
 import '../../widgets/kod_yardimci.dart';
 import '../../widgets/hedefli_tarayici.dart';
 import '../../widgets/alim_bilgisi_alanlari.dart';
+import '../../widgets/renkler.dart';
 
 /// Seri numaralarıyla depoya giriş: model ve depo seçilir, seri numaraları
 /// kamerayla tek tek okutulur, hepsi tek seferde kaydedilir. Hatalı girişi
@@ -607,7 +608,7 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen>
                     decoration: InputDecoration(
                       labelText: 'Seri numarası (barkod okuyucuyla okutun)',
                       suffixIcon: IconButton(
-                        icon: const Icon(Icons.add_circle),
+                        icon: const Icon(Icons.add_circle, color: Renkler.okut),
                         tooltip: 'Listeye ekle',
                         onPressed: () => _ekle(_seriCtrl.text),
                       ),
@@ -619,12 +620,17 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen>
                     child: _kameraAcik
                         ? OutlinedButton.icon(
                             onPressed: _kameraDegistir,
+                            style: OutlinedButton.styleFrom(
+                                foregroundColor: Renkler.cikis),
                             icon: const Icon(Icons.no_photography_outlined),
                             label: const Text('Okutma bitti, kamerayı kapat'),
                           )
                         : FilledButton.tonalIcon(
+                            style: FilledButton.styleFrom(
+                                backgroundColor: Renkler.okutZemin,
+                                foregroundColor: Renkler.okut),
                             onPressed: _kameraDegistir,
-                            icon: const Icon(Icons.add_circle),
+                            icon: const Icon(Icons.qr_code_scanner),
                             label: Text(_seriler.isEmpty
                                 ? 'Seri no okut'
                                 : '${_seriler.length + 1}. seri noyu okut'),

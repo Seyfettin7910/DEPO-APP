@@ -12,6 +12,7 @@ import '../../widgets/depo_secici.dart';
 import '../../widgets/hedefli_tarayici.dart';
 import '../../widgets/kod_yardimci.dart';
 import 'rapor_onizleme_screen.dart';
+import '../../widgets/renkler.dart';
 
 /// Sayım modu: bir depo veya araç seçilir, oradaki cihazlar tek tek
 /// okutulur. Sistemdeki kayıtla karşılaştırılır:
@@ -351,15 +352,23 @@ class _SayimScreenState extends ConsumerState<SayimScreen>
           title: const Text('Sayım'),
           actions: [
             IconButton(
-              icon: Icon(_kameraAcik
-                  ? Icons.no_photography_outlined
-                  : Icons.qr_code_scanner),
+              icon: Icon(
+                  _kameraAcik
+                      ? Icons.no_photography_outlined
+                      : Icons.qr_code_scanner,
+                  color: _kameraAcik ? Renkler.cikis : Renkler.okut,
+                  size: 26),
               tooltip: _kameraAcik ? 'Kamerayı kapat' : 'Kamerayla okut',
               onPressed: _kameraDegistir,
             ),
             Padding(
               padding: const EdgeInsets.only(right: 4),
-              child: TextButton.icon(
+              child: FilledButton.tonalIcon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Renkler.raporZemin,
+                  foregroundColor: Renkler.rapor,
+                  textStyle: const TextStyle(fontWeight: FontWeight.bold),
+                ),
                 icon: const Icon(Icons.assignment_turned_in_outlined),
                 label: const Text('Bitir'),
                 onPressed: secili == null
@@ -377,7 +386,9 @@ class _SayimScreenState extends ConsumerState<SayimScreen>
                 value: secili?.id,
                 isExpanded: true,
                 decoration: const InputDecoration(
-                    labelText: 'Sayılacak depo / araç'),
+                    labelText: 'Sayılacak depo / araç',
+                    prefixIcon: Icon(Icons.warehouse_outlined,
+                        color: Renkler.depo)),
                 items: depoDropdownOgeleri(depolar),
                 onChanged: _depoDegistir,
               ),
@@ -418,7 +429,8 @@ class _SayimScreenState extends ConsumerState<SayimScreen>
                 decoration: InputDecoration(
                   labelText: 'Seri no (yazın veya USB okuyucuyla okutun)',
                   suffixIcon: IconButton(
-                    icon: const Icon(Icons.add),
+                    icon: const Icon(Icons.add_circle, color: Renkler.okut),
+                    tooltip: 'Ekle',
                     onPressed: () => _okut(_seriCtrl.text, beklenen),
                   ),
                 ),
@@ -429,10 +441,10 @@ class _SayimScreenState extends ConsumerState<SayimScreen>
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               child: Row(
                 children: [
-                  _sayac('Olmalı', beklenen.length, Colors.blueGrey),
-                  _sayac('Bulunan', bulunan.length, Colors.green.shade700),
-                  _sayac('Eksik', eksik.length, Colors.red.shade700),
-                  _sayac('Fazla', fazla.length, Colors.orange.shade800),
+                  _sayac('Olmalı', beklenen.length, Renkler.depo),
+                  _sayac('Bulunan', bulunan.length, Renkler.okut),
+                  _sayac('Eksik', eksik.length, Renkler.cikis),
+                  _sayac('Fazla', fazla.length, Renkler.urun),
                 ],
               ),
             ),
@@ -442,22 +454,29 @@ class _SayimScreenState extends ConsumerState<SayimScreen>
                 child: LinearProgressIndicator(
                   value: bulunan.length / beklenen.length,
                   minHeight: 6,
+                  color: Renkler.okut,
+                  backgroundColor: Renkler.okutZemin,
+                  borderRadius: BorderRadius.circular(3),
                 ),
               ),
             // Dört sekme de ekrana sığsın: yazı sığmazsa küçülür, kesilmez.
             TabBar(
               labelPadding: const EdgeInsets.symmetric(horizontal: 4),
               tabs: [
-                for (final t in [
-                  'Eksik (${eksik.length})',
-                  'Bulunan (${bulunan.length})',
-                  'Fazla (${fazla.length})',
-                  'Malzeme (${malzemeler.length})',
+                // Her sekme kendi renginde (sayaçlarla aynı).
+                for (final (t, renk) in [
+                  ('Eksik (${eksik.length})', Renkler.cikis),
+                  ('Bulunan (${bulunan.length})', Renkler.okut),
+                  ('Fazla (${fazla.length})', Renkler.urun),
+                  ('Malzeme (${malzemeler.length})', Renkler.ara),
                 ])
                   Tab(
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
-                      child: Text(t, maxLines: 1),
+                      child: Text(t,
+                          maxLines: 1,
+                          style: TextStyle(
+                              color: renk, fontWeight: FontWeight.w600)),
                     ),
                   ),
               ],
@@ -479,9 +498,9 @@ class _SayimScreenState extends ConsumerState<SayimScreen>
                     )
                   : TabBarView(children: [
                       _cihazListesi(eksik, Icons.help_outline,
-                          Colors.red.shade700, 'Eksik yok, hepsi bulundu 🎉'),
+                          Renkler.cikis, 'Eksik yok, hepsi bulundu 🎉'),
                       _cihazListesi(bulunan, Icons.check_circle,
-                          Colors.green.shade700, 'Henüz okutma yok'),
+                          Renkler.okut, 'Henüz okutma yok'),
                       fazla.isEmpty
                           ? const Center(child: Text('Fazla cihaz yok'))
                           : ListView.separated(
@@ -492,8 +511,8 @@ class _SayimScreenState extends ConsumerState<SayimScreen>
                                 final e = fazla[i];
                                 return ListTile(
                                   dense: true,
-                                  leading: Icon(Icons.warning_amber,
-                                      color: Colors.orange.shade800),
+                                  leading: const Icon(Icons.warning_amber,
+                                      color: Renkler.urun),
                                   title: Text(e.key),
                                   subtitle: Text(
                                       '${e.value?.urunAdi ?? 'Bilinmeyen ürün'}\n'
@@ -537,10 +556,8 @@ class _SayimScreenState extends ConsumerState<SayimScreen>
         return ListTile(
           leading: Icon(Icons.cable_outlined,
               color: fark == null
-                  ? null
-                  : (fark == 0
-                      ? Colors.green.shade700
-                      : Colors.orange.shade800)),
+                  ? Renkler.ara
+                  : (fark == 0 ? Renkler.okut : Renkler.urun)),
           title: Text(u.ad),
           subtitle: Text('Sistemde: ${u.miktarMetni(sistemde)}'
               '${fark == null || fark == 0 ? '' : ' · fark ${fark > 0 ? '+' : ''}$fark'}'),
