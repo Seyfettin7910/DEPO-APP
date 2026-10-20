@@ -108,6 +108,9 @@ class Depo {
       };
 }
 
+/// Miktarla takip edilen ürünlerin (kablo, adaptör…) birimleri.
+const malzemeBirimleri = ['adet', 'metre', 'paket', 'top', 'kutu'];
+
 class Urun {
   final String id;
   final String ad;
@@ -117,6 +120,12 @@ class Urun {
   final int minStokSeviyesi;
   final bool seriTakipli; // true: her cihaz seri no ile takip edilir
   final DateTime updatedAt;
+
+  /// Seri numarasız, miktarla (adet, metre, paket…) takip edilen malzeme.
+  bool get miktarli => !seriTakipli;
+
+  /// "50 metre" gibi.
+  String miktarMetni(int miktar) => '$miktar $birim';
   final bool dirty;
   final bool deleted;
 
@@ -361,6 +370,10 @@ class KullanimKaydi {
   final String? il;
   final String? ilce;
   final String? mahalle; // mahalle veya köy
+  // Montaj tutanağı: alindi | alinacak | kurum_ici (eski kayıtlarda null)
+  final String? tutanak;
+  final DateTime? tutanakTarihi;
+  final String? tutanakKullaniciId;
   final DateTime updatedAt;
   final bool dirty;
   final bool deleted;
@@ -377,6 +390,9 @@ class KullanimKaydi {
     this.il,
     this.ilce,
     this.mahalle,
+    this.tutanak,
+    this.tutanakTarihi,
+    this.tutanakKullaniciId,
     required this.updatedAt,
     this.dirty = true,
     this.deleted = false,
@@ -394,6 +410,9 @@ class KullanimKaydi {
         il: m['il'] as String?,
         ilce: m['ilce'] as String?,
         mahalle: m['mahalle'] as String?,
+        tutanak: m['tutanak'] as String?,
+        tutanakTarihi: _epochOrNull(m['tutanak_tarihi']),
+        tutanakKullaniciId: m['tutanak_kullanici_id'] as String?,
         updatedAt: _epochToDate(m['updated_at'] as int),
         dirty: _intToBool(m['dirty'] as int),
         deleted: _intToBool(m['deleted'] as int),
@@ -411,6 +430,9 @@ class KullanimKaydi {
         'il': il,
         'ilce': ilce,
         'mahalle': mahalle,
+        'tutanak': tutanak,
+        'tutanak_tarihi': tutanakTarihi?.millisecondsSinceEpoch,
+        'tutanak_kullanici_id': tutanakKullaniciId,
         'updated_at': _dateToEpoch(updatedAt),
         'dirty': _boolToInt(dirty),
         'deleted': _boolToInt(deleted),
@@ -665,3 +687,29 @@ const servisKapanisAdlari = {
   'degisim': 'Yeni cihaz depoya eklendi',
   'degisim_bekliyor': 'Değişim için bekletiliyor',
 };
+
+// ---------------------------------------------------------------------
+// Montaj tutanağı
+// ---------------------------------------------------------------------
+
+/// Montaj / kullanımda tutanak durumu. Eski kayıtlarda boş: "Belirtilmemiş".
+const tutanakSecenekleri = ['alindi', 'alinacak', 'kurum_ici'];
+
+/// Seçim düğmelerindeki ve kartlardaki ad.
+String tutanakAdi(String? t) => switch (t) {
+      'alindi' => 'Tutanak alındı',
+      'alinacak' => 'Tutanak alınacak',
+      'kurum_ici' => 'Kurum içi kullanım (tutanak yok)',
+      _ => 'Tutanak belirtilmemiş',
+    };
+
+/// Raporlardaki kısa ad.
+String tutanakKisa(String? t) => switch (t) {
+      'alindi' => 'Alındı',
+      'alinacak' => 'Alınacak',
+      'kurum_ici' => 'Kurum içi',
+      _ => 'Belirtilmemiş',
+    };
+
+/// Cihazın şu anki durum adı (kartlarda, raporlarda).
+const montajDurumAdi = 'Montaj Yapıldı / Kullanıldı';

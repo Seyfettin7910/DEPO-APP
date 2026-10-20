@@ -33,7 +33,7 @@ class RaporOlusturucu {
       case 'depoda':
         return depoTur == 'arac' ? 'Araçta' : 'Depoda';
       case 'kullanimda':
-        return 'Sahada kullanıldı';
+        return montajDurumAdi;
       case 'cikti':
         return 'Çıkış yapıldı';
       default:
@@ -45,7 +45,7 @@ class RaporOlusturucu {
     'girisi': 'Giriş',
     'cikis': 'Çıkış',
     'transfer': 'Transfer',
-    'kullanim': 'Kullanım',
+    'kullanim': 'Araca Yükle / Montaj',
     'iade': 'İade',
     'silme': 'Silme',
     'servis': 'Servis',
@@ -119,36 +119,48 @@ class RaporOlusturucu {
     final satirlar =
         await db.kullanimRaporu(baslangic: baslangic, bitis: bitis);
 
+    // Ürün bazlı toplam: cihazda adet, malzemede miktar + birim
     final urunSayilari = <String, int>{};
+    final birimler = <String, String>{};
     for (final s in satirlar) {
       urunSayilari[s.urunAdi] = (urunSayilari[s.urunAdi] ?? 0) + s.miktar;
+      birimler[s.urunAdi] = s.malzeme ? s.birim : 'adet';
     }
     final urunler = urunSayilari.keys.toList()
       ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+    final cihazlar = satirlar.where((s) => !s.malzeme).toList();
 
     return Rapor(
-      baslik: 'Kullanım Raporu',
+      baslik: 'Kullanım Raporu – Montajı Yapılanlar',
       altBaslik: '${_aralik(baslangic, bitis)} · ${_olusturma()}',
       dosyaOn: 'kullanim_raporu',
       ozet: [
-        MapEntry('Toplam kullanım', '${satirlar.length}'),
+        MapEntry('Montaj (cihaz)', '${cihazlar.length}'),
+        MapEntry('Malzeme kullanımı',
+            '${satirlar.length - cihazlar.length}'),
+        MapEntry('Tutanak alındı',
+            '${cihazlar.where((s) => s.tutanak == 'alindi').length}'),
+        MapEntry('Tutanak alınacak',
+            '${cihazlar.where((s) => s.tutanak == 'alinacak').length}'),
+        MapEntry('Kurum içi',
+            '${cihazlar.where((s) => s.tutanak == 'kurum_ici').length}'),
         MapEntry('Konumu kayıtlı',
             '${satirlar.where((s) => s.enlem != null).length}'),
-        MapEntry('Ürün çeşidi', '${urunler.length}'),
       ],
       sutunlar: const [
-        'Tarih', 'Seri No', 'Ürün', 'Çıktığı yer', 'Kullanım yeri / Araç',
-        'Bölge (mahalle, ilçe / il)', 'Konum (GPS)'
+        'Tarih', 'Seri No / Miktar', 'Ürün', 'Çıktığı yer',
+        'Kullanım yeri / Araç', 'Tutanak', 'Bölge (mahalle, ilçe / il)',
+        'Konum (GPS)'
       ],
-      genislikler: const [14, 17, 19, 15, 21, 24, 20],
+      genislikler: const [14, 17, 19, 14, 20, 11, 22, 19],
       bolumler: [
         if (urunler.isNotEmpty)
           RaporBolumu(
             baslik: 'Ürün bazlı özet',
-            sutunlar: const ['Ürün', 'Adet'],
-            genislikler: const [40, 10],
+            sutunlar: const ['Ürün', 'Miktar', 'Birim'],
+            genislikler: const [40, 10, 10],
             satirlar: [
-              for (final u in urunler) [u, urunSayilari[u]],
+              for (final u in urunler) [u, urunSayilari[u], birimler[u]],
             ],
           ),
         RaporBolumu(
@@ -157,10 +169,11 @@ class RaporOlusturucu {
             for (final s in satirlar)
               [
                 _tarih.format(s.tarih),
-                s.seriNo ?? '',
+                s.malzeme ? '${s.miktar} ${s.birim}' : (s.seriNo ?? ''),
                 s.urunAdi,
                 s.depoAdi,
                 s.aracPlaka ?? s.kullanimYeri ?? 'Belirtilmedi',
+                s.malzeme ? '-' : tutanakKisa(s.tutanak),
                 Adres(il: s.il, ilce: s.ilce, mahalle: s.mahalle).ozet,
                 konumHucresi(s.enlem, s.boylam),
               ],
@@ -175,6 +188,7 @@ class RaporOlusturucu {
   // ------------------------------------------------------------------
   static Future<Rapor> urunler(AppDatabase db) async {
     final rows = await db.cihazListesiRaporu();
+    final malzemeBolumu = await _malzemeBolumu(db);
 
     // Ürüne göre grupla (sorgu ürün adına göre sıralı gelir)
     final gruplar = <String, List<Map<String, Object?>>>{};
@@ -202,7 +216,7 @@ class RaporOlusturucu {
           'Toplam ${s.toplam}',
           'Depoda ${s.depoda}',
           'Araçta ${s.aracta}',
-          'Sahada ${s.sahada}',
+          'Montajlı ${s.sahada}',
           if (s.arizali > 0) 'Arızalı / serviste ${s.arizali}',
           if (s.hurda > 0) 'Hurda ${s.hurda}',
           'Çıkış ${s.cikti}',
@@ -220,7 +234,7 @@ class RaporOlusturucu {
         MapEntry('Toplam cihaz', '${sayac.toplam}'),
         MapEntry('Depoda', '${sayac.depoda}'),
         MapEntry('Araçta', '${sayac.aracta}'),
-        MapEntry('Sahada kullanıldı', '${sayac.sahada}'),
+        MapEntry('Montaj yapıldı', '${sayac.sahada}'),
         MapEntry('Arızalı / serviste', '${sayac.arizali}'),
         MapEntry('Hurda', '${sayac.hurda}'),
         MapEntry('Çıkış yapıldı', '${sayac.cikti}'),
@@ -232,13 +246,48 @@ class RaporOlusturucu {
           RaporBolumu(
             baslik: 'Ürün özeti',
             sutunlar: const [
-              'Ürün', 'Kategori', 'Toplam', 'Depoda', 'Araçta', 'Sahada',
+              'Ürün', 'Kategori', 'Toplam', 'Depoda', 'Araçta', 'Montajlı',
               'Arızalı', 'Hurda', 'Çıkış'
             ],
             genislikler: const [26, 15, 8, 8, 8, 8, 8, 8, 8],
             satirlar: ozetSatirlari,
           ),
+        if (malzemeBolumu != null) malzemeBolumu,
         ...detaylar,
+      ],
+    );
+  }
+
+  /// Miktarla takip edilen malzemelerin depolar / araçlardaki miktarları.
+  static Future<RaporBolumu?> _malzemeBolumu(AppDatabase db) async {
+    final malzemeler =
+        (await db.tumUrunler()).where((u) => u.miktarli).toList();
+    if (malzemeler.isEmpty) return null;
+    final stok = await db.malzemeStoklari();
+    final depolar = {for (final d in await db.tumDepolar()) d.id: d};
+    return RaporBolumu(
+      baslik: 'Malzemeler (miktarla takip)',
+      sutunlar: const [
+        'Malzeme', 'Kategori', 'Depolarda', 'Araçlarda', 'Toplam', 'Birim'
+      ],
+      genislikler: const [26, 15, 10, 10, 10, 9],
+      satirlar: [
+        for (final u in malzemeler)
+          () {
+            var depoda = 0, aracta = 0;
+            for (final e in (stok[u.id] ?? const <String, int>{}).entries) {
+              final d = depolar[e.key];
+              if (d == null) continue;
+              if (d.arac) {
+                aracta += e.value;
+              } else {
+                depoda += e.value;
+              }
+            }
+            return <Object?>[
+              u.ad, u.kategori ?? '', depoda, aracta, depoda + aracta, u.birim
+            ];
+          }(),
       ],
     );
   }
@@ -247,6 +296,7 @@ class RaporOlusturucu {
   // Seçili ürünün stok durumu
   // ------------------------------------------------------------------
   static Future<Rapor> urunStokDurumu(AppDatabase db, Urun urun) async {
+    if (urun.miktarli) return _malzemeStokDurumu(db, urun);
     final rows = await db.cihazListesiRaporu(urunId: urun.id);
     final s = _Sayac()..ekle(rows);
 
@@ -297,7 +347,7 @@ class RaporOlusturucu {
         MapEntry('Toplam', '${s.toplam}'),
         MapEntry('Depolarda', '${s.depoda}'),
         MapEntry('Araçlarda', '${s.aracta}'),
-        MapEntry('Sahada kullanıldı', '${s.sahada}'),
+        MapEntry('Montaj yapıldı', '${s.sahada}'),
         MapEntry('Arızalı / serviste', '${s.arizali}'),
         MapEntry('Hurda', '${s.hurda}'),
         MapEntry('Çıkış yapıldı', '${s.cikti}'),
@@ -316,7 +366,7 @@ class RaporOlusturucu {
         ...[
           bolum('Depolarda', depolarda),
           bolum('Araçlarda', araclarda),
-          bolum('Sahada kullanıldı', sahada),
+          bolum('Montaj yapıldı', sahada),
           bolum('Arızalı / serviste', arizalilar),
           bolum('Hurdaya ayrılan', hurdalar),
           bolum('Çıkış yapıldı', cikti),
@@ -330,6 +380,66 @@ class RaporOlusturucu {
     );
   }
 
+  /// Miktarlı malzemenin depolar / araçlardaki miktarı ve montajlarda
+  /// kullanılanlar.
+  static Future<Rapor> _malzemeStokDurumu(AppDatabase db, Urun urun) async {
+    final stok = (await db.malzemeStoklari())[urun.id] ?? const <String, int>{};
+    final depolar = {for (final d in await db.tumDepolar()) d.id: d};
+    final dagilim = <List<Object?>>[];
+    var depoda = 0, aracta = 0;
+    for (final e in stok.entries) {
+      final d = depolar[e.key];
+      if (d == null || e.value == 0) continue;
+      dagilim.add([d.ad, d.arac ? 'Araç' : 'Depo', e.value, urun.birim]);
+      if (d.arac) {
+        aracta += e.value;
+      } else {
+        depoda += e.value;
+      }
+    }
+    dagilim.sort((a, b) => (b[2] as int).compareTo(a[2] as int));
+    final kullanimlar = await db.kullanimRaporu(urunId: urun.id);
+    final kullanilan = kullanimlar.fold<int>(0, (t, k) => t + k.miktar);
+    return Rapor(
+      baslik: 'Stok Durumu: ${urun.ad}',
+      altBaslik: [
+        'Malzeme (${urun.birim})',
+        if ((urun.kategori ?? '').isNotEmpty) 'Kategori: ${urun.kategori}',
+        _olusturma(),
+      ].join(' · '),
+      dosyaOn: 'stok_durumu',
+      ozet: [
+        MapEntry('Toplam', urun.miktarMetni(depoda + aracta)),
+        MapEntry('Depolarda', urun.miktarMetni(depoda)),
+        MapEntry('Araçlarda', urun.miktarMetni(aracta)),
+        MapEntry('Montajda kullanılan', urun.miktarMetni(kullanilan)),
+      ],
+      sutunlar: const ['Konum', 'Tür', 'Miktar', 'Birim'],
+      genislikler: const [30, 10, 10, 10],
+      bolumler: [
+        RaporBolumu(
+          baslik: 'Konumlara göre miktar',
+          satirlar: dagilim,
+        ),
+        if (kullanimlar.isNotEmpty)
+          RaporBolumu(
+            baslik: 'Montajda kullanılan (${kullanimlar.length})',
+            sutunlar: const ['Tarih', 'Miktar', 'Çıktığı yer', 'Kullanım yeri'],
+            genislikler: const [16, 12, 20, 30],
+            satirlar: [
+              for (final k in kullanimlar)
+                [
+                  _tarih.format(k.tarih),
+                  '${k.miktar} ${k.birim}',
+                  k.depoAdi,
+                  k.kullanimYeri ?? '',
+                ],
+            ],
+          ),
+      ],
+    );
+  }
+
   // ------------------------------------------------------------------
   // Kritik stok
   // ------------------------------------------------------------------
@@ -337,8 +447,8 @@ class RaporOlusturucu {
     final liste = await db.kritikStoklar();
     return Rapor(
       baslik: 'Kritik Stok',
-      altBaslik: 'Depolar ve araçlardaki (seyyar depo) sağlam cihaz adedi, ürünün '
-          'minimum adediyle karşılaştırılır · ${_olusturma()}',
+      altBaslik: 'Depolar ve araçlardaki sağlam cihaz adedi (malzemede miktar), '
+          'ürünün minimumuyla karşılaştırılır · ${_olusturma()}',
       dosyaOn: 'kritik_stok',
       ozet: [
         MapEntry('Kritik ürün', '${liste.length}'),
@@ -359,7 +469,7 @@ class RaporOlusturucu {
           satirlar: [
             for (final k in liste)
               [
-                k.urunAdi,
+                k.birim == null ? k.urunAdi : '${k.urunAdi} (${k.birim})',
                 k.kategori ?? '',
                 k.minStok,
                 k.depoda,
@@ -520,7 +630,7 @@ class RaporOlusturucu {
               '${tarihler.last != tarihler.first ? ' - ${_gunMs(tarihler.last)}' : ''}',
           'Toplam ${s.toplam}',
           'Stokta ${s.depoda + s.aracta}',
-          'Sahada ${s.sahada}',
+          'Montajlı ${s.sahada}',
           'Çıkış ${s.cikti}',
         ].join(' · '),
         sutunlar: const [
@@ -554,7 +664,7 @@ class RaporOlusturucu {
       ],
       sutunlar: const [
         'İhale / sipariş', 'Firma', 'İlk alım', 'Ürün çeşidi', 'Cihaz',
-        'Stokta', 'Sahada'
+        'Stokta', 'Montajlı'
       ],
       genislikler: const [20, 22, 11, 9, 8, 8, 8],
       bolumler: [
@@ -630,7 +740,7 @@ class RaporOlusturucu {
       baslik: 'Bölge Raporu (Kurulum Noktaları)',
       altBaslik: [
         if (f.isNotEmpty) 'Filtre: "$filtre"',
-        'Sahada olan cihazlar',
+        'Montajlı cihazlar',
         _olusturma(),
       ].join(' · '),
       dosyaOn: 'bolge_raporu',
@@ -658,7 +768,7 @@ class RaporOlusturucu {
         ...detaylar,
         if (rows.isEmpty)
           const RaporBolumu(
-              baslik: 'Sahada kayıtlı kurulum yok', satirlar: []),
+              baslik: 'Kayıtlı montaj yok', satirlar: []),
       ],
     );
   }
@@ -1059,7 +1169,7 @@ class RaporOlusturucu {
           MapEntry('Geri alma: ${e.key}', '${e.value}'),
       ],
       sutunlar: const [
-        'Tarih', 'İşlem', 'Seri No', 'Ürün', 'Nereden', 'Nereye',
+        'Tarih', 'İşlem', 'Seri No / Miktar', 'Ürün', 'Nereden', 'Nereye',
         'Kullanım yeri', 'Sebep', 'Kullanıcı', 'Not'
       ],
       genislikler: const [15, 10, 17, 20, 15, 15, 18, 13, 13, 18],
@@ -1071,8 +1181,13 @@ class RaporOlusturucu {
                 _tarihMs(r['tarih']),
                 r['tip'] == 'girisi' && r['sebep'] != null
                     ? 'Geri alma'
-                    : (_tipAdlari[r['tip']] ?? (r['tip'] ?? '')),
-                r['seri_no'] ?? '',
+                    : r['tip'] == 'kullanim'
+                        ? (r['hedef'] != null ? 'Araca Yükle' : 'Montaj')
+                        : (_tipAdlari[r['tip']] ?? (r['tip'] ?? '')),
+                r['seri_no'] ??
+                    (r['seri_takipli'] == 0
+                        ? '${r['miktar']} ${r['birim'] ?? ''}'
+                        : ''),
                 r['urun_adi'] ?? '',
                 r['kaynak'] ?? '',
                 r['hedef'] ?? '',
@@ -1095,6 +1210,8 @@ class RaporOlusturucu {
     required List<CihazBilgi> beklenen,
     required Map<String, CihazBilgi?> okunanlar,
     required DateTime baslangic,
+    // Miktarlı malzemeler: (ad, birim, sistemde, sayılan / sayılmadıysa null)
+    List<(String, String, int, int?)> malzemeler = const [],
   }) {
     final beklenenSeriler = {for (final c in beklenen) c.cihaz.seriNo};
     final bulunan =
@@ -1139,6 +1256,24 @@ class RaporOlusturucu {
             for (final c in bulunan) [c.cihaz.seriNo, c.urunAdi, ''],
           ],
         ),
+        if (malzemeler.isNotEmpty)
+          RaporBolumu(
+            baslik: 'Malzemeler (${malzemeler.length})',
+            aciklama: 'Miktarla takip edilen malzemeler: sistemdeki ve '
+                'sayılan miktar. Sayılmayanlar boş.',
+            sutunlar: const ['Malzeme', 'Sistemde', 'Sayılan', 'Fark', 'Birim'],
+            genislikler: const [30, 12, 12, 12, 10],
+            satirlar: [
+              for (final (ad, birim, sistemde, sayilan) in malzemeler)
+                [
+                  ad,
+                  sistemde,
+                  sayilan ?? '',
+                  sayilan == null ? '' : sayilan - sistemde,
+                  birim,
+                ],
+            ],
+          ),
       ],
     );
   }
@@ -1156,7 +1291,7 @@ class RaporOlusturucu {
             '${b.depoArac ? ' (araç)' : ''}'
             '${sd == null ? '' : ' · ${sd.kisa.toLowerCase()}'}';
       case CihazDurumu.kullanimda:
-        return 'Sistemde: sahada kullanıldı'
+        return 'Sistemde: montaj yapıldı'
             '${b.cihaz.kullanimYeri == null ? '' : ' (${b.cihaz.kullanimYeri})'}';
       case CihazDurumu.cikti:
         if (sd == ServisDurumu.hurda) return 'Sistemde: hurdaya ayrılmış';

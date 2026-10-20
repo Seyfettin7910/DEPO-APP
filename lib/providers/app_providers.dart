@@ -143,3 +143,18 @@ final etiketsizCihazlarProvider =
     StreamProvider.autoDispose<List<CihazBilgi>>((ref) {
   return ref.watch(appDatabaseProvider).etiketsizCihazlarStream();
 });
+
+// ---------------------------------------------------------------------
+// Miktarlı malzemeler ve montaj tutanağı
+// ---------------------------------------------------------------------
+
+/// Malzeme stoğu: urunId -> (depoId -> miktar).
+final malzemeStoklariProvider =
+    StreamProvider<Map<String, Map<String, int>>>((ref) {
+  return ref.watch(appDatabaseProvider).malzemeStoklariStream();
+});
+
+final cihazTutanagiProvider =
+    StreamProvider.family<TutanakBilgi?, String>((ref, cihazId) {
+  return ref.watch(appDatabaseProvider).cihazTutanagiStream(cihazId);
+});

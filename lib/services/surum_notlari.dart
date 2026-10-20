@@ -36,6 +36,53 @@ class NotMaddesi {
 
 const surumNotlari = <SurumNotu>[
   SurumNotu(
+    surum: '1.24.0',
+    tarih: '20.10.2026',
+    bolumler: [
+      NotBolumu('Yeni', [
+        NotMaddesi(
+          'Malzemeler',
+          'Kablo, adaptör gibi seri nosuz ürünler adet, metre, paket, top ya '
+              'da kutu ile takip edilir.',
+          'Ürünler → + → "Miktarla" seçin; birim ve fabrika barkodu '
+              'girilebilir. Depo → İşlemler: Malzeme girişi, Araca Yükle, '
+              'transfer, iade, Montaj / Kullanıldı. Okut ekranında fabrika '
+              'barkodu okutulunca da bu işlemler açılır. Tanımsız barkod bir '
+              'kez malzemeye bağlanır.',
+        ),
+        NotMaddesi(
+          'Kullanılan malzemeler',
+          'Montaj penceresinde araçtaki malzemeler hazır gelir; +/- ile girilir.',
+          'İsteğe bağlıdır. Girilen miktar araç stoğundan düşer ve Kullanım '
+              'Raporu\'nda görünür.',
+        ),
+        NotMaddesi(
+          'Tutanak',
+          'Montajda "Alındı / Alınacak / Kurum içi kullanım" seçilir.',
+          'Sonradan cihaz kartındaki "Tutanak alındı" ile güncellenir. Ara '
+              'ekranında ve Kullanım Raporu\'nda görünür. Eski montajlar '
+              '"Belirtilmemiş".',
+        ),
+        NotMaddesi('Araçlar sekmesi',
+            'Depolar ekranında depolar ve araçlar ayrı sekmede.'),
+        NotMaddesi('Malzeme sayımı',
+            'Sayımdaki "Malzeme" sekmesinde sayılan miktar girilir; raporda '
+                'fark görünür.'),
+      ]),
+      NotBolumu('Değişen', [
+        NotMaddesi(
+          'İsimler',
+          '"Kullanıma ver" → Araca Yükle, "Sahada kullanıldı" → Montaj / '
+              'Kullanıldı.',
+          'Cihaz durumu: "Montaj Yapıldı / Kullanıldı". Rapor: "Kullanım '
+              'Raporu – Montajı Yapılanlar".',
+        ),
+        NotMaddesi('Kritik stok',
+            'Malzemelerde minimum miktara göre uyarır.'),
+      ]),
+    ],
+  ),
+  SurumNotu(
     surum: '1.23.0',
     tarih: '20.10.2026',
     bolumler: [

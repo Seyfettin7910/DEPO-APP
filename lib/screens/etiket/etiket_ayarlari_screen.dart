@@ -152,8 +152,8 @@ class EtiketAyarlariScreen extends ConsumerWidget {
             title: const Text('Doğrulanmamış etiketli cihazı engelle'),
             subtitle: Text(ayar.dogrulama
                 ? 'Açıksa etiketi basılmış ama doğrulanmamış (veya uyuşmazlık '
-                    'kaydı olan) cihaz transfer edilemez, kullanıma verilemez, '
-                    'sahada kullanılamaz. Arıza / servis / sayım serbesttir.'
+                    'kaydı olan) cihaz transfer edilemez, araca yüklenemez, '
+                    'montajda kullanılamaz. Arıza / servis / sayım serbesttir.'
                 : 'Önce yapıştırma doğrulamasını açın.'),
             onChanged: ayar.dogrulama
                 ? (v) async {
@@ -165,7 +165,7 @@ class EtiketAyarlariScreen extends ConsumerWidget {
                           content: const Text(
                               'Etiketi basılmış ama doğrulanmamış cihazlar, '
                               'etiketleri doğrulanana kadar transfer edilemez, '
-                              'kullanıma verilemez ve sahada kullanılamaz. '
+                              'araca yüklenemez ve montajda kullanılamaz. '
                               'Bu ayar herkes için geçerlidir.'),
                           actions: [
                             TextButton(

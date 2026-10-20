@@ -6,6 +6,8 @@ import '../../database/app_database.dart';
 import '../../providers/app_providers.dart';
 import '../../services/etiket/etiket_kodu.dart';
 import '../../services/ses_servisi.dart';
+import '../malzeme/malzeme_islem_screen.dart';
+import '../../widgets/silme_islemleri.dart';
 import '../../widgets/kod_yardimci.dart';
 import '../cihaz/cihaz_ara_screen.dart';
 import '../cihaz/cihaz_detay_screen.dart';
@@ -102,6 +104,26 @@ class _BarkodTaramaScreenState extends ConsumerState<BarkodTaramaScreen> {
       if (!mounted) return;
 
       if (bilgi == null) {
+        // Malzemenin (kablo, adaptör…) fabrika barkodu mu?
+        final urun = await ref.read(appDatabaseProvider).barkodIleUrunBul(kod);
+        if (!mounted) return;
+        if (urun != null && !urun.deleted && urun.miktarli) {
+          SesServisi.basari();
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          final secim = await secenekMenusu(context,
+              baslik: '${urun.ad} (malzeme, ${urun.birim})',
+              secenekler: const [
+                ('giris', Icons.add_circle_outline, 'Giriş'),
+                ('yukle', Icons.local_shipping_outlined, 'Araca Yükle'),
+                ('kullanim', Icons.task_alt, 'Montaj / Kullanıldı'),
+                ('transfer', Icons.swap_horiz, 'Transfer'),
+              ]);
+          if (secim == null || !mounted) return;
+          await _ac(MalzemeIslemScreen(
+              islem: MalzemeIslemi.values.firstWhere((m) => m.name == secim),
+              onceUrunId: urun.id));
+          return;
+        }
         SesServisi.hata();
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()

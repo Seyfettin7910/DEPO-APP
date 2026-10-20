@@ -907,7 +907,7 @@ class ServisKarti extends ConsumerWidget {
               const SizedBox(height: 4),
               Text(
                 'Bu cihaz servis işlemi bitene kadar transfer edilemez, '
-                'kullanıma verilemez ve sahada kullanılamaz.',
+                'araca yüklenemez ve montajda kullanılamaz.',
                 style: tema.textTheme.bodySmall,
               ),
               const SizedBox(height: 10),

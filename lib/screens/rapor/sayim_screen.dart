@@ -42,6 +42,9 @@ class _SayimScreenState extends ConsumerState<SayimScreen>
   /// Okutulan seri no -> sistemdeki bilgisi (kayıtsızsa null). Ekleme sırası korunur.
   final _okunanlar = <String, CihazBilgi?>{};
 
+  /// Miktarlı malzemelerde sayılan miktar (urunId -> miktar).
+  final _malzemeSayim = <String, int>{};
+
   bool _kameraAcik = false;
   MobileScannerController? _kamera;
   bool _coklu = false;
@@ -64,18 +67,22 @@ class _SayimScreenState extends ConsumerState<SayimScreen>
 
   @override
   Taslak? taslakOlustur() {
-    if (_depoId == null || _okunanlar.isEmpty) return null;
+    if (_depoId == null || (_okunanlar.isEmpty && _malzemeSayim.isEmpty)) {
+      return null;
+    }
     final depo = (ref.read(depolarStreamProvider).value ?? <Depo>[])
         .where((d) => d.id == _depoId)
         .firstOrNull;
     return Taslak(
       tur: taslakTuru,
       baslik: 'Sayım · ${depo?.ad ?? '-'}',
-      ozet: '${_okunanlar.length} okutma',
+      ozet: '${_okunanlar.length} okutma'
+          '${_malzemeSayim.isEmpty ? '' : ' · ${_malzemeSayim.length} malzeme'}',
       veri: {
         'depoId': _depoId,
         'baslangic': _baslangic.millisecondsSinceEpoch,
         'seriler': _okunanlar.keys.toList(),
+        'malzeme': Map.of(_malzemeSayim),
       },
     );
   }
@@ -96,6 +103,10 @@ class _SayimScreenState extends ConsumerState<SayimScreen>
       _okunanlar
         ..clear()
         ..addAll(yeni);
+      _malzemeSayim.clear();
+      for (final e in ((t.veri['malzeme'] as Map?) ?? const {}).entries) {
+        _malzemeSayim['${e.key}'] = (e.value as num?)?.toInt() ?? 0;
+      }
     });
   }
 
@@ -123,7 +134,7 @@ class _SayimScreenState extends ConsumerState<SayimScreen>
 
   Future<void> _depoDegistir(String? yeni) async {
     if (yeni == _depoId) return;
-    if (_okunanlar.isNotEmpty) {
+    if (_okunanlar.isNotEmpty || _malzemeSayim.isNotEmpty) {
       final onay = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
@@ -145,6 +156,7 @@ class _SayimScreenState extends ConsumerState<SayimScreen>
     setState(() {
       _depoId = yeni;
       _okunanlar.clear();
+      _malzemeSayim.clear();
       _baslangic = DateTime.now();
     });
   }
@@ -282,12 +294,17 @@ class _SayimScreenState extends ConsumerState<SayimScreen>
     }
   }
 
-  void _raporAl(String depoAdi, List<CihazBilgi> beklenen) {
+  void _raporAl(String depoAdi, List<CihazBilgi> beklenen,
+      List<(Urun, int)> malzemeler) {
     final rapor = RaporOlusturucu.sayim(
       depoAdi: depoAdi,
       beklenen: beklenen,
       okunanlar: Map.of(_okunanlar),
       baslangic: _baslangic,
+      malzemeler: [
+        for (final (u, sistemde) in malzemeler)
+          (u.ad, u.birim, sistemde, _malzemeSayim[u.id]),
+      ],
     );
     Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => RaporOnizlemeScreen(rapor: rapor)));
@@ -305,6 +322,17 @@ class _SayimScreenState extends ConsumerState<SayimScreen>
             .toList();
 
     final beklenenSeriler = {for (final c in beklenen) c.cihaz.seriNo};
+    final malzemeStok = ref.watch(malzemeStoklariProvider).value ??
+        const <String, Map<String, int>>{};
+    final malzemeler = _depoId == null
+        ? <(Urun, int)>[]
+        : [
+            for (final u in ref.watch(urunlerStreamProvider).value ?? <Urun>[])
+              if (u.miktarli &&
+                  ((malzemeStok[u.id]?[_depoId] ?? 0) != 0 ||
+                      _malzemeSayim.containsKey(u.id)))
+                (u, malzemeStok[u.id]?[_depoId] ?? 0),
+          ];
     final bulunan =
         beklenen.where((c) => _okunanlar.containsKey(c.cihaz.seriNo)).toList();
     final eksik =
@@ -317,7 +345,7 @@ class _SayimScreenState extends ConsumerState<SayimScreen>
 
     return yarimIsKapsayici(
         child: DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Sayım'),
@@ -332,7 +360,7 @@ class _SayimScreenState extends ConsumerState<SayimScreen>
               tooltip: 'Sayımı bitir, rapor al',
               onPressed: secili == null
                   ? null
-                  : () => _raporAl(secili.ad, beklenen),
+                  : () => _raporAl(secili.ad, beklenen, malzemeler),
             ),
           ],
         ),
@@ -411,10 +439,11 @@ class _SayimScreenState extends ConsumerState<SayimScreen>
                   minHeight: 6,
                 ),
               ),
-            TabBar(tabs: [
+            TabBar(isScrollable: true, tabs: [
               Tab(text: 'Eksik (${eksik.length})'),
               Tab(text: 'Bulunan (${bulunan.length})'),
               Tab(text: 'Fazla (${fazla.length})'),
+              Tab(text: 'Malzeme (${malzemeler.length})'),
             ]),
             Expanded(
               child: _depoId == null
@@ -461,12 +490,88 @@ class _SayimScreenState extends ConsumerState<SayimScreen>
                                 );
                               },
                             ),
+                      _malzemeListesi(malzemeler),
                     ]),
             ),
           ],
         ),
       ),
     ));
+  }
+
+  Widget _malzemeListesi(List<(Urun, int)> malzemeler) {
+    if (malzemeler.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text('Burada miktarla takip edilen malzeme yok',
+              textAlign: TextAlign.center),
+        ),
+      );
+    }
+    return ListView.separated(
+      itemCount: malzemeler.length,
+      separatorBuilder: (_, __) => const Divider(height: 1),
+      itemBuilder: (_, i) {
+        final (u, sistemde) = malzemeler[i];
+        final sayilan = _malzemeSayim[u.id];
+        final fark = sayilan == null ? null : sayilan - sistemde;
+        return ListTile(
+          leading: Icon(Icons.cable_outlined,
+              color: fark == null
+                  ? null
+                  : (fark == 0
+                      ? Colors.green.shade700
+                      : Colors.orange.shade800)),
+          title: Text(u.ad),
+          subtitle: Text('Sistemde: ${u.miktarMetni(sistemde)}'
+              '${fark == null || fark == 0 ? '' : ' · fark ${fark > 0 ? '+' : ''}$fark'}'),
+          trailing: OutlinedButton(
+            onPressed: () => _malzemeSay(u, sistemde),
+            child: Text(sayilan == null ? 'Say' : u.miktarMetni(sayilan)),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _malzemeSay(Urun u, int sistemde) async {
+    final ctrl = TextEditingController(
+        text: '${_malzemeSayim[u.id] ?? sistemde}');
+    final n = await showDialog<int?>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(u.ad),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(
+            labelText: 'Sayılan (${u.birim})',
+            helperText: 'Sistemde: ${u.miktarMetni(sistemde)}',
+          ),
+          onSubmitted: (v) => Navigator.pop(ctx, int.tryParse(v.trim())),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, -1),
+              child: const Text('Sayımı sil')),
+          FilledButton(
+              onPressed: () =>
+                  Navigator.pop(ctx, int.tryParse(ctrl.text.trim())),
+              child: const Text('Tamam')),
+        ],
+      ),
+    );
+    ctrl.dispose();
+    if (n == null || !mounted) return;
+    setState(() {
+      if (n < 0) {
+        _malzemeSayim.remove(u.id);
+      } else {
+        _malzemeSayim[u.id] = n;
+      }
+    });
   }
 
   Widget _sayac(String etiket, int deger, Color renk) => Expanded(

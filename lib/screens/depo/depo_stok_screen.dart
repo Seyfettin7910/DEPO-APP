@@ -9,6 +9,7 @@ import '../../providers/app_providers.dart';
 import '../cihaz/cihaz_detay_screen.dart';
 import '../cihaz/toplu_giris_screen.dart';
 import '../cihaz/toplu_transfer_screen.dart';
+import '../malzeme/malzeme_islem_screen.dart';
 import '../rapor/sayim_screen.dart';
 import '../../widgets/silme_islemleri.dart';
 import '../../widgets/servis_islemleri.dart';
@@ -39,7 +40,7 @@ class DepoStokScreen extends ConsumerWidget {
         floatingActionButton: FloatingActionButton.extended(
           onPressed: () => _islemMenusu(context, depoId, depoAdi),
           icon: const Icon(Icons.qr_code_scanner),
-          label: const Text('Seri no ile işlem'),
+          label: const Text('İşlemler'),
         ),
         body: TabBarView(
           children: [
@@ -62,10 +63,13 @@ void _islemMenusu(BuildContext context, String depoId, String depoAdi) {
 
     showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       builder: (ctx) => SafeArea(
-        child: Column(
+        child: SingleChildScrollView(
+         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            const _MenuBasligi('Seri numaralı cihazlar'),
             ListTile(
               leading: const Icon(Icons.add_box_outlined),
               title: Text('Yeni cihaz girişi ($depoAdi)'),
@@ -88,8 +92,8 @@ void _islemMenusu(BuildContext context, String depoId, String depoAdi) {
             ),
             ListTile(
               leading: const Icon(Icons.local_shipping_outlined),
-              title: const Text('Toplu kullanıma ver'),
-              subtitle: const Text('Seri no okutup bir depo/araca ver'),
+              title: const Text('Toplu Araca Yükle'),
+              subtitle: const Text('Seri no okutup bir araca (veya depoya) yükle'),
               onTap: () => ac(const TopluTransferScreen(
                   tip: HareketTipi.kullanim)),
             ),
@@ -99,7 +103,40 @@ void _islemMenusu(BuildContext context, String depoId, String depoAdi) {
               subtitle: const Text('Cihazları okutup sistemle karşılaştır'),
               onTap: () => ac(SayimScreen(onceSeciliDepoId: depoId)),
             ),
+            const _MenuBasligi('Malzemeler (kablo, adaptör… miktarla)'),
+            ListTile(
+              leading: const Icon(Icons.add_circle_outline),
+              title: Text('Malzeme girişi ($depoAdi)'),
+              onTap: () => ac(MalzemeIslemScreen(
+                  islem: MalzemeIslemi.giris, onceHedefId: depoId)),
+            ),
+            ListTile(
+              leading: const Icon(Icons.local_shipping_outlined),
+              title: const Text('Malzeme Araca Yükle'),
+              onTap: () => ac(MalzemeIslemScreen(
+                  islem: MalzemeIslemi.yukle, onceKaynakId: depoId)),
+            ),
+            ListTile(
+              leading: const Icon(Icons.swap_horiz),
+              title: const Text('Malzeme transferi'),
+              onTap: () => ac(MalzemeIslemScreen(
+                  islem: MalzemeIslemi.transfer, onceKaynakId: depoId)),
+            ),
+            ListTile(
+              leading: const Icon(Icons.assignment_return_outlined),
+              title: const Text('Malzeme iadesi (araçtan depoya)'),
+              onTap: () => ac(MalzemeIslemScreen(
+                  islem: MalzemeIslemi.iade, onceKaynakId: depoId)),
+            ),
+            ListTile(
+              leading: const Icon(Icons.task_alt),
+              title: const Text('Malzeme Montaj / Kullanıldı'),
+              subtitle: const Text('Cihazsız kullanılan kablo, adaptör…'),
+              onTap: () => ac(MalzemeIslemScreen(
+                  islem: MalzemeIslemi.kullanim, onceKaynakId: depoId)),
+            ),
           ],
+         ),
         ),
       ),
     );
@@ -114,6 +151,8 @@ class _StokListesi extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final sayilarAsync = ref.watch(depoUrunSayilariProvider(depoId));
+    final malzemeStok = ref.watch(malzemeStoklariProvider).value ??
+        const <String, Map<String, int>>{};
     final arizali = (ref.watch(depoCihazlariProvider(depoId)).value ?? const [])
         .where((b) => b.cihaz.arizali)
         .length;
@@ -137,14 +176,21 @@ class _StokListesi extends ConsumerWidget {
             return an.toLowerCase().compareTo(bn.toLowerCase());
           });
 
-        if (girdiler.isEmpty && arizali == 0) {
+        final malzemeler = [
+          for (final u in urunlerMap.values)
+            if (u.miktarli && (malzemeStok[u.id]?[depoId] ?? 0) > 0)
+              (u, malzemeStok[u.id]![depoId]!),
+        ]..sort((a, b) =>
+            a.$1.ad.toLowerCase().compareTo(b.$1.ad.toLowerCase()));
+
+        if (girdiler.isEmpty && arizali == 0 && malzemeler.isEmpty) {
           return const Center(
             child: Padding(
               padding: EdgeInsets.all(24),
               child: Text(
-                'Bu depoda henüz cihaz yok.\n\n'
-                'Aşağıdaki "Seri no ile giriş" düğmesiyle seri numaralarını '
-                'okutarak ekleyebilirsiniz.',
+                'Burada henüz cihaz veya malzeme yok.\n\n'
+                'Aşağıdaki "İşlemler" düğmesiyle seri no okutarak cihaz, '
+                'miktar girerek malzeme ekleyebilirsiniz.',
                 textAlign: TextAlign.center,
               ),
             ),
@@ -180,6 +226,28 @@ class _StokListesi extends ConsumerWidget {
                 adet: e.value,
                 kritik: kritikler[e.key],
               ),
+            if (malzemeler.isNotEmpty) ...[
+              const _MenuBasligi('Malzemeler'),
+              for (final (u, miktar) in malzemeler)
+                ListTile(
+                  leading: Icon(Icons.cable_outlined,
+                      color: kritikler.containsKey(u.id) ? Colors.red : null),
+                  title: Text(u.ad),
+                  subtitle: Text([
+                    if (u.kategori != null) u.kategori!,
+                    if (kritikler.containsKey(u.id))
+                      'Kritik: toplam ${u.miktarMetni(kritikler[u.id]!.toplam)}'
+                          ' / minimum ${kritikler[u.id]!.minStok}',
+                  ].join(' · ')),
+                  trailing: Text(u.miktarMetni(miktar),
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 17,
+                          color:
+                              kritikler.containsKey(u.id) ? Colors.red : null)),
+                  onTap: () => _malzemeMenusu(context, depoId, u),
+                ),
+            ],
           ],
         );
       },
@@ -405,7 +473,10 @@ class _HareketListesi extends ConsumerWidget {
                       onPressed: kopyala,
                     ),
                   Text(
-                    h.miktar == 0 ? '•' : '${artis ? '+' : ''}${h.miktar}',
+                    h.miktar == 0
+                        ? '•'
+                        : '${artis ? '+' : ''}${h.miktar}'
+                            '${h.seriNo == null ? ' ${h.birim}' : ''}',
                     style: TextStyle(
                         fontWeight: FontWeight.bold, fontSize: 18, color: renk),
                   ),
@@ -461,9 +532,9 @@ class _HareketListesi extends ConsumerWidget {
         return 'İade ${h.miktar > 0 ? '←' : '→'} ${h.karsiDepoAdi ?? '-'}';
       case HareketTipi.kullanim:
         if (h.karsiDepoAdi != null) {
-          return 'Kullanıma verildi ${h.miktar > 0 ? '←' : '→'} ${h.karsiDepoAdi}';
+          return 'Araca Yükle ${h.miktar > 0 ? '←' : '→'} ${h.karsiDepoAdi}';
         }
-        return 'Sahada kullanıldı: ${h.aracPlaka ?? h.kullanimYeri ?? '-'}';
+        return 'Montaj / Kullanıldı: ${h.aracPlaka ?? h.kullanimYeri ?? '-'}';
     }
   }
 }
@@ -493,4 +564,39 @@ Future<void> _cihazMenusu(
   } else if (secim == 'sil') {
     await cihazSilAkisi(context, ref, b);
   }
+}
+
+/// Stok listesindeki malzemeye dokununca: hangi işlem?
+Future<void> _malzemeMenusu(
+    BuildContext context, String depoId, Urun u) async {
+  final secim = await secenekMenusu(context, baslik: u.ad, secenekler: const [
+    ('yukle', Icons.local_shipping_outlined, 'Araca Yükle'),
+    ('kullanim', Icons.task_alt, 'Montaj / Kullanıldı'),
+    ('transfer', Icons.swap_horiz, 'Transfer'),
+    ('iade', Icons.assignment_return_outlined, 'İade (araçtan depoya)'),
+    ('giris', Icons.add_circle_outline, 'Giriş (buraya ekle)'),
+  ]);
+  if (secim == null || !context.mounted) return;
+  final islem = MalzemeIslemi.values.firstWhere((m) => m.name == secim);
+  Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => MalzemeIslemScreen(
+            islem: islem,
+            onceKaynakId: islem.kaynakli ? depoId : null,
+            onceHedefId: islem == MalzemeIslemi.giris ? depoId : null,
+            onceUrunId: u.id,
+          )));
+}
+
+class _MenuBasligi extends StatelessWidget {
+  const _MenuBasligi(this.metin);
+  final String metin;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: double.infinity,
+        color: Theme.of(context).colorScheme.primary.withOpacity(0.08),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Text(metin,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+      );
 }

@@ -82,7 +82,7 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
               leading: const Icon(Icons.inventory_outlined),
               title: const Text('Ürün stok durumu'),
               subtitle: const Text(
-                  'Seçilen ürün: depoda, araçta, sahada, arızalı, hurda'),
+                  'Seçilen ürün: depoda, araçta, montajlı, arızalı, hurda'),
               onTap: () => Navigator.pop(ctx, 'stok'),
             ),
             ListTile(
@@ -126,8 +126,8 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.local_shipping_outlined),
-              title: const Text('Kullanım raporu'),
-              subtitle: Text('Sahada kullanılanlar · $aralik'),
+              title: const Text('Kullanım Raporu – Montajı Yapılanlar'),
+              subtitle: Text('Montajı yapılan cihaz ve malzemeler, tutanak · $aralik'),
               onTap: () => Navigator.pop(ctx, 'kullanim'),
             ),
             ListTile(

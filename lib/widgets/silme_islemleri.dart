@@ -156,7 +156,7 @@ Future<bool> urunSilAkisi(BuildContext context, WidgetRef ref, Urun urun) async 
     context,
     baslik: 'Ürünü sil',
     aciklama: '${urun.ad}${urun.kategori == null ? '' : ' (${urun.kategori})'}\n\n'
-        'Depoda, araçta veya sahada cihazı olan ürün silinemez. Geçmiş '
+        'Depoda, araçta veya montajlı cihazı olan ürün silinemez. Geçmiş '
         'kayıtlar ve raporlar korunur.',
     sebepler: urunSilmeSebepleri,
   );

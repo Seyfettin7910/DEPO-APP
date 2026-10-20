@@ -162,8 +162,8 @@ class EtiketKarti extends ConsumerWidget {
                 padding: const EdgeInsets.only(top: 6),
                 child: Text(
                   ayar.engel
-                      ? '⚠ Etiket doğrulanmadan transfer, kullanıma verme ve '
-                          'sahada kullanım yapılamaz.'
+                      ? '⚠ Etiket doğrulanmadan transfer, araca yükleme ve '
+                          'montaj yapılamaz.'
                       : '⚠ Etiket doğrulanmadı.',
                   style: TextStyle(color: Colors.orange.shade900, fontSize: 13),
                 ),

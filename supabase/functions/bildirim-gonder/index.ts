@@ -148,7 +148,7 @@ async function calistir(db: SupabaseClient, ayar: Record<string, string>) {
 
   // 3) Yeni hareketler (sunucuya ulaşma sırasına göre)
   const hamHareket = v<Satir[]>(await db.from("stok_hareketleri")
-    .select("id, tip, tarih, sebep, not_, kullanici_id, depo_id, hedef_depo_id, cihaz_id, urun_id, synced_at")
+    .select("id, tip, tarih, sebep, not_, kullanici_id, depo_id, hedef_depo_id, cihaz_id, urun_id, miktar, synced_at")
     .gt("synced_at", Number(ayar.imlec_hareket)).eq("deleted", 0)
     .order("synced_at").limit(1000));
   let yeniImlec = Number(ayar.imlec_hareket);
@@ -167,13 +167,16 @@ async function calistir(db: SupabaseClient, ayar: Record<string, string>) {
   }
   if (hareketler.length) {
     const cihaz = await sozluk(db, "cihazlar", "id, seri_no", hareketler.map((h) => h.cihaz_id));
-    const urun = await sozluk(db, "urunler", "id, ad", hareketler.map((h) => h.urun_id));
+    const urun = await sozluk(db, "urunler", "id, ad, birim, seri_takipli", hareketler.map((h) => h.urun_id));
     const depo = await sozluk(db, "depolar", "id, ad, tur", hareketler.flatMap((h) => [h.depo_id, h.hedef_depo_id]));
     const kisi = await sozluk(db, "kullanicilar", "id, ad", hareketler.map((h) => h.kullanici_id));
     hareketler = hareketler.map((h) => ({
       ...h,
       seri_no: cihaz.get(h.cihaz_id)?.seri_no ?? "-",
       urun_adi: urun.get(h.urun_id)?.ad ?? "-",
+      // Seri numarasız malzeme (kablo, adaptör…): miktar + birim
+      malzeme: !h.cihaz_id && Number(urun.get(h.urun_id)?.seri_takipli ?? 1) === 0,
+      birim: urun.get(h.urun_id)?.birim ?? "adet",
       depo_adi: depo.get(h.depo_id)?.ad ?? "-",
       hedef_adi: depo.get(h.hedef_depo_id)?.ad ?? "-",
       hedef_tur: depo.get(h.hedef_depo_id)?.tur,
@@ -287,9 +290,17 @@ async function calistir(db: SupabaseClient, ayar: Record<string, string>) {
     const baskasi = hareketler.filter((h) => String(h.kullanici_id) !== benim);
     const urunOzeti = (l: Satir[]) => {
       const say = new Map<string, number>();
-      for (const h of l) say.set(h.urun_adi, (say.get(h.urun_adi) ?? 0) + 1);
-      const p = [...say].map(([u, n]) => (n > 1 ? `${u} ×${n}` : u));
+      const birim = new Map<string, string>();
+      for (const h of l) {
+        say.set(h.urun_adi, (say.get(h.urun_adi) ?? 0) + (h.malzeme ? Number(h.miktar ?? 0) : 1));
+        if (h.malzeme) birim.set(h.urun_adi, h.birim);
+      }
+      const p = [...say].map(([u, n]) => (birim.has(u) ? `${u} ${n} ${birim.get(u)}` : n > 1 ? `${u} ×${n}` : u));
       return p.slice(0, 4).join(", ") + (p.length > 4 ? " ..." : "");
+    };
+    const neGeldi = (l: Satir[]) => {
+      const m = l.filter((h) => h.malzeme).length;
+      return m === 0 ? "cihaz" : m === l.length ? "malzeme" : "cihaz / malzeme";
     };
     const kimler = (l: Satir[]) => {
       const k = [...new Set(l.map((h) => h.kullanici).filter(Boolean))];
@@ -305,7 +316,7 @@ async function calistir(db: SupabaseClient, ayar: Record<string, string>) {
         g.set(h.hedef_depo_id, [...(g.get(h.hedef_depo_id) ?? []), h]);
       }
       for (const l of g.values()) {
-        ekle("cihazGeldi", `${l[0].hedef_tur === "arac" ? "Araca" : "Depoya"} cihaz geldi: ${l[0].hedef_adi} (${l.length})`,
+        ekle("cihazGeldi", `${l[0].hedef_tur === "arac" ? "Araca" : "Depoya"} ${neGeldi(l)} geldi: ${l[0].hedef_adi} (${l.length})`,
           urunOzeti(l) + kimler(l));
       }
     }
@@ -427,7 +438,7 @@ async function calistir(db: SupabaseClient, ayar: Record<string, string>) {
           `Kritik stok: ${kritik.length} ürün${biten ? ` (${biten} tükendi)` : ""}`,
           `Arızalı bekleyen: ${servisler.length - serviste} · serviste: ${serviste}`,
           ...(benimGaranti.length ? [`Garantisi ${garantiGun} gün içinde bitecek: ${benimGaranti.length}`] : []),
-          `Dün: giriş ${t("girisi")}, transfer/kullanıma verme ${t("transfer") + t("kullanim") + t("iade")}, hurda ${t("hurda")}`,
+          `Dün: giriş ${t("girisi")}, transfer/araca yükleme ${t("transfer") + t("kullanim") + t("iade")}, hurda ${t("hurda")}`,
         ].join("\n"));
       }
     }
@@ -494,7 +505,7 @@ async function calistir(db: SupabaseClient, ayar: Record<string, string>) {
 // ---------------------------------------------------------------------
 
 async function kritikStoklar(db: SupabaseClient) {
-  const urunler = v<Satir[]>(await db.from("urunler").select("id, ad, min_stok_seviyesi")
+  const urunler = v<Satir[]>(await db.from("urunler").select("id, ad, min_stok_seviyesi, seri_takipli, birim")
     .eq("deleted", 0).gt("min_stok_seviyesi", 0));
   if (!urunler.length) return [];
   const depolar = new Map((await tum((b, e) => db.from("depolar").select("id, tur, deleted").range(b, e)))
@@ -510,6 +521,30 @@ async function kritikStoklar(db: SupabaseClient) {
       const s = say.get(c.urun_id) ?? { depoda: 0, aracta: 0 };
       if (d.tur === "arac") s.aracta++; else s.depoda++;
       say.set(c.urun_id, s);
+    }
+  }
+  // Miktarlı malzemeler: hareketlerden hesaplanan miktar (giriş +, çıkan −, gelen +)
+  const malzemeler = urunler.filter((u) => Number(u.seri_takipli ?? 1) === 0);
+  for (let i = 0; i < malzemeler.length; i += 80) {
+    const idler = malzemeler.slice(i, i + 80).map((u) => u.id);
+    const hareketler = await tum((b, e) => db.from("stok_hareketleri")
+      .select("urun_id, depo_id, hedef_depo_id, tip, miktar")
+      .in("urun_id", idler).is("cihaz_id", null).eq("deleted", 0)
+      .in("tip", ["girisi", "transfer", "kullanim", "iade", "cikis", "hurda"]).range(b, e));
+    const ekleMiktar = (urunId: string, depoId: string | null, m: number) => {
+      const d = depoId ? depolar.get(depoId) : undefined;
+      if (!d || d.deleted) return;
+      const s = say.get(urunId) ?? { depoda: 0, aracta: 0 };
+      if (d.tur === "arac") s.aracta += m; else s.depoda += m;
+      say.set(urunId, s);
+    };
+    for (const h of hareketler) {
+      const m = Number(h.miktar ?? 0);
+      if (h.tip === "girisi") ekleMiktar(h.urun_id, h.depo_id, m);
+      else {
+        ekleMiktar(h.urun_id, h.depo_id, -m);
+        if (h.hedef_depo_id) ekleMiktar(h.urun_id, h.hedef_depo_id, m);
+      }
     }
   }
   return urunler.map((u) => {

@@ -26,7 +26,7 @@ enum BildirimTuru {
   ),
   cihazGeldi(
     'Araca / depoya cihaz geldi',
-    'Transfer, kullanıma verme veya iade ile cihaz gelince',
+    'Transfer, Araca Yükle veya iade ile cihaz / malzeme gelince',
     'Hareketler',
   ),
   depoyaGiris(

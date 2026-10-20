@@ -120,7 +120,7 @@ class ArizaKarariSecici extends StatelessWidget {
           padding: const EdgeInsets.only(top: 6),
           child: Text(
             'Arızalı cihaz depoda bekler; onarılana kadar transfer edilemez, '
-            'kullanıma verilemez ve sahada kullanılamaz.',
+            'araca yüklenemez ve montajda kullanılamaz.',
             style: Theme.of(context).textTheme.bodySmall,
           ),
         ),

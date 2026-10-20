@@ -140,7 +140,8 @@ class _Sonuclar extends ConsumerWidget {
             return ListTile(
               leading: Icon(cihazIkonu(b.cihaz), color: renk),
               title: Text(b.urunAdi),
-              subtitle: Text('SN: ${b.cihaz.seriNo}\n${cihazKonumMetni(b)}'),
+              subtitle: Text('SN: ${b.cihaz.seriNo}\n${cihazKonumMetni(b)}'
+                  '${b.cihaz.durum == CihazDurumu.kullanimda ? ' · Tutanak: ${tutanakKisa(b.tutanak)}' : ''}'),
               isThreeLine: true,
               trailing: const Icon(Icons.chevron_right),
               onTap: () => Navigator.of(context).push(
@@ -203,11 +204,13 @@ class _ModelAdetleri extends ConsumerWidget {
         ),
         for (final u in urunler)
           ListTile(
-            leading: const Icon(Icons.qr_code_2),
+            leading: Icon(u.miktarli ? Icons.cable_outlined : Icons.qr_code_2),
             title: Text(u.ad),
             subtitle: u.kategori == null ? null : Text(u.kategori!),
             trailing: Text(
-              '${toplamlar[u.id] ?? 0}',
+              u.miktarli
+                  ? u.miktarMetni(toplamlar[u.id] ?? 0)
+                  : '${toplamlar[u.id] ?? 0}',
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
             ),
             onLongPress: () async {

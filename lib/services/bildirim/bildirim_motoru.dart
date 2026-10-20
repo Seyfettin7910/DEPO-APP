@@ -70,14 +70,29 @@ class BildirimMotoru {
     String urun(Map<String, Object?> h) => (h['urun_adi'] as String?) ?? '-';
     String sebep(Map<String, Object?> h) => (h['sebep'] as String?) ?? '';
 
-    // Ürün adlarını "NVR ×3, Kamera ×2" biçiminde özetler
+    // Seri numarasız malzeme hareketi (kablo, adaptör…)
+    bool malzeme(Map<String, Object?> h) =>
+        h['cihaz_id'] == null && h['seri_takipli'] == 0;
+
+    // Ürün adlarını "NVR ×3, Kamera ×2, Kablo 50 metre" biçiminde özetler
     String urunOzeti(List<Map<String, Object?>> l) {
       final say = <String, int>{};
+      final birim = <String, String>{};
       for (final h in l) {
-        say[urun(h)] = (say[urun(h)] ?? 0) + 1;
+        final m = malzeme(h) ? ((h['miktar'] as num?)?.toInt() ?? 0) : 1;
+        say[urun(h)] = (say[urun(h)] ?? 0) + m;
+        if (malzeme(h)) birim[urun(h)] = (h['birim'] as String?) ?? 'adet';
       }
-      final p = say.entries.map((e) => e.value > 1 ? '${e.key} ×${e.value}' : e.key);
+      final p = say.entries.map((e) => birim.containsKey(e.key)
+          ? '${e.key} ${e.value} ${birim[e.key]}'
+          : (e.value > 1 ? '${e.key} ×${e.value}' : e.key));
       return p.take(4).join(', ') + (say.length > 4 ? ' ...' : '');
+    }
+
+    // "cihaz", "malzeme" ya da "cihaz / malzeme"
+    String neGeldi(List<Map<String, Object?>> l) {
+      final m = l.where(malzeme).length;
+      return m == 0 ? 'cihaz' : (m == l.length ? 'malzeme' : 'cihaz / malzeme');
     }
 
     String kimler(List<Map<String, Object?>> l) {
@@ -106,7 +121,7 @@ class BildirimMotoru {
         final arac = l.first['hedef_tur'] == 'arac';
         yeni.add(_Yeni(
           BildirimTuru.cihazGeldi,
-          '${arac ? 'Araca' : 'Depoya'} cihaz geldi: $ad (${l.length})',
+          '${arac ? 'Araca' : 'Depoya'} ${neGeldi(l)} geldi: $ad (${l.length})',
           '${urunOzeti(l)}${kimler(l)}',
         ));
       }
@@ -258,7 +273,8 @@ class BildirimMotoru {
         yeni.add(_Yeni(
           BildirimTuru.kritikStok,
           k.toplam == 0 ? 'Tükendi: ${k.urunAdi}' : 'Kritik stok: ${k.urunAdi}',
-          'Depolar ${k.depoda} + araçlar ${k.aracta} = ${k.toplam} · '
+          'Depolar ${k.depoda} + araçlar ${k.aracta} = ${k.toplam}'
+              '${k.birim == null ? '' : ' ${k.birim}'} · '
               'minimum ${k.minStok}',
         ));
       } else if (yeniKritik.length > 1) {
@@ -368,7 +384,7 @@ class BildirimMotoru {
             'Arızalı bekleyen: ${servis.length - serviste} · serviste: $serviste',
             if (garanti.isNotEmpty)
               'Garantisi ${ayar.garantiGun} gün içinde bitecek: ${garanti.length}',
-            'Dün: giriş ${t('girisi')}, transfer/kullanıma verme '
+            'Dün: giriş ${t('girisi')}, transfer/araca yükleme '
                 '${t('transfer') + t('kullanim') + t('iade')}, sahada ${t('kullanim')}, '
                 'hurda ${t('hurda')}',
           ].join('\n'),

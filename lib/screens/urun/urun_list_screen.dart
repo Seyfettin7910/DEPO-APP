@@ -41,8 +41,11 @@ class UrunListScreen extends ConsumerWidget {
           }
           final kategoriler = gruplar.keys.toList()
             ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
-          final genelToplam =
-              urunler.fold<int>(0, (t, u) => t + (toplamlar[u.id] ?? 0));
+          // Toplam adet yalnızca seri numaralı cihazlardan (malzemenin
+          // birimi farklı: metre, paket…).
+          final genelToplam = urunler
+              .where((u) => !u.miktarli)
+              .fold<int>(0, (t, u) => t + (toplamlar[u.id] ?? 0));
 
           return ListView(
             padding: const EdgeInsets.only(bottom: 88),
@@ -84,7 +87,8 @@ class UrunListScreen extends ConsumerWidget {
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 2),
                             child: Text(
-                              '• ${k.urunAdi}: toplam ${k.toplam} / min '
+                              '• ${k.urunAdi}: toplam ${k.toplam}'
+                              '${k.birim == null ? '' : ' ${k.birim}'} / min '
                               '${k.minStok} · ${k.durum}'
                               ' (depolarda ${k.depoda}, araçlarda ${k.aracta})',
                             ),
@@ -97,21 +101,29 @@ class UrunListScreen extends ConsumerWidget {
                 _KategoriBasligi(
                   ad: kategori,
                   toplam: gruplar[kategori]!
+                      .where((u) => !u.miktarli)
                       .fold<int>(0, (t, u) => t + (toplamlar[u.id] ?? 0)),
                 ),
                 for (final urun in gruplar[kategori]!)
                   ListTile(
-                    leading: const Icon(Icons.qr_code_2),
+                    leading: Icon(urun.miktarli
+                        ? Icons.cable_outlined
+                        : Icons.qr_code_2),
                     title: Text(urun.ad),
-                    subtitle: urun.barkod == null
-                        ? null
-                        : Text('Model barkodu: ${urun.barkod}'),
+                    subtitle: urun.miktarli
+                        ? Text('Malzeme · miktarla (${urun.birim})'
+                            '${urun.barkod == null ? '' : ' · barkod ${urun.barkod}'}')
+                        : (urun.barkod == null
+                            ? null
+                            : Text('Model barkodu: ${urun.barkod}')),
                     trailing: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
-                          '${toplamlar[urun.id] ?? 0}',
+                          urun.miktarli
+                              ? urun.miktarMetni(toplamlar[urun.id] ?? 0)
+                              : '${toplamlar[urun.id] ?? 0}',
                           style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 18,

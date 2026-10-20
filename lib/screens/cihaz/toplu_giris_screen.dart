@@ -474,7 +474,11 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen>
 
   @override
   Widget build(BuildContext context) {
-    final urunler = ref.watch(urunlerStreamProvider).value ?? <Urun>[];
+    // Seri numarasız malzemeler (kablo, adaptör…) bu ekranda değil,
+    // "Malzeme girişi"nden girilir.
+    final urunler = (ref.watch(urunlerStreamProvider).value ?? <Urun>[])
+        .where((u) => !u.miktarli)
+        .toList();
     final depolar = ref.watch(depolarStreamProvider).value ?? <Depo>[];
 
     return yarimIsKapsayici(

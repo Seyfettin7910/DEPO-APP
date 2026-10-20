@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../database/app_database.dart';
 import '../database/models.dart';
+import '../screens/malzeme/malzeme_islem_screen.dart';
 import '../screens/cihaz/cihaz_detay_screen.dart';
 import '../screens/cihaz/toplu_giris_screen.dart';
 import '../screens/cihaz/toplu_transfer_screen.dart';
@@ -21,6 +23,7 @@ IconData taslakIkonu(String tur) => switch (tur) {
       'servis_gonder' => Icons.send_outlined,
       'servis_sonuc' => Icons.assignment_turned_in_outlined,
       'hurda' => Icons.recycling,
+      _ when tur.startsWith('malzeme_') => Icons.cable_outlined,
       _ => Icons.restore_page_outlined,
     };
 
@@ -44,7 +47,11 @@ Future<void> taslagaDevamEt(BuildContext context, Taslak t) {
       case 'giris':
         ekran = const TopluGirisScreen(taslaktan: true);
       default:
-        return Future.value();
+        final islem = MalzemeIslemi.values
+            .where((m) => t.tur == 'malzeme_${m.name}')
+            .firstOrNull;
+        if (islem == null) return Future.value();
+        ekran = MalzemeIslemScreen(islem: islem, taslaktan: true);
     }
   }
   return Navigator.of(context).push(MaterialPageRoute(builder: (_) => ekran));

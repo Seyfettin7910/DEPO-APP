@@ -5,6 +5,17 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.24.0 – Saha işleri: malzemeler, tutanak, Araçlar sekmesi, yeni isimler
+- Miktarlı (seri nosuz) ürünler: ürün eklerken takip türü "Seri no ile / Miktarla"; birimler adet, metre, paket, top, kutu; isteğe bağlı fabrika barkodu. Hareketler `stok_hareketleri`'ne `cihaz_id` boş, `miktar` dolu yazılır (yeni tablo yok, silinmez); depo / araç stoğu hareketlerden hesaplanır.
+- Depo → "İşlemler": Malzeme girişi, Malzeme Araca Yükle, transfer, iade (araçtan depoya), Malzeme Montaj / Kullanıldı. Malzeme listeden seçilir ya da fabrika barkodu okutulur (tanımsız barkod bir kez malzemeye bağlanır); +/- ve yazarak miktar. Kaynaktaki miktardan fazlası düşülemez. Yarım iş koruması bu ekranda da var. Okut ekranında fabrika barkodu okutulunca malzeme işlemleri açılır.
+- Montaj penceresinde "Kullanılan malzemeler" (isteğe bağlı, açılır bölüm): cihazın bulunduğu aracın / deponun malzemeleri hazır gelir, +/- ile girilir; cihazla aynı işlemde stoktan düşer, Kullanım Raporu'na girer.
+- Tutanak: montajda zorunlu seçim (Alındı / Alınacak / Kurum içi kullanım). Cihaz kartında tutanak kartı ("Tutanak alındı" / "Değiştir", tarih ve kişi). Ara ekranında ve Kullanım Raporu'nda "Tutanak" sütunu; eski kayıtlar "Belirtilmemiş".
+- Depolar ekranı iki sekme: Depolar | Araçlar ("(SEYYAR DEPO)" kalktı); satırda cihaz ve malzeme çeşidi. Depo stokunda "Malzemeler" bölümü, hareketlerde miktar + birim.
+- İsimler: "Kullanıma ver" → Araca Yükle (Toplu Araca Yükle), "Sahada kullanıldı" → Montaj / Kullanıldı, durum "Montaj Yapıldı / Kullanıldı", rapor "Kullanım Raporu – Montajı Yapılanlar".
+- Raporlar: Kullanım raporunda tutanak ve malzeme satırları; Ürünler raporunda "Malzemeler" bölümü; malzemede ürün stok durumu (konumlara göre miktar, montajda kullanılan); hareket geçmişinde malzeme hareketleri; kritik stok malzemede miktara göre; sayımda "Malzeme" sekmesi (sistemde / sayılan / fark).
+- Bildirimler (telefon ve web): "Araca malzeme geldi", ürün özetinde miktar + birim; sunucudaki kritik stok hesabı malzemeleri de kapsar.
+- Supabase: `supabase_guncelleme_1_24_0.sql` bir kez çalıştırılmalı. En düşük sürüm 1.24.0 (zorunlu güncelleme; 1.23.0'daki yarım iş koruması sayesinde iş kaybolmaz).
+
 ## 1.23.0 – Güncelleme altyapısı ve yarım iş koruması
 - Güncelleme penceresi (telefon ve web): "Şimdi güncelle" / "Ertele" (ilk erteleme 10 dk, sonra 30 dk'da bir). Bir işin ortasındayken (sayım, toplu transfer, depoya giriş, sahada kullanım / arıza penceresi) normal güncelleme penceresi o iş bitince gelir. Zorunlu güncellemede pencere kapanmaz; iş önce taslağa yazılır. Uygulama açık kaldıkça 30 dakikada bir denetlenir; bulut menüsünde "Güncellemeleri denetle".
 - Android otomatik kurulum: Wi-Fi'de yeni sürüm önceden arka planda iner; "Şimdi güncelle" deyince (gerekirse indirilip) kendiliğinden kurulur, ikinci bir "Şimdi kur?" sorusu yok. `UPDATE_PACKAGES_WITHOUT_USER_ACTION` izniyle Android 12+ telefonlarda çoğunlukla onay sorulmaz (ilk seferde bir kez sorulabilir; Android 11 ve altı / bazı üreticiler sormaya devam eder). Uygulama kapalıyken indirme biterse "Güncelleme indi · kurmak için dokunun" bildirimi (dokununca kurulur); kurulumdan sonra "Uygulama güncellendi" bildirimi.

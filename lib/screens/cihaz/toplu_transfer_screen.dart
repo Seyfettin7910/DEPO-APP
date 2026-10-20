@@ -14,7 +14,7 @@ import '../../widgets/hedefli_tarayici.dart';
 import '../../widgets/iade_sebebi.dart';
 
 /// Birden çok cihazı seri numarasıyla okutup tek seferde bir depoya veya
-/// araca (seyyar depo) taşır. [tip] transfer ya da kullanıma verme olabilir;
+/// araca taşır. [tip] transfer, Araca Yükle ya da iade olabilir;
 /// ikisi de aynı şekilde çalışır, yalnızca kayıt türü farklıdır.
 class TopluTransferScreen extends ConsumerStatefulWidget {
   final HareketTipi tip;
@@ -79,7 +79,7 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen>
   }
 
   String get _baslik => _kullanim
-      ? 'Toplu Kullanıma Ver'
+      ? 'Toplu Araca Yükle'
       : (_iade ? 'Toplu İade' : 'Toplu Transfer');
 
   @override
@@ -373,7 +373,7 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen>
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(_kullanim
-              ? '$adet cihaz kullanıma verildi'
+              ? '$adet cihaz araca yüklendi'
               : (_iade
                   ? '$adet cihaz iade edildi'
                   : '$adet cihaz transfer edildi'))));
@@ -415,7 +415,7 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen>
               isExpanded: true,
               decoration: InputDecoration(
                   labelText: _kullanim
-                      ? 'Hangi depo / araca verilecek?'
+                      ? 'Hangi araca (veya depoya) yüklenecek?'
                       : (_iade
                           ? 'Hangi depoya iade edilecek?'
                           : 'Hedef depo / araç')),
@@ -555,7 +555,7 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen>
                       label: Text(_kaydediliyor
                           ? 'Kaydediliyor...'
                           : (_kullanim
-                              ? 'Kullanıma ver (${_liste.length})'
+                              ? 'Araca Yükle (${_liste.length})'
                               : (_iade
                                   ? 'İade al (${_liste.length})'
                                   : 'Transfer et (${_liste.length})'))),

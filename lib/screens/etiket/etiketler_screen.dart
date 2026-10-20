@@ -71,7 +71,7 @@ class EtiketlerScreen extends ConsumerWidget {
                 leading: Icon(Icons.lock_outline, color: Colors.orange),
                 title: Text('Engel açık'),
                 subtitle: Text('Doğrulanmamış etiketli cihazlar transfer '
-                    'edilemez, kullanıma verilemez, sahada kullanılamaz.'),
+                    'edilemez, araca yüklenemez, montajda kullanılamaz.'),
               ),
             ),
           ListTile(

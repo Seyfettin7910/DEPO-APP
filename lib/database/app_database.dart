@@ -11,6 +11,7 @@ import 'models.dart';
 export 'etiket_modelleri.dart';
 
 part 'app_database_etiket.dart';
+part 'app_database_malzeme.dart';
 
 const _uuid = Uuid();
 
@@ -91,6 +92,9 @@ CREATE TABLE kullanim_kayitlari (
   il TEXT,
   ilce TEXT,
   mahalle TEXT,
+  tutanak TEXT,
+  tutanak_tarihi INTEGER,
+  tutanak_kullanici_id TEXT,
   updated_at INTEGER NOT NULL,
   dirty INTEGER NOT NULL DEFAULT 1,
   deleted INTEGER NOT NULL DEFAULT 0
@@ -217,6 +221,9 @@ class CihazBilgi {
   final String? etiketKodu;
   final EtiketDurumu? etiketDurumu;
 
+  /// Montajdaki tutanak durumu (yalnızca cihaz montajlıyken anlamlı).
+  final String? tutanak;
+
   const CihazBilgi({
     required this.cihaz,
     required this.urunAdi,
@@ -225,6 +232,7 @@ class CihazBilgi {
     this.depoArac = false,
     this.etiketKodu,
     this.etiketDurumu,
+    this.tutanak,
   });
 
   /// Basılmış ama yapıştırma doğrulaması yapılmamış (veya uyuşmazlık var).
@@ -242,6 +250,7 @@ class CihazBilgi {
         etiketDurumu: r['etiket_durumu'] == null
             ? null
             : etiketDurumuCoz(r['etiket_durumu']),
+        tutanak: r['tutanak'] as String?,
       );
 }
 
@@ -293,12 +302,16 @@ class KritikStok {
     required this.minStok,
     required this.depoda,
     required this.aracta,
+    this.birim,
   });
 
   final String urunId;
   final String urunAdi;
   final String? kategori;
   final int minStok;
+
+  /// Miktarlı malzemede birim (metre, paket…); seri numaralı üründe null.
+  final String? birim;
   final int depoda;
   final int aracta;
 
@@ -326,6 +339,11 @@ class KullanimRaporSatiri {
   final String? il;
   final String? ilce;
   final String? mahalle;
+  final String? tutanak;
+  final String birim;
+
+  /// Seri numarasız malzeme kullanımı (kablo, adaptör…).
+  bool get malzeme => seriNo == null;
 
   KullanimRaporSatiri({
     required this.urunAdi,
@@ -340,6 +358,8 @@ class KullanimRaporSatiri {
     this.il,
     this.ilce,
     this.mahalle,
+    this.tutanak,
+    this.birim = 'adet',
   });
 }
 
@@ -362,7 +382,7 @@ class AppDatabase {
         : p.join(await getDatabasesPath(), 'depo_app.sqlite');
     _db = await openDatabase(
       path,
-      version: 11,
+      version: 12,
       onCreate: (db, version) async {
         for (final stmt in _createTablesSql.split(';')) {
           final trimmed = stmt.trim();
@@ -437,6 +457,14 @@ class AppDatabase {
           for (final t in _etiketTabloSql) {
             await db.execute(t);
           }
+        }
+        if (oldVersion < 12) {
+          // 1.24.0: montaj tutanağı (alındı / alınacak / kurum içi)
+          await db.execute('ALTER TABLE kullanim_kayitlari ADD COLUMN tutanak TEXT');
+          await db.execute(
+              'ALTER TABLE kullanim_kayitlari ADD COLUMN tutanak_tarihi INTEGER');
+          await db.execute(
+              'ALTER TABLE kullanim_kayitlari ADD COLUMN tutanak_kullanici_id TEXT');
         }
         if (oldVersion < 4) {
           // 1.4.0: araçlar seyyar depo olarak depolar tablosunda tutulur.
@@ -575,6 +603,14 @@ class AppDatabase {
       throw StateError(
           'İçinde $icindeki cihaz var. Önce cihazları başka yere transfer edin.');
     }
+    final malzeme = (await malzemeStoklari())
+        .values
+        .where((m) => (m[id] ?? 0) > 0)
+        .length;
+    if (malzeme > 0) {
+      throw StateError('İçinde $malzeme çeşit malzeme var. Önce malzemeleri '
+          'başka yere transfer edin.');
+    }
     await db.update(
       'depolar',
       {
@@ -601,7 +637,10 @@ class AppDatabase {
 
   Future<Urun?> barkodIleUrunBul(String barkod) async {
     final db = await _database;
-    final rows = await db.query('urunler', where: 'barkod = ?', whereArgs: [barkod], limit: 1);
+    final rows = await db.query('urunler',
+        where: 'UPPER(barkod) = UPPER(?) AND deleted = 0',
+        whereArgs: [barkod.trim()],
+        limit: 1);
     if (rows.isEmpty) return null;
     return Urun.fromMap(rows.first);
   }
@@ -614,16 +653,18 @@ class AppDatabase {
     String birim = 'adet',
     String? kategori,
     int minStokSeviyesi = 0,
+    // false: seri numarasız, miktarla takip edilen malzeme (kablo, adaptör…)
+    bool seriTakipli = true,
   }) async {
     final db = await _database;
     final urun = Urun(
       id: _uuid.v4(),
       ad: ad,
       barkod: barkod,
-      birim: birim,
+      birim: seriTakipli ? 'adet' : birim,
       kategori: kategori,
       minStokSeviyesi: minStokSeviyesi,
-      seriTakipli: true,
+      seriTakipli: seriTakipli,
       updatedAt: DateTime.now(),
     );
     await db.insert('urunler', urun.toMap());
@@ -666,7 +707,7 @@ class AppDatabase {
     DateTime? bitis,
   }) async {
     final db = await _database;
-    final kosullar = <String>['1=1'];
+    final kosullar = <String>['sh.deleted = 0', 'kk.deleted = 0'];
     final args = <Object?>[];
 
     if (urunId != null) {
@@ -699,7 +740,9 @@ class AppDatabase {
         kk.boylam as boylam,
         kk.il as il,
         kk.ilce as ilce,
-        kk.mahalle as mahalle
+        kk.mahalle as mahalle,
+        kk.tutanak as tutanak,
+        u.birim as birim
       FROM kullanim_kayitlari kk
       JOIN stok_hareketleri sh ON sh.id = kk.stok_hareket_id
       JOIN urunler u ON u.id = sh.urun_id
@@ -712,6 +755,8 @@ class AppDatabase {
 
     return rows
         .map((r) => KullanimRaporSatiri(
+              tutanak: r['tutanak'] as String?,
+              birim: (r['birim'] as String?) ?? 'adet',
               urunAdi: r['urun_adi'] as String,
               depoAdi: r['depo_adi'] as String,
               aracPlaka: r['arac_plaka'] as String?,
@@ -764,7 +809,7 @@ class AppDatabase {
     final db = await _database;
     final kosullar = <String>[
       'sh.deleted = 0',
-      "(sh.cihaz_id IS NOT NULL OR sh.tip = 'silme')",
+      "(sh.cihaz_id IS NOT NULL OR sh.tip = 'silme' OR u.seri_takipli = 0)",
     ];
     final args = <Object?>[];
     if (baslangic != null) {
@@ -779,7 +824,8 @@ class AppDatabase {
       SELECT sh.tarih AS tarih, sh.tip AS tip, c.seri_no AS seri_no,
              u.ad AS urun_adi, d.ad AS kaynak, hd.ad AS hedef,
              kk.kullanim_yeri AS kullanim_yeri, k.ad AS kullanici,
-             sh.not_ AS not_, sh.sebep AS sebep
+             sh.not_ AS not_, sh.sebep AS sebep, sh.miktar AS miktar,
+             u.birim AS birim, u.seri_takipli AS seri_takipli
       FROM stok_hareketleri sh
       JOIN urunler u ON u.id = sh.urun_id
       LEFT JOIN cihazlar c ON c.id = sh.cihaz_id
@@ -817,6 +863,8 @@ class AppDatabase {
 
   Stream<Map<String, DepoOzet>> depoOzetleriStream() => _watch(depoOzetleri);
 
+  /// Ürün başına depolar + araçlardaki toplam: seri numaralı üründe sağlam
+  /// cihaz adedi, miktarlı malzemede miktar (metre, paket…).
   Future<Map<String, int>> urunToplamStoklari() async {
     final db = await _database;
     final rows = await db.rawQuery('''
@@ -825,10 +873,17 @@ class AppDatabase {
       WHERE durum = 'depoda' AND deleted = 0 AND servis_durumu IS NULL
       GROUP BY urun_id
     ''');
-    return {
+    final sonuc = {
       for (final r in rows)
         r['urun_id'] as String: (r['toplam'] as num?)?.toInt() ?? 0,
     };
+    final depolar = {for (final d in await tumDepolar()) d.id};
+    for (final e in (await malzemeStoklari()).entries) {
+      sonuc[e.key] = e.value.entries
+          .where((x) => depolar.contains(x.key))
+          .fold<int>(0, (t, x) => t + x.value);
+    }
+    return sonuc;
   }
 
   /// Minimum adet tanımlı ve depolar + araçlardaki (arızalılar hariç) toplamı minimuma eşit /
@@ -847,13 +902,11 @@ class AppDatabase {
              ON c.urun_id = u.id AND c.deleted = 0 AND c.durum = 'depoda'
                 AND c.servis_durumu IS NULL
       LEFT JOIN depolar d ON d.id = c.depo_id AND d.deleted = 0
-      WHERE u.deleted = 0 AND u.min_stok_seviyesi > 0
+      WHERE u.deleted = 0 AND u.min_stok_seviyesi > 0 AND u.seri_takipli = 1
       GROUP BY u.id
       HAVING (depoda + aracta) <= u.min_stok_seviyesi
-      ORDER BY ((depoda + aracta) * 1.0 / u.min_stok_seviyesi),
-               u.ad COLLATE NOCASE
     ''');
-    return [
+    final liste = [
       for (final r in rows)
         KritikStok(
           urunId: r['id'] as String,
@@ -864,6 +917,44 @@ class AppDatabase {
           aracta: (r['aracta'] as num?)?.toInt() ?? 0,
         ),
     ];
+    // Miktarlı malzemeler: depolar + araçlardaki toplam miktar.
+    final malzemeler = (await tumUrunler())
+        .where((u) => u.miktarli && u.minStokSeviyesi > 0)
+        .toList();
+    if (malzemeler.isNotEmpty) {
+      final stok = await malzemeStoklari();
+      final turler = {for (final d in await tumDepolar()) d.id: d.tur};
+      for (final u in malzemeler) {
+        var depoda = 0, aracta = 0;
+        for (final e in (stok[u.id] ?? const <String, int>{}).entries) {
+          final tur = turler[e.key];
+          if (tur == null || e.value <= 0) continue;
+          if (tur == DepoTuru.arac) {
+            aracta += e.value;
+          } else {
+            depoda += e.value;
+          }
+        }
+        if (depoda + aracta <= u.minStokSeviyesi) {
+          liste.add(KritikStok(
+            urunId: u.id,
+            urunAdi: u.ad,
+            kategori: u.kategori,
+            minStok: u.minStokSeviyesi,
+            depoda: depoda,
+            aracta: aracta,
+            birim: u.birim,
+          ));
+        }
+      }
+    }
+    liste.sort((a, b) {
+      final c = (a.toplam / a.minStok).compareTo(b.toplam / b.minStok);
+      return c != 0
+          ? c
+          : a.urunAdi.toLowerCase().compareTo(b.urunAdi.toLowerCase());
+    });
+    return liste;
   }
 
   Stream<List<KritikStok>> kritikStoklarStream() => _watch(kritikStoklar);
@@ -891,7 +982,8 @@ class AppDatabase {
       LEFT JOIN araclar a ON a.id = kk.arac_id
       LEFT JOIN cihazlar c ON c.id = sh.cihaz_id
       LEFT JOIN kullanicilar k ON k.id = sh.kullanici_id
-      WHERE sh.deleted = 0 AND sh.cihaz_id IS NOT NULL
+      WHERE sh.deleted = 0
+        AND (sh.cihaz_id IS NOT NULL OR u.seri_takipli = 0)
         AND (sh.depo_id = ? OR sh.hedef_depo_id = ?)
       ORDER BY sh.tarih DESC
       LIMIT ?
@@ -976,7 +1068,13 @@ class AppDatabase {
              c.dirty AS dirty, c.deleted AS deleted,
              u.ad AS urun_adi, d.ad AS depo_adi, d.tur AS depo_tur,
              a.plaka AS arac_plaka,
-             e.kod AS etiket_kodu, e.durum AS etiket_durumu
+             e.kod AS etiket_kodu, e.durum AS etiket_durumu,
+             CASE WHEN c.durum = 'kullanimda' THEN
+               (SELECT kk.tutanak FROM kullanim_kayitlari kk
+                  JOIN stok_hareketleri sh ON sh.id = kk.stok_hareket_id
+                 WHERE sh.cihaz_id = c.id AND sh.deleted = 0
+                 ORDER BY sh.tarih DESC LIMIT 1)
+             END AS tutanak
       FROM cihazlar c
       JOIN urunler u ON u.id = c.urun_id
       LEFT JOIN depolar d ON d.id = c.depo_id
@@ -1083,6 +1181,15 @@ class AppDatabase {
     // Seri numarası olmayan ürünler: kurum kodu seri no olarak kullanılır.
     Set<String> seriNosuz = const {},
   }) async {
+    {
+      final u = await (await _database).query('urunler',
+          columns: ['seri_takipli', 'ad'], where: 'id = ?', whereArgs: [urunId],
+          limit: 1);
+      if (u.isNotEmpty && (u.first['seri_takipli'] as num?)?.toInt() == 0) {
+        throw StateError('${u.first['ad']} miktarla takip edilen bir malzeme; '
+            'seri no ile değil "Malzeme girişi" ile girilir');
+      }
+    }
     if (seriNolar.every((x) => _normSeri(x).isEmpty)) {
       throw StateError('Hiç seri numarası eklenmedi');
     }
@@ -1926,7 +2033,7 @@ class AppDatabase {
               [urunId])) ??
           0;
       if (aktif > 0) {
-        throw StateError('Bu üründen $aktif cihaz depoda / araçta / sahada '
+        throw StateError('Bu üründen $aktif cihaz depoda / araçta / montajlı '
             'görünüyor. Önce o cihazları silin veya çıkışını yapın.');
       }
       final simdi = DateTime.now();
@@ -2036,6 +2143,7 @@ class AppDatabase {
     String? il,
     String? ilce,
     String? mahalle,
+    String? tutanak,
   }) async {
     final rows = await txn.query('cihazlar',
         where: 'id = ?', whereArgs: [cihazId], limit: 1);
@@ -2047,7 +2155,7 @@ class AppDatabase {
     }
     if (c.arizali) {
       throw StateError('${c.seriNo} ${c.servisDurumu!.kisa.toLowerCase()}: '
-          'transfer, kullanıma verme, sahada kullanım ve çıkış yapılamaz. '
+          'transfer, araca yükleme, montaj / kullanım ve çıkış yapılamaz. '
           'Önce cihaz kartından servis işlemini tamamlayın.');
     }
     // Kurum etiketi engeli (ayarlardan açılırsa): doğrulanmamış etiketli
@@ -2153,6 +2261,9 @@ class AppDatabase {
           il: il,
           ilce: ilce,
           mahalle: mahalle,
+          tutanak: tutanak,
+          tutanakTarihi: tutanak == null ? null : simdi,
+          tutanakKullaniciId: tutanak == null ? null : kullaniciId,
           updatedAt: simdi,
         ).toMap(),
       );
@@ -2178,6 +2289,11 @@ class AppDatabase {
     String? ilce,
     String? mahalle,
     String? arizaKarari, // iadede "Arıza" seçildiyse: tamir | degisim
+    String? tutanak, // montajda: alindi | alinacak | kurum_ici
+    // Montajda kullanılan malzemeler (urunId -> miktar), [malzemeDepoId]
+    // deposundan / aracından düşülür.
+    Map<String, int> malzemeler = const {},
+    String? malzemeDepoId,
   }) async {
     if (tip == HareketTipi.girisi ||
         tip == HareketTipi.silme ||
@@ -2206,6 +2322,7 @@ class AppDatabase {
           il: il,
           ilce: ilce,
           mahalle: mahalle,
+          tutanak: tutanak,
         );
         if (arizaKarari != null) {
           await _arizaKaydiAcTxn(txn,
@@ -2215,6 +2332,30 @@ class AppDatabase {
               kullaniciId: kullaniciId,
               zaman: DateTime.now());
         }
+      }
+      final kullanilan = {
+        for (final e in malzemeler.entries)
+          if (e.value > 0) e.key: e.value
+      };
+      if (kullanilan.isNotEmpty) {
+        if (malzemeDepoId == null) {
+          throw StateError('Malzemenin düşüleceği depo / araç belli değil');
+        }
+        await _malzemeHareketiTxn(
+          txn,
+          islem: MalzemeIslemi.kullanim,
+          kaynakDepoId: malzemeDepoId,
+          miktarlar: kullanilan,
+          kullaniciId: kullaniciId,
+          kullanimYeri: kullanimYeri,
+          not_: not_,
+          enlem: enlem,
+          boylam: boylam,
+          konumHassasiyet: konumHassasiyet,
+          il: il,
+          ilce: ilce,
+          mahalle: mahalle,
+        );
       }
     });
 
@@ -2336,7 +2477,9 @@ class AppDatabase {
              sh.not_ AS not_, sh.kullanici_id AS kullanici_id,
              sh.depo_id AS depo_id, sh.hedef_depo_id AS hedef_depo_id,
              c.seri_no AS seri_no, u.ad AS urun_adi, d.ad AS depo_adi,
-             hd.ad AS hedef_adi, hd.tur AS hedef_tur, k.ad AS kullanici
+             hd.ad AS hedef_adi, hd.tur AS hedef_tur, k.ad AS kullanici,
+             sh.cihaz_id AS cihaz_id, sh.miktar AS miktar, u.birim AS birim,
+             u.seri_takipli AS seri_takipli
       FROM stok_hareketleri sh
       LEFT JOIN cihazlar c ON c.id = sh.cihaz_id
       LEFT JOIN urunler u ON u.id = sh.urun_id
@@ -2429,6 +2572,7 @@ class AppDatabase {
     'kullanim_kayitlari': [
       'id', 'stok_hareket_id', 'arac_id', 'kullanim_yeri', 'not_',
       'enlem', 'boylam', 'konum_hassasiyet', 'il', 'ilce', 'mahalle',
+      'tutanak', 'tutanak_tarihi', 'tutanak_kullanici_id',
       'updated_at', 'deleted'
     ],
     'servis_kayitlari': [

@@ -30,7 +30,7 @@ String cihazKonumMetni(CihazBilgi b) {
       if (s != null) return '${s.kisa}: ${b.depoAdi ?? '-'}';
       return '${b.depoArac ? 'Araçta' : 'Depoda'}: ${b.depoAdi ?? '-'}';
     case CihazDurumu.kullanimda:
-      return 'Kullanımda: ${b.aracPlaka ?? b.cihaz.kullanimYeri ?? '-'}';
+      return '$montajDurumAdi: ${b.aracPlaka ?? b.cihaz.kullanimYeri ?? '-'}';
     case CihazDurumu.cikti:
       if (s == ServisDurumu.hurda) return 'Hurdaya ayrıldı';
       if (s == ServisDurumu.degistirildi) return 'Değiştirildi (firmaya teslim)';
@@ -204,6 +204,8 @@ class CihazDetayScreen extends ConsumerWidget {
                   ),
                 ),
               ),
+              if (durum == CihazDurumu.kullanimda)
+                _TutanakKarti(cihazId: bilgi.cihaz.id),
               YarimIslemKarti(
                 cihazId: bilgi.cihaz.id,
                 otomatikTur: acilacakTaslak,
@@ -241,12 +243,12 @@ class CihazDetayScreen extends ConsumerWidget {
                     FilledButton.tonalIcon(
                       onPressed: () => _kullanima(context, ref, bilgi),
                       icon: const Icon(Icons.local_shipping_outlined),
-                      label: const Text('Kullanıma ver'),
+                      label: const Text('Araca Yükle'),
                     ),
                     FilledButton.icon(
                       onPressed: () => _sahada(context, ref, bilgi),
                       icon: const Icon(Icons.task_alt),
-                      label: const Text('Sahada kullanıldı'),
+                      label: const Text('Montaj / Kullanıldı'),
                     ),
                     if (bilgi.depoArac)
                       FilledButton.tonalIcon(
@@ -368,9 +370,9 @@ class CihazDetayScreen extends ConsumerWidget {
         return 'İade: ${h.depoAdi ?? '-'} → ${h.hedefDepoAdi ?? '-'}';
       case HareketTipi.kullanim:
         if (h.hedefDepoAdi != null) {
-          return 'Kullanıma verildi: ${h.depoAdi ?? '-'} → ${h.hedefDepoAdi}';
+          return 'Araca yüklendi: ${h.depoAdi ?? '-'} → ${h.hedefDepoAdi}';
         }
-        return 'Sahada kullanıldı: ${h.aracPlaka ?? h.kullanimYeri ?? '-'}'
+        return 'Montaj / Kullanıldı: ${h.aracPlaka ?? h.kullanimYeri ?? '-'}'
             ' (${h.depoAdi ?? '-'} stoğundan)';
     }
   }
@@ -441,7 +443,7 @@ class CihazDetayScreen extends ConsumerWidget {
           BuildContext context, WidgetRef ref, CihazBilgi bilgi) =>
       _hedefeTasi(context, ref, bilgi, HareketTipi.iade);
 
-  /// Transfer, "Kullanıma ver" ve "İade" aynı mantıkla çalışır: hedef bir depo veya
+  /// Transfer, "Araca Yükle" ve "İade" aynı mantıkla çalışır: hedef bir depo veya
   /// araç (seyyar depo) seçilir, cihaz oraya geçer.
   Future<void> _hedefeTasi(BuildContext context, WidgetRef ref,
       CihazBilgi bilgi, HareketTipi tip) async {
@@ -488,7 +490,7 @@ class CihazDetayScreen extends ConsumerWidget {
         builder: (ctx, setState) => AlertDialog(
           scrollable: true,
           title: Text(kullanim
-              ? 'Kullanıma ver'
+              ? 'Araca Yükle'
               : (iade ? 'İade' : 'Başka yere transfer')),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -498,7 +500,7 @@ class CihazDetayScreen extends ConsumerWidget {
                 isExpanded: true,
                 decoration: InputDecoration(
                     labelText: kullanim
-                        ? 'Hangi depo / araca verilsin?'
+                        ? 'Hangi araca (veya depoya) yüklensin?'
                         : (iade
                             ? 'Hangi depoya iade edilsin?'
                             : 'Hedef depo / araç')),
@@ -557,7 +559,7 @@ class CihazDetayScreen extends ConsumerWidget {
                   Navigator.pop(ctx, true);
                 },
                 child: Text(kullanim
-                    ? 'Kullanıma ver'
+                    ? 'Araca Yükle'
                     : (iade ? 'İade et' : 'Transfer et'))),
           ],
         ),
@@ -579,17 +581,24 @@ class CihazDetayScreen extends ConsumerWidget {
         arizaKarari: iade && sebep == 'Arıza' ? arizaKarari : null,
       ),
       kullanim
-          ? 'Kullanıma verildi'
+          ? 'Araca yüklendi'
           : (iade ? 'İade edildi' : 'Transfer edildi'),
     );
   }
 
-  /// Cihaz sahada kullanıldı (müşteriye takıldı vb.): bulunduğu depo veya
-  /// araç stoğundan düşer, kullanım yeri kaydedilir ve kullanım raporuna girer.
+  /// Montaj / Kullanıldı (cihaz takıldı): bulunduğu depo veya araç
+  /// stoğundan düşer, kullanım yeri ve tutanak durumu kaydedilir, kullanım
+  /// raporuna girer. Araçtaki malzemelerden kullanılanlar da düşülebilir.
   Future<void> _sahada(
       BuildContext context, WidgetRef ref, CihazBilgi bilgi) async {
+    final malzemeler = bilgi.cihaz.depoId == null
+        ? const <MalzemeStok>[]
+        : await ref
+            .read(appDatabaseProvider)
+            .depoMalzemeleri(bilgi.cihaz.depoId!);
+    if (!context.mounted) return;
     final taslak = await PencereTaslagi.ac('saha', bilgi.cihaz.id,
-        baslik: 'Sahada kullanıldı · SN ${bilgi.cihaz.seriNo}');
+        baslik: 'Montaj / Kullanıldı · SN ${bilgi.cihaz.seriNo}');
     if (!context.mounted) {
       taslak.birak();
       return;
@@ -606,6 +615,12 @@ class CihazDetayScreen extends ConsumerWidget {
         TextEditingController(text: taslak.deger<String>('mahalle'));
     var adresDurumu = 'Konum bekleniyor...';
     var adresIstendi = false;
+    String? tutanak = taslak.deger<String>('tutanak');
+    final kullanilan = <String, int>{
+      for (final e in (taslak.deger<Map>('malzemeler') ?? const {}).entries)
+        '${e.key}': (e.value as num?)?.toInt() ?? 0,
+    };
+    var malzemeAcik = kullanilan.values.any((m) => m > 0);
     void taslakYaz() => taslak.yaz({
           'yer': yerCtrl.text,
           'not': notCtrl.text,
@@ -613,9 +628,14 @@ class CihazDetayScreen extends ConsumerWidget {
           'ilce': ilceCtrl.text,
           'mahalle': mahalleCtrl.text,
           'konum': konumKaydet,
+          'tutanak': tutanak,
+          'malzemeler': kullanilan,
         },
             ozet: yerCtrl.text.trim(),
-            bos: yerCtrl.text.trim().isEmpty && notCtrl.text.trim().isEmpty);
+            bos: yerCtrl.text.trim().isEmpty &&
+                notCtrl.text.trim().isEmpty &&
+                tutanak == null &&
+                !kullanilan.values.any((m) => m > 0));
     for (final c in [yerCtrl, notCtrl, ilCtrl, ilceCtrl, mahalleCtrl]) {
       c.addListener(taslakYaz);
     }
@@ -657,7 +677,7 @@ class CihazDetayScreen extends ConsumerWidget {
           }
           return AlertDialog(
           scrollable: true,
-          title: const Text('Sahada kullanıldı'),
+          title: const Text('Montaj / Kullanıldı'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -676,6 +696,100 @@ class CihazDetayScreen extends ConsumerWidget {
                 controller: notCtrl,
                 decoration: const InputDecoration(labelText: 'Not (opsiyonel)'),
               ),
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Tutanak',
+                    style: Theme.of(ctx).textTheme.labelLarge),
+              ),
+              const SizedBox(height: 4),
+              Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: [
+                  for (final (kod, ikon, ad) in const [
+                    ('alindi', Icons.check_circle_outline, 'Alındı'),
+                    ('alinacak', Icons.hourglass_empty, 'Alınacak'),
+                    ('kurum_ici', Icons.apartment, 'Kurum içi kullanım'),
+                  ])
+                    ChoiceChip(
+                      avatar: Icon(ikon, size: 18),
+                      label: Text(ad),
+                      selected: tutanak == kod,
+                      onSelected: (_) => setState(() {
+                        tutanak = kod;
+                        hata = null;
+                      }),
+                    ),
+                ],
+              ),
+              if (malzemeler.isNotEmpty)
+                Theme(
+                  data: Theme.of(ctx)
+                      .copyWith(dividerColor: Colors.transparent),
+                  child: ExpansionTile(
+                    tilePadding: EdgeInsets.zero,
+                    initiallyExpanded: malzemeAcik,
+                    onExpansionChanged: (v) => malzemeAcik = v,
+                    leading: const Icon(Icons.cable_outlined),
+                    title: const Text('Kullanılan malzemeler'),
+                    subtitle: Text(() {
+                      final n = kullanilan.values.where((m) => m > 0).length;
+                      return n == 0
+                          ? 'İsteğe bağlı · ${bilgi.depoAdi ?? 'araç'} stoğundan'
+                          : '$n kalem seçildi';
+                    }()),
+                    children: [
+                      for (final m in malzemeler)
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                '${m.urun.ad}\n'
+                                'Burada: ${m.urun.miktarMetni(m.miktar)}',
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                            ),
+                            IconButton(
+                              visualDensity: VisualDensity.compact,
+                              icon: const Icon(Icons.remove_circle_outline),
+                              onPressed: (kullanilan[m.urun.id] ?? 0) > 0
+                                  ? () => setState(() => kullanilan[m.urun.id] =
+                                      (kullanilan[m.urun.id] ?? 0) - 1)
+                                  : null,
+                            ),
+                            InkWell(
+                              onTap: () async {
+                                final n = await _sayiSor(ctx, m,
+                                    kullanilan[m.urun.id] ?? 0);
+                                if (n != null) {
+                                  setState(() => kullanilan[m.urun.id] = n);
+                                }
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 6),
+                                child: Text('${kullanilan[m.urun.id] ?? 0}',
+                                    style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold)),
+                              ),
+                            ),
+                            IconButton(
+                              visualDensity: VisualDensity.compact,
+                              icon: const Icon(Icons.add_circle_outline),
+                              onPressed:
+                                  (kullanilan[m.urun.id] ?? 0) < m.miktar
+                                      ? () => setState(() =>
+                                          kullanilan[m.urun.id] =
+                                              (kullanilan[m.urun.id] ?? 0) + 1)
+                                      : null,
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
               const SizedBox(height: 12),
               FutureBuilder<KonumSonucu>(
                 future: konumIstegi,
@@ -766,6 +880,11 @@ class CihazDetayScreen extends ConsumerWidget {
                   setState(() => hata = 'Kullanım yerini yazın');
                   return;
                 }
+                if (tutanak == null) {
+                  setState(() => hata =
+                      'Tutanak durumunu seçin (Alındı / Alınacak / Kurum içi)');
+                  return;
+                }
                 Navigator.pop(ctx, true);
               },
               child: const Text('Kaydet'),
@@ -804,12 +923,51 @@ class CihazDetayScreen extends ConsumerWidget {
           il: il,
           ilce: ilce,
           mahalle: mahalle,
+          tutanak: tutanak,
+          malzemeler: kullanilan,
+          malzemeDepoId: bilgi.cihaz.depoId,
         );
         // İnternet varsa eksik adres hemen tamamlanır.
         unawaited(AdresTamamlayici.calistir(db));
       },
-      'Kullanım kaydedildi, stoktan düşüldü',
+      kullanilan.values.any((m) => m > 0)
+          ? 'Montaj kaydedildi; cihaz ve malzemeler stoktan düşüldü'
+          : 'Montaj kaydedildi, stoktan düşüldü',
     );
+  }
+
+  /// Montaj penceresinde malzeme miktarını yazarak girme.
+  static Future<int?> _sayiSor(
+      BuildContext context, MalzemeStok m, int mevcut) async {
+    final ctrl = TextEditingController(text: '$mevcut');
+    final n = await showDialog<int>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(m.urun.ad),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(
+            labelText: 'Kullanılan (${m.urun.birim})',
+            helperText: 'Burada: ${m.urun.miktarMetni(m.miktar)}',
+          ),
+          onSubmitted: (v) => Navigator.pop(ctx, int.tryParse(v.trim())),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Vazgeç')),
+          FilledButton(
+              onPressed: () =>
+                  Navigator.pop(ctx, int.tryParse(ctrl.text.trim())),
+              child: const Text('Tamam')),
+        ],
+      ),
+    );
+    ctrl.dispose();
+    if (n == null || n < 0) return null;
+    return n > m.miktar ? m.miktar : n;
   }
 
   /// Alım tarihi, firma, ihale ve garanti bilgisi kartı (düzenlenebilir).
@@ -1101,6 +1259,133 @@ class CihazDetayScreen extends ConsumerWidget {
           : (ariza
               ? 'Arızalı olarak depoya alındı (${servisKararAdlari[arizaKarari]})'
               : 'Depoya geri alındı ($sebep)'),
+    );
+  }
+}
+
+/// Montajlı cihazda tutanak durumu; "Alınacak" ise "Alındı" yapılabilir.
+class _TutanakKarti extends ConsumerWidget {
+  const _TutanakKarti({required this.cihazId});
+  final String cihazId;
+
+  static final _tarih = DateFormat('dd.MM.yyyy HH:mm');
+
+  Future<void> _degistir(
+      BuildContext context, WidgetRef ref, String yeni) async {
+    try {
+      await ref.read(appDatabaseProvider).tutanakGuncelle(cihazId,
+          tutanak: yeni,
+          kullaniciId: ref.read(aktifKullaniciIdProvider) ?? 'demo-kullanici');
+      SesServisi.basari();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(tutanakAdi(yeni))));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(e is StateError ? e.message : 'Kaydedilemedi: $e'),
+          backgroundColor: Colors.red.shade700,
+        ));
+      }
+    }
+  }
+
+  Future<void> _sec(BuildContext context, WidgetRef ref, String? mevcut) async {
+    final yeni = await showDialog<String>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('Tutanak durumu'),
+        children: [
+          for (final t in tutanakSecenekleri)
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(ctx, t),
+              child: Row(
+                children: [
+                  Icon(t == mevcut
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_off),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(tutanakAdi(t))),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+    if (yeni != null && yeni != mevcut && context.mounted) {
+      await _degistir(context, ref, yeni);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.watch(cihazTutanagiProvider(cihazId)).value;
+    if (t == null) return const SizedBox.shrink();
+    final renk = switch (t.durum) {
+      'alindi' => Colors.green.shade700,
+      'alinacak' => Colors.orange.shade800,
+      'kurum_ici' => Colors.blueGrey.shade600,
+      _ => Colors.grey.shade600,
+    };
+    final ikon = switch (t.durum) {
+      'alindi' => Icons.task_outlined,
+      'alinacak' => Icons.hourglass_empty,
+      'kurum_ici' => Icons.apartment,
+      _ => Icons.help_outline,
+    };
+    return Card(
+      margin: const EdgeInsets.only(top: 12),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 10, 8, 6),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(ikon, color: renk),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(tutanakAdi(t.durum),
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              color: renk)),
+                      if (t.tarih != null)
+                        Text(
+                            [
+                              _tarih.format(t.tarih!),
+                              if (t.kullaniciAdi != null) t.kullaniciAdi!,
+                            ].join(' · '),
+                            style: Theme.of(context).textTheme.bodySmall),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 4,
+              children: [
+                TextButton(
+                  onPressed: () => _sec(context, ref, t.durum),
+                  child: const Text('Değiştir'),
+                ),
+                if (t.durum != 'alindi')
+                  FilledButton.tonalIcon(
+                    onPressed: () => _degistir(context, ref, 'alindi'),
+                    icon: const Icon(Icons.check),
+                    label: const Text('Tutanak alındı'),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

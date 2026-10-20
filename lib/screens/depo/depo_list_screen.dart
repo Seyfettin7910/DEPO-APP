@@ -12,8 +12,8 @@ import '../../widgets/bildirim_dugmesi.dart';
 import '../../widgets/etiket_karti.dart';
 import '../../widgets/kod_yardimci.dart';
 
-/// Depolar ve araçlar (seyyar depolar) bir arada. Araçlar da depo gibi
-/// çalışır: içinde cihaz tutar, transfer hedefi olur.
+/// Depolar ve araçlar iki ayrı sekmede. Araçlar da depo gibi çalışır:
+/// içinde cihaz / malzeme tutar, transfer hedefi olur.
 class DepoListScreen extends ConsumerWidget {
   const DepoListScreen({super.key});
 
@@ -21,65 +21,103 @@ class DepoListScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final depolarAsync = ref.watch(depolarStreamProvider);
     final ozetler = ref.watch(depoOzetleriProvider).value ?? {};
+    final malzeme = ref.watch(malzemeStoklariProvider).value ??
+        const <String, Map<String, int>>{};
+    final depolar = depolarAsync.value ?? const <Depo>[];
+    final sabitler = depolar.where((d) => !d.arac).toList();
+    final araclar = depolar.where((d) => d.arac).toList();
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Depolar'),
-        actions: [
-          EtiketDugmesi(bilgisayar: bilgisayarTarayicisi),
-          const BildirimDugmesi(),
-          const SyncDurumDugmesi(),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _ekleSecimi(context, ref),
-        child: const Icon(Icons.add),
-      ),
-      body: depolarAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Hata: $e')),
-        data: (depolar) {
-          if (depolar.isEmpty) {
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Text(
-                  'Henüz depo veya araç eklenmedi.\n+ düğmesiyle ekleyin.',
-                  textAlign: TextAlign.center,
-                ),
+    // Depo / araç başına kaç çeşit malzeme var
+    final malzemeCesidi = <String, int>{};
+    for (final m in malzeme.values) {
+      for (final e in m.entries) {
+        if (e.value > 0) {
+          malzemeCesidi[e.key] = (malzemeCesidi[e.key] ?? 0) + 1;
+        }
+      }
+    }
+
+    Widget liste(List<Depo> l, DepoTuru tur) {
+      if (depolarAsync.isLoading && depolar.isEmpty) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      if (depolarAsync.hasError) {
+        return Center(child: Text('Hata: ${depolarAsync.error}'));
+      }
+      return ListView(
+        padding: const EdgeInsets.only(bottom: 88),
+        children: [
+          const KritikStokSeridi(),
+          if (l.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(
+                tur == DepoTuru.arac
+                    ? 'Henüz araç eklenmedi.\n+ düğmesiyle ekleyin.'
+                    : 'Henüz depo eklenmedi.\n+ düğmesiyle ekleyin.',
+                textAlign: TextAlign.center,
               ),
-            );
-          }
-          final sabitler = depolar.where((d) => !d.arac).toList();
-          final araclar = depolar.where((d) => d.arac).toList();
+            ),
+          for (final d in l)
+            _satir(context, ref, d, ozetler[d.id], malzemeCesidi[d.id] ?? 0),
+        ],
+      );
+    }
 
-          return ListView(
-            padding: const EdgeInsets.only(bottom: 88),
-            children: [
-              const KritikStokSeridi(),
-              if (sabitler.isNotEmpty) const _Baslik('DEPOLAR'),
-              for (final d in sabitler) _satir(context, ref, d, ozetler[d.id]),
-              if (araclar.isNotEmpty) const _Baslik('ARAÇLAR (SEYYAR DEPO)'),
-              for (final d in araclar) _satir(context, ref, d, ozetler[d.id]),
+    return DefaultTabController(
+      length: 2,
+      child: Builder(builder: (context) {
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Depolar'),
+            actions: [
+              EtiketDugmesi(bilgisayar: bilgisayarTarayicisi),
+              const BildirimDugmesi(),
+              const SyncDurumDugmesi(),
             ],
-          );
-        },
-      ),
+            bottom: TabBar(tabs: [
+              Tab(
+                icon: const Icon(Icons.warehouse_outlined),
+                text: 'Depolar (${sabitler.length})',
+              ),
+              Tab(
+                icon: const Icon(Icons.local_shipping_outlined),
+                text: 'Araçlar (${araclar.length})',
+              ),
+            ]),
+          ),
+          floatingActionButton: FloatingActionButton(
+            tooltip: 'Depo / araç ekle',
+            onPressed: () => _formDialog(context, ref,
+                tur: DefaultTabController.of(context).index == 1
+                    ? DepoTuru.arac
+                    : DepoTuru.sabit),
+            child: const Icon(Icons.add),
+          ),
+          body: TabBarView(children: [
+            liste(sabitler, DepoTuru.sabit),
+            liste(araclar, DepoTuru.arac),
+          ]),
+        );
+      }),
     );
   }
 
-  Widget _satir(
-      BuildContext context, WidgetRef ref, Depo depo, DepoOzet? ozet) {
-    final ozetMetni = ozet == null || ozet.urunCesidi == 0
-        ? (depo.arac ? 'Araçta cihaz yok' : 'Stok yok')
-        : '${ozet.urunCesidi} çeşit ürün';
+  Widget _satir(BuildContext context, WidgetRef ref, Depo depo,
+      DepoOzet? ozet, int malzemeCesidi) {
+    final ozetMetni = [
+      if (ozet != null && ozet.urunCesidi > 0)
+        '${ozet.urunCesidi} çeşit cihaz',
+      if (malzemeCesidi > 0) '$malzemeCesidi çeşit malzeme',
+    ];
 
     return ListTile(
       leading: Icon(depoIkonu(depo)),
       title: Text(depo.ad),
       subtitle: Text([
         if (depo.konum != null && depo.konum!.isNotEmpty) depo.konum!,
-        ozetMetni,
+        if (ozetMetni.isEmpty) (depo.arac ? 'Araç boş' : 'Stok yok'),
+        ...ozetMetni,
       ].join(' · ')),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
@@ -114,36 +152,6 @@ class DepoListScreen extends ConsumerWidget {
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => DepoStokScreen(depoId: depo.id, depoAdi: depo.ad),
-        ),
-      ),
-    );
-  }
-
-  void _ekleSecimi(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet<void>(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.warehouse_outlined),
-              title: const Text('Yeni depo'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _formDialog(context, ref, tur: DepoTuru.sabit);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.local_shipping_outlined),
-              title: const Text('Yeni araç (seyyar depo)'),
-              subtitle: const Text('Sahada gezen araç; içinde cihaz taşıyabilir'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _formDialog(context, ref, tur: DepoTuru.arac);
-              },
-            ),
-          ],
         ),
       ),
     );
@@ -254,21 +262,6 @@ class DepoListScreen extends ConsumerWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _Baslik extends StatelessWidget {
-  final String metin;
-  const _Baslik(this.metin);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: Theme.of(context).colorScheme.primary.withOpacity(0.08),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Text(metin,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
     );
   }
 }
