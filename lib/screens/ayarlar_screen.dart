@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/app_providers.dart';
-import '../database/app_database.dart';
+import '../database/models.dart';
 import '../services/cihaz_tercihleri.dart';
 import '../services/gorunum_ayari.dart';
 import '../services/guncelleme_servisi.dart';
