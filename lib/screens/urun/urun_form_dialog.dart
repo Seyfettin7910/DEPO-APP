@@ -28,7 +28,7 @@ Future<void> urunFormDialog(BuildContext context, WidgetRef ref,
   var birim = mevcut != null && malzemeBirimleri.contains(mevcut.birim)
       ? mevcut.birim
       : 'adet';
-  final depolar = ref.read(depolarStreamProvider).value ?? <Depo>[];
+  final depolar = ref.read(depolarStreamProvider).valueOrNull ?? <Depo>[];
   String? depoId = ref.read(seciliDepoIdProvider);
   if (!depolar.any((d) => d.id == depoId)) {
     depoId = depolar.isEmpty ? null : depolar.first.id;

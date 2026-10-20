@@ -438,7 +438,7 @@ Future<void> servisGonderAkisi(
 
 Future<void> servisSonucuAkisi(BuildContext context, WidgetRef ref,
     CihazBilgi b, ServisKaydi? kayit) async {
-  final depolar = (ref.read(depolarStreamProvider).value ?? <Depo>[])
+  final depolar = (ref.read(depolarStreamProvider).valueOrNull ?? <Depo>[])
       .where((d) => !d.arac)
       .toList();
   if (depolar.isEmpty) {
@@ -833,7 +833,7 @@ class ServisKarti extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final c = bilgi.cihaz;
     final kayitlar =
-        ref.watch(cihazServisKayitlariProvider(c.id)).value ?? const [];
+        ref.watch(cihazServisKayitlariProvider(c.id)).valueOrNull ?? const [];
     final durum = c.servisDurumu;
     if (durum == null && kayitlar.isEmpty) return const SizedBox.shrink();
     final acik = kayitlar.where((k) => k.acik).firstOrNull;

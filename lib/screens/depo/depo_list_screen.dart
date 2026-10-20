@@ -20,10 +20,10 @@ class DepoListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final depolarAsync = ref.watch(depolarStreamProvider);
-    final ozetler = ref.watch(depoOzetleriProvider).value ?? {};
-    final malzeme = ref.watch(malzemeStoklariProvider).value ??
+    final ozetler = ref.watch(depoOzetleriProvider).valueOrNull ?? {};
+    final malzeme = ref.watch(malzemeStoklariProvider).valueOrNull ??
         const <String, Map<String, int>>{};
-    final depolar = depolarAsync.value ?? const <Depo>[];
+    final depolar = depolarAsync.valueOrNull ?? const <Depo>[];
     final sabitler = depolar.where((d) => !d.arac).toList();
     final araclar = depolar.where((d) => d.arac).toList();
 

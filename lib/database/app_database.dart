@@ -372,10 +372,23 @@ class KullanimRaporSatiri {
 /// stream'ler bunu dinleyip veriyi yeniden okur.
 class AppDatabase {
   Database? _db;
+  Future<Database>? _acilis;
   final _changes = StreamController<void>.broadcast();
 
-  Future<Database> get _database async {
-    if (_db != null) return _db!;
+  /// Veritabanı bağlantısı. Kapanmışsa (ör. Android'de arka plan görevi
+  /// aynı bağlantıyı kapattıysa) kendiliğinden yeniden açılır.
+  Future<Database> get _database {
+    final db = _db;
+    if (db != null && db.isOpen) return Future.value(db);
+    final yeniden = db != null;
+    return _acilis ??= _ac().then((d) {
+      // Kapanıp yeniden açıldıysa açık ekranlar verilerini tazelesin.
+      if (yeniden) Future.microtask(_notify);
+      return d;
+    }).whenComplete(() => _acilis = null);
+  }
+
+  Future<Database> _ac() async {
     // Web'de dosya sistemi yok; veritabanı adıyla IndexedDB'de tutulur.
     final path = kIsWeb
         ? 'depo_app.sqlite'

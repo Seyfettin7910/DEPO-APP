@@ -15,9 +15,9 @@ class UrunListScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final urunlerAsync = ref.watch(urunlerStreamProvider);
     final toplamlar =
-        ref.watch(urunToplamStoklariProvider).value ?? <String, int>{};
+        ref.watch(urunToplamStoklariProvider).valueOrNull ?? <String, int>{};
     final kritikler = {
-      for (final k in ref.watch(kritikStoklarProvider).value ?? const [])
+      for (final k in ref.watch(kritikStoklarProvider).valueOrNull ?? const [])
         k.urunId: k,
     };
 

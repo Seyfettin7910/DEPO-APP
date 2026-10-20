@@ -196,7 +196,7 @@ class _BildirimAyarlariScreenState
         body: const Center(child: CircularProgressIndicator()),
       );
     }
-    final depolar = ref.watch(depolarStreamProvider).value ?? <Depo>[];
+    final depolar = ref.watch(depolarStreamProvider).valueOrNull ?? <Depo>[];
     final gruplar = <String, List<BildirimTuru>>{};
     for (final t in BildirimTuru.values) {
       gruplar.putIfAbsent(t.grup, () => []).add(t);

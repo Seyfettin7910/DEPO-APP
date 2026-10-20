@@ -94,11 +94,11 @@ class EtiketKarti extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final etiket = ref.watch(cihazEtiketiProvider(bilgi.cihaz.id)).value;
+    final etiket = ref.watch(cihazEtiketiProvider(bilgi.cihaz.id)).valueOrNull;
     final ayar =
-        ref.watch(etiketAyarlariProvider).value ?? const EtiketAyarlari();
+        ref.watch(etiketAyarlariProvider).valueOrNull ?? const EtiketAyarlari();
     final kodlar =
-        ref.watch(kurumKodlariProvider).value ?? const <KurumKodu>[];
+        ref.watch(kurumKodlariProvider).valueOrNull ?? const <KurumKodu>[];
     final aktifCihaz = !bilgi.cihaz.deleted && bilgi.cihaz.durum != CihazDurumu.cikti;
 
     if (etiket == null) {
@@ -120,7 +120,7 @@ class EtiketKarti extends ConsumerWidget {
     }
 
     final gecmis =
-        ref.watch(etiketGecmisiProvider(bilgi.cihaz.id)).value ?? const [];
+        ref.watch(etiketGecmisiProvider(bilgi.cihaz.id)).valueOrNull ?? const [];
     final renk = etiketDurumRengi(etiket.durum);
     final durumMetni = etiket.durum == EtiketDurumu.basildi && !ayar.dogrulama
         ? 'Basıldı'
@@ -260,10 +260,10 @@ class EtiketDugmesi extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final say = ref.watch(etiketSayilariProvider).value ??
+    final say = ref.watch(etiketSayilariProvider).valueOrNull ??
         const <EtiketDurumu, int>{};
     final ayar =
-        ref.watch(etiketAyarlariProvider).value ?? const EtiketAyarlari();
+        ref.watch(etiketAyarlariProvider).valueOrNull ?? const EtiketAyarlari();
     final adet = bilgisayar
         ? (say[EtiketDurumu.kuyrukta] ?? 0)
         : (ayar.dogrulama ? (say[EtiketDurumu.basildi] ?? 0) : 0) +

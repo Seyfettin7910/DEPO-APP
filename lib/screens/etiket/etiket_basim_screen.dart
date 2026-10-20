@@ -158,7 +158,7 @@ class _EtiketBasimScreenState extends ConsumerState<EtiketBasimScreen> {
         );
     if (!mounted) return;
     setState(() => _secili.removeAll(iyi));
-    final dogrulama = ref.read(etiketAyarlariProvider).value?.dogrulama ?? true;
+    final dogrulama = ref.read(etiketAyarlariProvider).valueOrNull?.dogrulama ?? true;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text('${iyi.length} etiket basıldı olarak işaretlendi'
           '${dogrulama ? '. Yapıştırdıktan sonra telefondan "Etiket doğrula" ile doğrulayın.' : ''}'),

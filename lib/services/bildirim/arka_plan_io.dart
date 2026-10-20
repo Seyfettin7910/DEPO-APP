@@ -60,7 +60,9 @@ void arkaPlanGirisi() {
         debugPrint('Arka plan senkronu: $e');
       }
       await BildirimMotoru.calistir(db, benimId: SupabaseService.kullanici?.id);
-      await db.close();
+      // Veritabanı KAPATILMAZ: Android'de uygulamayla aynı bağlantıyı
+      // paylaşır; kapatmak arka planda açık duran uygulamanın bağlantısını
+      // da kapatıyordu ("database_closed" hatası).
     } catch (e) {
       debugPrint('Arka plan görevi hatası: $e');
     }

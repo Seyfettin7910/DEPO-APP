@@ -97,7 +97,7 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen>
   @override
   Taslak? taslakOlustur() {
     if (_seriler.isEmpty) return null;
-    final urun = (ref.read(urunlerStreamProvider).value ?? <Urun>[])
+    final urun = (ref.read(urunlerStreamProvider).valueOrNull ?? <Urun>[])
         .where((u) => u.id == _urunId)
         .firstOrNull;
     return Taslak(
@@ -476,10 +476,10 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen>
   Widget build(BuildContext context) {
     // Seri numarasız malzemeler (kablo, adaptör…) bu ekranda değil,
     // "Malzeme girişi"nden girilir.
-    final urunler = (ref.watch(urunlerStreamProvider).value ?? <Urun>[])
+    final urunler = (ref.watch(urunlerStreamProvider).valueOrNull ?? <Urun>[])
         .where((u) => !u.miktarli)
         .toList();
-    final depolar = ref.watch(depolarStreamProvider).value ?? <Depo>[];
+    final depolar = ref.watch(depolarStreamProvider).valueOrNull ?? <Depo>[];
 
     return yarimIsKapsayici(
         child: Scaffold(
@@ -538,7 +538,7 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen>
                   onTap: _alimDuzenle,
                 ),
                 Builder(builder: (context) {
-                  final kodlar = (ref.watch(kurumKodlariProvider).value ??
+                  final kodlar = (ref.watch(kurumKodlariProvider).valueOrNull ??
                           const <KurumKodu>[])
                       .where((k) => k.aktif)
                       .toList();

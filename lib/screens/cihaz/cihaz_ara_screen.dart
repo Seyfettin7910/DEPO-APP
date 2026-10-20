@@ -177,9 +177,9 @@ class _ModelAdetleri extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final urunler = ref.watch(urunlerStreamProvider).value ?? <Urun>[];
+    final urunler = ref.watch(urunlerStreamProvider).valueOrNull ?? <Urun>[];
     final toplamlar =
-        ref.watch(urunToplamStoklariProvider).value ?? <String, int>{};
+        ref.watch(urunToplamStoklariProvider).valueOrNull ?? <String, int>{};
 
     if (urunler.isEmpty) {
       return const Center(

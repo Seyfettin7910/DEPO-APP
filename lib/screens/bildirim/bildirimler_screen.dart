@@ -90,7 +90,7 @@ class _BildirimlerScreenState extends ConsumerState<BildirimlerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final liste = ref.watch(bildirimListesiProvider).value ?? const [];
+    final liste = ref.watch(bildirimListesiProvider).valueOrNull ?? const [];
     return Scaffold(
       appBar: AppBar(
         title: const Text('Bildirimler'),

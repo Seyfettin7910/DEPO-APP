@@ -12,7 +12,7 @@ class KritikStokSeridi extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final liste = ref.watch(kritikStoklarProvider).value ?? const [];
+    final liste = ref.watch(kritikStoklarProvider).valueOrNull ?? const [];
     if (liste.isEmpty) return const SizedBox.shrink();
 
     final tukenen = liste.where((k) => k.toplam == 0).length;

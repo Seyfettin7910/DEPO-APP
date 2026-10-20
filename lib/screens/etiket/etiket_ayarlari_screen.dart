@@ -91,8 +91,8 @@ class EtiketAyarlariScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final kodlar = ref.watch(kurumKodlariProvider).value ?? const <KurumKodu>[];
-    final ayar = ref.watch(etiketAyarlariProvider).value ?? const EtiketAyarlari();
+    final kodlar = ref.watch(kurumKodlariProvider).valueOrNull ?? const <KurumKodu>[];
+    final ayar = ref.watch(etiketAyarlariProvider).valueOrNull ?? const EtiketAyarlari();
     final db = ref.read(appDatabaseProvider);
 
     return Scaffold(

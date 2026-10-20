@@ -70,7 +70,7 @@ class _SayimScreenState extends ConsumerState<SayimScreen>
     if (_depoId == null || (_okunanlar.isEmpty && _malzemeSayim.isEmpty)) {
       return null;
     }
-    final depo = (ref.read(depolarStreamProvider).value ?? <Depo>[])
+    final depo = (ref.read(depolarStreamProvider).valueOrNull ?? <Depo>[])
         .where((d) => d.id == _depoId)
         .firstOrNull;
     return Taslak(
@@ -312,22 +312,22 @@ class _SayimScreenState extends ConsumerState<SayimScreen>
 
   @override
   Widget build(BuildContext context) {
-    final depolar = ref.watch(depolarStreamProvider).value ?? <Depo>[];
+    final depolar = ref.watch(depolarStreamProvider).valueOrNull ?? <Depo>[];
     final secili = depolar.where((d) => d.id == _depoId).firstOrNull;
     final beklenen = _depoId == null
         ? <CihazBilgi>[]
-        : (ref.watch(depoCihazlariProvider(_depoId!)).value ?? <CihazBilgi>[])
+        : (ref.watch(depoCihazlariProvider(_depoId!)).valueOrNull ?? <CihazBilgi>[])
             // Garanti servisindeki cihaz fiziksel olarak firmadadır.
             .where((c) => c.cihaz.servisDurumu != ServisDurumu.garantide)
             .toList();
 
     final beklenenSeriler = {for (final c in beklenen) c.cihaz.seriNo};
-    final malzemeStok = ref.watch(malzemeStoklariProvider).value ??
+    final malzemeStok = ref.watch(malzemeStoklariProvider).valueOrNull ??
         const <String, Map<String, int>>{};
     final malzemeler = _depoId == null
         ? <(Urun, int)>[]
         : [
-            for (final u in ref.watch(urunlerStreamProvider).value ?? <Urun>[])
+            for (final u in ref.watch(urunlerStreamProvider).valueOrNull ?? <Urun>[])
               if (u.miktarli &&
                   ((malzemeStok[u.id]?[_depoId] ?? 0) != 0 ||
                       _malzemeSayim.containsKey(u.id)))

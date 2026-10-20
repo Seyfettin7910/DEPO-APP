@@ -87,10 +87,10 @@ class CihazDetayScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Cihaz'),
         actions: [
-          if (bilgiAsync.value != null && !bilgiAsync.value!.cihaz.deleted)
+          if (bilgiAsync.valueOrNull != null && !bilgiAsync.valueOrNull!.cihaz.deleted)
             PopupMenuButton<String>(
               onSelected: (v) async {
-                final b = bilgiAsync.value!;
+                final b = bilgiAsync.valueOrNull!;
                 if (v == 'sil') {
                   final silindi = await cihazSilAkisi(context, ref, b);
                   if (silindi && context.mounted) Navigator.of(context).pop();
@@ -101,8 +101,8 @@ class CihazDetayScreen extends ConsumerWidget {
                 }
               },
               itemBuilder: (_) => [
-                if (bilgiAsync.value!.cihaz.durum == CihazDurumu.depoda &&
-                    !bilgiAsync.value!.cihaz.arizali) ...[
+                if (bilgiAsync.valueOrNull!.cihaz.durum == CihazDurumu.depoda &&
+                    !bilgiAsync.valueOrNull!.cihaz.arizali) ...[
                   const PopupMenuItem(
                     value: 'ariza',
                     child: ListTile(
@@ -176,7 +176,7 @@ class CihazDetayScreen extends ConsumerWidget {
                       ),
                       if (durum == CihazDurumu.kullanimda)
                         Builder(builder: (context) {
-                          final gecmis = gecmisAsync.value ?? const [];
+                          final gecmis = gecmisAsync.valueOrNull ?? const [];
                           final k = gecmis
                               .where((h) =>
                                   h.tip == HareketTipi.kullanim &&
@@ -449,7 +449,7 @@ class CihazDetayScreen extends ConsumerWidget {
       CihazBilgi bilgi, HareketTipi tip) async {
     final kullanim = tip == HareketTipi.kullanim;
     final iade = tip == HareketTipi.iade;
-    final hedefler = (ref.read(depolarStreamProvider).value ?? <Depo>[])
+    final hedefler = (ref.read(depolarStreamProvider).valueOrNull ?? <Depo>[])
         .where((d) => d.id != bilgi.cihaz.depoId)
         .toList();
     if (kullanim) {
@@ -469,7 +469,7 @@ class CihazDetayScreen extends ConsumerWidget {
     if (iade) {
       // Varsayılan: cihazın bu araca geldiği depo (geçmişteki kaynak).
       final gecmis =
-          ref.read(cihazGecmisiProvider(bilgi.cihaz.id)).value ?? const [];
+          ref.read(cihazGecmisiProvider(bilgi.cihaz.id)).valueOrNull ?? const [];
       for (final h in gecmis) {
         if (h.hedefDepoId == bilgi.cihaz.depoId &&
             h.depoId != null &&
@@ -1109,7 +1109,7 @@ class CihazDetayScreen extends ConsumerWidget {
   /// "Ömrünü doldurdu" seçilirse cihaz alınıp hurdaya ayrılır.
   Future<void> _iade(
       BuildContext context, WidgetRef ref, CihazBilgi bilgi) async {
-    final depolar = ref.read(depolarStreamProvider).value ?? <Depo>[];
+    final depolar = ref.read(depolarStreamProvider).valueOrNull ?? <Depo>[];
     if (depolar.isEmpty) {
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('Önce depo ekleyin')));
@@ -1321,7 +1321,7 @@ class _TutanakKarti extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final t = ref.watch(cihazTutanagiProvider(cihazId)).value;
+    final t = ref.watch(cihazTutanagiProvider(cihazId)).valueOrNull;
     if (t == null) return const SizedBox.shrink();
     final renk = switch (t.durum) {
       'alindi' => Colors.green.shade700,

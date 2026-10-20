@@ -23,9 +23,9 @@ class EtiketlerScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final say =
-        ref.watch(etiketSayilariProvider).value ?? const <EtiketDurumu, int>{};
-    final ayar = ref.watch(etiketAyarlariProvider).value ?? const EtiketAyarlari();
-    final kodlar = ref.watch(kurumKodlariProvider).value ?? const <KurumKodu>[];
+        ref.watch(etiketSayilariProvider).valueOrNull ?? const <EtiketDurumu, int>{};
+    final ayar = ref.watch(etiketAyarlariProvider).valueOrNull ?? const EtiketAyarlari();
+    final kodlar = ref.watch(kurumKodlariProvider).valueOrNull ?? const <KurumKodu>[];
     int n(EtiketDurumu d) => say[d] ?? 0;
 
     Widget adet(int x, Color renk) => x == 0
@@ -155,7 +155,7 @@ class _EtiketListeScreenState extends ConsumerState<EtiketListeScreen> {
   @override
   Widget build(BuildContext context) {
     final liste =
-        ref.watch(etiketListesiProvider(widget.durum)).value ?? const <EtiketBilgi>[];
+        ref.watch(etiketListesiProvider(widget.durum)).valueOrNull ?? const <EtiketBilgi>[];
     _secili.removeWhere((id) => !liste.any((e) => e.id == id));
     return Scaffold(
       appBar: AppBar(
@@ -284,7 +284,7 @@ class _EtiketsizCihazlarScreenState
   @override
   Widget build(BuildContext context) {
     final liste =
-        ref.watch(etiketsizCihazlarProvider).value ?? const <CihazBilgi>[];
+        ref.watch(etiketsizCihazlarProvider).valueOrNull ?? const <CihazBilgi>[];
     _secili.removeWhere((id) => !liste.any((c) => c.cihaz.id == id));
     final gruplar = <String, List<CihazBilgi>>{};
     for (final c in liste) {

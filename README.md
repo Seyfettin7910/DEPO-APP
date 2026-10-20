@@ -5,6 +5,11 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.24.3 – "database_closed" düzeltmesi
+- Android arka plan görevi (senkron + bildirim) iş bitince veritabanını kapatıyordu; sqflite aynı dosya için uygulamayla aynı yerel bağlantıyı paylaştığından arka planda açık duran uygulamanın bağlantısı da kapanıyor, dönünce "DatabaseException(database_closed)" ekran hatası çıkıyordu. Görev artık kapatmıyor.
+- `AppDatabase` bağlantı kapanmışsa kendiliğinden yeniden açar (eşzamanlı açılışlar tek seferde) ve açık ekranları tazeler.
+- Ekranlarda `AsyncValue.value` yerine `valueOrNull`: veri akışı hata verirse ekran tamamen bozulmaz.
+
 ## 1.24.2 – Otomatik kurulum onayı ve hızlı yeni sürüm bildirimi
 - Kurulum onayı (Android): sistemin onay ekranı artık uygulamanın ön plandaki ekranından açılıyor (Xiaomi / HyperOS arka plandan açılan ekranı engelliyordu; 1.23.0→1.24.0 ve 1.24.0→1.24.1 geçişlerinde pencere "Tekrar dene"ye düşüyordu). Uygulama arka plandaysa "Güncellemeyi onaylayın" bildirimi. Onay ekranı 3 sn içinde öne gelmezse pencerede "Onay ekranını aç" ve Xiaomi'de "İzni aç" (Diğer izinler ekranı; dönünce kurulum kendiliğinden yeniden denenir). Kurulum sonucu (onay_bekleniyor, iptal, yer yok, bozuk, uyumsuz, çakışma, engellendi) PackageInstaller'dan anında pencereye gelir; 20 sn bekleme kalktı. Normal güncellemede takılınca "Ertele" görünür.
 - Yeni sürüm bildirimi: Android arka plan görevi her çalışmada (en fazla 10 dk'da bir) yalnızca version.json'a bakar (GitHub API'ye sormaz). Sunucudaki bildirim fonksiyonu (2 dk'da bir) version.json değişince web / iPhone abonelerine "Yeni sürüm var" gönderir (`push_ayar.son_surum`). Bildirim ayarlarında "Yeni sürüm · her zaman açık" web'de de görünür.

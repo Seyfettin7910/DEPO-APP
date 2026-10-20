@@ -36,6 +36,21 @@ class NotMaddesi {
 
 const surumNotlari = <SurumNotu>[
   SurumNotu(
+    surum: '1.24.3',
+    tarih: '20.10.2026',
+    bolumler: [
+      NotBolumu('Düzeltilen', [
+        NotMaddesi(
+          'Veritabanı hatası',
+          'Uygulamaya dönünce çıkan "database_closed" ekran hatası giderildi.',
+          'Arka plandaki bildirim kontrolü veritabanını kapatıyordu; artık '
+              'kapatmıyor. Bir şekilde kapanırsa uygulama kendiliğinden '
+              'yeniden açar. Ekranlar bir hata olursa tamamen bozulmaz.',
+        ),
+      ]),
+    ],
+  ),
+  SurumNotu(
     surum: '1.24.2',
     tarih: '20.10.2026',
     bolumler: [

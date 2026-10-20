@@ -10,7 +10,7 @@ class BildirimDugmesi extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final sayi = ref.watch(okunmamisBildirimProvider).value ?? 0;
+    final sayi = ref.watch(okunmamisBildirimProvider).valueOrNull ?? 0;
     return IconButton(
       tooltip: 'Bildirimler',
       icon: Badge(

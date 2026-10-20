@@ -151,14 +151,14 @@ class _StokListesi extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final sayilarAsync = ref.watch(depoUrunSayilariProvider(depoId));
-    final malzemeStok = ref.watch(malzemeStoklariProvider).value ??
+    final malzemeStok = ref.watch(malzemeStoklariProvider).valueOrNull ??
         const <String, Map<String, int>>{};
-    final arizali = (ref.watch(depoCihazlariProvider(depoId)).value ?? const [])
+    final arizali = (ref.watch(depoCihazlariProvider(depoId)).valueOrNull ?? const [])
         .where((b) => b.cihaz.arizali)
         .length;
     final urunlerAsync = ref.watch(urunlerStreamProvider);
     final kritikler = {
-      for (final k in ref.watch(kritikStoklarProvider).value ?? const [])
+      for (final k in ref.watch(kritikStoklarProvider).valueOrNull ?? const [])
         k.urunId: k,
     };
 
@@ -167,7 +167,7 @@ class _StokListesi extends ConsumerWidget {
       error: (e, _) => Center(child: Text('Hata: $e')),
       data: (sayilar) {
         final urunlerMap = <String, Urun>{
-          for (final u in urunlerAsync.value ?? <Urun>[]) u.id: u,
+          for (final u in urunlerAsync.valueOrNull ?? <Urun>[]) u.id: u,
         };
         final girdiler = sayilar.entries.where((e) => e.value > 0).toList()
           ..sort((a, b) {

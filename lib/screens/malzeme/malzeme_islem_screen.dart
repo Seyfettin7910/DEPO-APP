@@ -132,7 +132,7 @@ class _MalzemeIslemScreenState extends ConsumerState<MalzemeIslemScreen>
           : null;
 
   void _ekle(Urun u, {int adet = 1}) {
-    final stok = ref.read(malzemeStoklariProvider).value ?? const {};
+    final stok = ref.read(malzemeStoklariProvider).valueOrNull ?? const {};
     final mevcut = _mevcut(stok, u.id);
     final yeni = (_satirlar[u.id] ?? 0) + adet;
     if (mevcut != null && yeni > mevcut) {
@@ -364,9 +364,9 @@ class _MalzemeIslemScreenState extends ConsumerState<MalzemeIslemScreen>
 
   @override
   Widget build(BuildContext context) {
-    final depolar = ref.watch(depolarStreamProvider).value ?? <Depo>[];
-    final urunler = ref.watch(urunlerStreamProvider).value ?? <Urun>[];
-    final stok = ref.watch(malzemeStoklariProvider).value ??
+    final depolar = ref.watch(depolarStreamProvider).valueOrNull ?? <Depo>[];
+    final urunler = ref.watch(urunlerStreamProvider).valueOrNull ?? <Urun>[];
+    final stok = ref.watch(malzemeStoklariProvider).valueOrNull ??
         const <String, Map<String, int>>{};
     final malzemeler = urunler.where((u) => u.miktarli).toList();
     final urunMap = {for (final u in urunler) u.id: u};

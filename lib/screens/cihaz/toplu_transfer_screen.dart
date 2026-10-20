@@ -93,7 +93,7 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen>
   @override
   Taslak? taslakOlustur() {
     if (_liste.isEmpty && _bekleyen.isEmpty) return null;
-    final hedef = (ref.read(depolarStreamProvider).value ?? <Depo>[])
+    final hedef = (ref.read(depolarStreamProvider).valueOrNull ?? <Depo>[])
         .where((d) => d.id == _hedefId)
         .firstOrNull;
     return Taslak(
@@ -349,7 +349,7 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen>
         _mesaj(h, hata: true);
         return;
       }
-      final hedefArac = (ref.read(depolarStreamProvider).value ?? <Depo>[])
+      final hedefArac = (ref.read(depolarStreamProvider).valueOrNull ?? <Depo>[])
           .any((d) => d.id == _hedefId && d.arac);
       if (_sebep == 'Arıza' && hedefArac) {
         _mesaj('Arızalı cihazlar bir depoya iade edilmeli', hata: true);
@@ -388,7 +388,7 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen>
 
   @override
   Widget build(BuildContext context) {
-    final tumu = ref.watch(depolarStreamProvider).value ?? <Depo>[];
+    final tumu = ref.watch(depolarStreamProvider).valueOrNull ?? <Depo>[];
     final hedefler = [...tumu];
     if (_kullanim) {
       hedefler.sort((a, b) => (a.arac ? 0 : 1).compareTo(b.arac ? 0 : 1));
