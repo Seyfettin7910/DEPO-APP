@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../services/guncelleme_servisi.dart';
 import '../../services/oturum_kilidi.dart';
 import '../../services/supabase_service.dart';
+import '../../services/tarayici.dart';
 import '../../services/giris_kaydi_servisi.dart';
 
 /// E-posta + şifre ile giriş. Kullanıcılar Supabase panelinden
@@ -199,7 +200,7 @@ class _GirisScreenState extends State<GirisScreen> {
                     style: const TextStyle(fontSize: 12),
                   ),
                   // Web'den (iPhone hariç) Android uygulamasını indirme linki.
-                  if (kIsWeb && defaultTargetPlatform != TargetPlatform.iOS) ...[
+                  if (kIsWeb && !iosTarayici()) ...[
                     const SizedBox(height: 12),
                     Center(
                       child: TextButton.icon(

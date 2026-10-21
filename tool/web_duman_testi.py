@@ -34,6 +34,10 @@ def ac(tarayici, ad, ua=None, mobil=False):
         user_agent=ua,
         viewport={"width": 390, "height": 844} if mobil else {"width": 1280, "height": 900},
         is_mobile=mobil, has_touch=mobil, locale="tr-TR")
+    if ua and "iPhone" in ua:
+        # Gerçek iPhone'daki gibi navigator.platform da "iPhone" olsun.
+        ctx.add_init_script(
+            "Object.defineProperty(navigator, 'platform', {get: () => 'iPhone'});")
     sayfa = ctx.new_page()
     konsol = []
     sayfa.on("pageerror", lambda e: konsol.append(str(e)))

@@ -28,6 +28,11 @@
     window.addEventListener('flutter-first-frame', function () {
       var el = document.getElementById('yukleniyor');
       if (el) el.remove();
+      // Flutter viewport'u büyütmeye izin verecek şekilde değiştiriyor;
+      // iPhone yazı alanına dokununca sayfayı kendiliğinden büyütmesin.
+      var vp = document.querySelector('meta[name=viewport]');
+      if (vp) vp.setAttribute('content',
+        'width=device-width, initial-scale=1.0, maximum-scale=1.0');
     });
   </script>
   <script src="push.js"></script>
