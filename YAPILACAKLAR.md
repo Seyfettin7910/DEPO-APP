@@ -6,7 +6,7 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 - [x] **Supabase SQL:** `supabase_guncelleme_1_27_0.sql` çalıştırıldı.
 - [x] **Supabase SQL:** `supabase_guncelleme_1_29_0.sql` (anlık senkron) çalıştırıldı (12 tablo).
 - [x] **Supabase SQL:** `supabase_guncelleme_1_29_1.sql` (eski yazılar büyük harf) 21.10.2026'da, telefonlar 1.29.1'e geçmeden çalıştırıldı.
-- [ ] Aynı SQL **bir kez daha**: bütün telefonlar 1.29.1'e geçip hepsinde "bekleyen yok" görününce (eski sürümle küçük harf yazılanlar için).
+- [ ] Aynı SQL **bir kez daha**: Seyfettin'in ve kardeşinin telefonu 1.29.1'e geçip ikisinde de "bekleyen yok" görününce (eski sürümle küçük harf yazılanlar için). Arkadaşlar ara ara deneme yapıyor (giriş kayıtlarında görünür); eski sürümle küçük harf yazarlarsa SQL tekrar çalıştırılır, zararsız.
 - [ ] 1.26.0: Okut arka arkaya okutma (2 kayıtsız), hızlı işlemler, koli, 100/100, toplu montaj + Kaydet anındaki konum, Sonraki nokta, transfer "Arızalı", varsayılan giriş deposu, karışık model, depo ekranında Sayım.
 - [ ] 1.26.1: iPhone Safari (Ana Ekrana Ekle rehberi, Safari dışı uyarı, ses, görsel onay), giriş kayıtlarında tarayıcı.
 - [ ] 1.27.0: malzeme barkodu (kutu içeriği), 🔗+ malzeme ekle / yeni tanımla, giriş / transfer / montajda birlikte kayıt.
@@ -49,6 +49,7 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
   - Şehir / ilçe merkezindeki belediye tesislerinde sorun çıkarmaması için ayrıca düşünülecek.
 - [ ] **iPhone (Safari) kamerası:** netleme ve çözünürlük Safari'nin elinde (dokununca netleme orada çalışmaz); iPhone denemesinde okuma yavaş / zor olursa ya da dönüşte kamera açılmazsa bakılacak. Android'de hepsi yapıldı: yüksek çözünürlük, dokununca + 4 sn'de bir netleme, dönüşte yeniden açılma (1.21.0), hızlı okuma 120 ms + okuma sayısıyla onay (1.24.1), 2x sabit (1.27.2).
 - Not: **test** ve **Mustafa** kullanıcılarının eklediği her şey deneme verisidir (iPhone denemesi dahil).
+- Not: Şu an kullanan telefonlar: Seyfettin'in ve kardeşinin telefonu; başka kullanıcı yok. Arkadaşlar ara ara deneme yapıyor.
 
 ## Excel dökümü gelince (ayrı paket)
 - [ ] **Excel'den aktarım** (Kamera biriminin demirbaş dökümü): döküm gelince sütun eşleştirmesi, seri nosu boş satırlar, konum (depo / montajlı), demirbaş sicil no kurum kodu olsun mu kararları.
