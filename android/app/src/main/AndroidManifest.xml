@@ -7,8 +7,6 @@
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <!-- Uygulama içi güncelleme: indirilen yeni sürümü kurabilmek için -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
-    <!-- Android 12+: kendi güncellemesini onay sormadan kurabilsin -->
-    <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
     <!-- Sahada kullanım / montaj anındaki konum (yalnızca o an, bir kez) -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
@@ -46,6 +44,12 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- İndirilen APK'yı telefonun yükleyicisine verir (MainActivity.kt) -->
+        <provider
+            android:name=".ApkSaglayici"
+            android:authorities="${applicationId}.apk"
+            android:exported="false"
+            android:grantUriPermissions="true" />
         <!-- Güncelleme kurulum sonucunu alır (MainActivity.kt) -->
         <receiver
             android:name=".KurulumAlici"

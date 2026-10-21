@@ -36,6 +36,22 @@ class NotMaddesi {
 
 const surumNotlari = <SurumNotu>[
   SurumNotu(
+    surum: '1.27.1',
+    tarih: '21.10.2026',
+    bolumler: [
+      NotBolumu('Düzeltilen', [
+        NotMaddesi(
+          'Güncelleme kurulumu',
+          'Artık telefonun kendi yükleme ekranı açılır; "Güncelle"ye bir kez '
+              'dokunmanız yeterli.',
+          'Sessiz kurulum Xiaomi / Redmi telefonlarda izinlere takıldığı '
+              'için kaldırıldı. İlk seferde telefon "bu kaynaktan izin ver" '
+              'diye sorabilir.',
+        ),
+      ]),
+    ],
+  ),
+  SurumNotu(
     surum: '1.27.0',
     tarih: '21.10.2026',
     bolumler: [

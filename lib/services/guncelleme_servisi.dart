@@ -490,8 +490,6 @@ class _GuncellemePenceresiState extends State<_GuncellemePenceresi>
   bool _onayBekliyor = false;
   bool _onayAcildi = false; // onay ekranı açıldı (uygulama arka plana geçti)
   bool _onayAcilmadi = false; // açılamadı: düğmeler gösterilir
-  bool _izinEkranindan = false;
-  bool _xiaomi = false;
   Timer? _onayZamanlayici;
 
   bool get _android =>
@@ -503,7 +501,6 @@ class _GuncellemePenceresiState extends State<_GuncellemePenceresi>
     WidgetsBinding.instance.addObserver(this);
     if (_android) {
       _olayAboneligi = apk.kurulumOlaylari.listen(_kurulumOlayi);
-      apk.xiaomiMi().then((v) => _xiaomi = v);
     }
     if (widget.hemenKur) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _guncelle());
@@ -529,16 +526,21 @@ class _GuncellemePenceresiState extends State<_GuncellemePenceresi>
       return;
     }
     if (state != AppLifecycleState.resumed) return;
+    // Yükleyici açılmıştı ve uygulamaya geri dönüldü: kurulum yapılmadı
+    // (vazgeçildi ya da yükleyici izin istedi). Kurulsaydı uygulama kapanırdı.
+    if (_asama == _Asama.kuruluyor && _onayBekliyor && _onayAcildi) {
+      _onayZamanlayici?.cancel();
+      setState(() {
+        _onayBekliyor = false;
+        _uzunSurdu = true;
+      });
+      return;
+    }
     // Kurulum izni ekranından dönüldü: izin verildiyse hemen kur.
     if (_asama == _Asama.izin) {
       apk.kurulumIzniVar().then((izinVar) {
         if (izinVar && mounted) _kur();
       });
-    }
-    // Xiaomi izin ekranından dönüldü: kurulumu yeniden dene.
-    if (_izinEkranindan) {
-      _izinEkranindan = false;
-      _kur();
     }
   }
 
@@ -624,10 +626,8 @@ class _GuncellemePenceresiState extends State<_GuncellemePenceresi>
       return;
     }
     try {
-      if (!await apk.kurulumIzniVar()) {
-        if (mounted) setState(() => _asama = _Asama.izin);
-        return;
-      }
+      // Telefonun kendi yükleyicisi açılır; "bilinmeyen kaynak" izni
+      // gerekirse onu yükleyici kendisi sorar.
       await TaslakServisi.bekleyenleriYaz();
       if (!mounted) return;
       setState(() {
@@ -653,30 +653,6 @@ class _GuncellemePenceresiState extends State<_GuncellemePenceresi>
         });
       }
     }
-  }
-
-  Future<void> _onayEkraniniAc() async {
-    final acildi = await apk.onayEkraniniAc();
-    if (!mounted) return;
-    if (!acildi) {
-      await _kur(); // onay süresi dolmuş olabilir: yeniden başlat
-      return;
-    }
-    setState(() {
-      _onayAcildi = false;
-      _onayAcilmadi = false;
-    });
-    _onayZamanlayici?.cancel();
-    _onayZamanlayici = Timer(const Duration(seconds: 3), () {
-      if (mounted && _onayBekliyor && !_onayAcildi) {
-        setState(() => _onayAcilmadi = true);
-      }
-    });
-  }
-
-  Future<void> _izniAc() async {
-    _izinEkranindan = true;
-    await apk.izinEkraniniAc();
   }
 
   String get _boyutMetni => widget.boyut == null
@@ -743,13 +719,8 @@ class _GuncellemePenceresiState extends State<_GuncellemePenceresi>
             'geri dönün; kurulum kendiliğinden başlar.');
       case _Asama.kuruluyor:
         if (_onayAcilmadi) {
-          return Text(
-            'Kurulum onay ekranı açılamadı.\n\n'
-            '"Onay ekranını aç"a dokunun; açılan ekranda "Güncelle"yi '
-            'seçin.'
-            '${_xiaomi ? '\n\nAçılmazsa "İzni aç" ile "Arka planda '
-                'çalışırken açılır pencereleri görüntüle" iznini verip '
-                'geri dönün; kurulum kendiliğinden yeniden denenir.' : ''}',
+          return const Text(
+            'Yükleme ekranı açılamadı. "Tekrar dene"ye dokunun.',
             textAlign: TextAlign.center,
           );
         }
@@ -760,7 +731,9 @@ class _GuncellemePenceresiState extends State<_GuncellemePenceresi>
             const SizedBox(height: 12),
             Text(
               _uzunSurdu
-                  ? 'Kurulumdan yanıt gelmedi. Tekrar deneyin.'
+                  ? 'Kurulum tamamlanmadı. "Tekrar dene" ile yükleme ekranı '
+                      'yeniden açılır; orada "Güncelle"ye dokunun. İzin '
+                      'sorulursa "Bu kaynaktan izin ver"i açıp geri dönün.'
                   : _onayBekliyor
                       ? 'Açılan ekranda "Güncelle"ye dokunun.'
                       : 'Kuruluyor... Uygulama birazdan kapanır. Yeni sürümü '
@@ -802,15 +775,7 @@ class _GuncellemePenceresiState extends State<_GuncellemePenceresi>
             child: const Text('İzin ver'),
           ),
         ],
-      _Asama.kuruluyor => _onayAcilmadi
-          ? [
-              if (_xiaomi)
-                TextButton(onPressed: _izniAc, child: const Text('İzni aç')),
-              FilledButton(
-                  onPressed: _onayEkraniniAc,
-                  child: const Text('Onay ekranını aç')),
-            ]
-          : _uzunSurdu
+      _Asama.kuruluyor => _onayAcilmadi || _uzunSurdu
               ? [
                   FilledButton(
                       onPressed: _kur, child: const Text('Tekrar dene')),

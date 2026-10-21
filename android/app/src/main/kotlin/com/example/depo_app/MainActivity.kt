@@ -6,26 +6,31 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
+import android.content.ContentProvider
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInstaller
+import android.database.Cursor
+import android.database.MatrixCursor
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.os.Handler
 import android.os.Looper
+import android.os.ParcelFileDescriptor
+import android.provider.OpenableColumns
 import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
+import java.io.FileNotFoundException
 
 /**
- * Uygulama içi güncelleme: indirilen APK, Android'in PackageInstaller
- * servisiyle kurulur. Android 12+ cihazlarda, uygulama kendini bir kez
- * güncelledikten sonra sonraki güncellemeler (üreticinin izin verdiği
- * telefonlarda) kullanıcıya sormadan kurulabilir.
+ * Uygulama içi güncelleme: indirilen APK telefonun kendi yükleyicisiyle
+ * açılır (Güncelle'ye bir kez dokunulur).
  *
  * İndirme, Android'in kendi indirme yöneticisiyle (DownloadManager) yapılır:
  * uygulama arka plana düşse, hatta kapatılsa da indirme sürer; bildirim
@@ -277,33 +282,71 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    /**
+     * İndirilen APK'yı telefonun KENDİ yükleyicisiyle açar ("Bu uygulamayı
+     * güncellemek istiyor musunuz? → Güncelle"). Sessiz kurulum (1.23.0–1.27.0)
+     * Xiaomi / HyperOS'ta ek izinlere takıldığı için kaldırıldı; yükleyici
+     * gerekirse "bilinmeyen kaynak" iznini kendisi sorar.
+     */
     private fun apkKur(yol: String) {
-        val kurucu = packageManager.packageInstaller
-        val parametre = PackageInstaller.SessionParams(
-            PackageInstaller.SessionParams.MODE_FULL_INSTALL
-        )
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            parametre.setRequireUserAction(
-                PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED
-            )
+        val dosya = File(yol)
+        if (!dosya.exists()) throw IllegalStateException("APK bulunamadı")
+        val adres = Uri.parse("content://$packageName.apk/${Uri.encode(dosya.name)}")
+        val niyet = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(adres, "application/vnd.android.package-archive")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-        val oturumId = kurucu.createSession(parametre)
-        kurucu.openSession(oturumId).use { oturum ->
-            File(yol).inputStream().use { giris ->
-                oturum.openWrite("Depo-Otomasyon-Sistemi.apk", 0, -1).use { cikis ->
-                    giris.copyTo(cikis)
-                    oturum.fsync(cikis)
-                }
-            }
-            val niyet = Intent(this, KurulumAlici::class.java)
-            var bayrak = PendingIntent.FLAG_UPDATE_CURRENT
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                bayrak = bayrak or PendingIntent.FLAG_MUTABLE
-            }
-            val bekleyen = PendingIntent.getBroadcast(this, oturumId, niyet, bayrak)
-            oturum.commit(bekleyen.intentSender)
-        }
+        startActivity(niyet)
+        kurulumDurumu("onay_bekleniyor", null)
     }
+}
+
+/**
+ * İndirilen APK'yı yükleyiciye okutur (content://<paket>.apk/<dosya adı>).
+ * Yalnızca uygulamanın indirme klasöründeki dosyalar verilir.
+ */
+class ApkSaglayici : ContentProvider() {
+    override fun onCreate() = true
+
+    private fun dosya(uri: Uri): File? {
+        val klasor = context?.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+            ?: return null
+        val ad = uri.lastPathSegment ?: return null
+        val f = File(klasor, ad)
+        return if (f.canonicalPath.startsWith(klasor.canonicalPath) && f.exists()) f else null
+    }
+
+    override fun openFile(uri: Uri, mode: String): ParcelFileDescriptor? {
+        val f = dosya(uri) ?: throw FileNotFoundException(uri.toString())
+        return ParcelFileDescriptor.open(f, ParcelFileDescriptor.MODE_READ_ONLY)
+    }
+
+    override fun getType(uri: Uri) = "application/vnd.android.package-archive"
+
+    override fun query(
+        uri: Uri, projection: Array<out String>?, selection: String?,
+        selectionArgs: Array<out String>?, sortOrder: String?
+    ): Cursor? {
+        val f = dosya(uri) ?: return null
+        val kolonlar = projection ?: arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE)
+        val c = MatrixCursor(kolonlar)
+        c.addRow(kolonlar.map {
+            when (it) {
+                OpenableColumns.DISPLAY_NAME -> f.name
+                OpenableColumns.SIZE -> f.length()
+                else -> null
+            }
+        })
+        return c
+    }
+
+    override fun insert(uri: Uri, values: ContentValues?): Uri? = null
+    override fun delete(uri: Uri, selection: String?, selectionArgs: Array<out String>?) = 0
+    override fun update(
+        uri: Uri, values: ContentValues?, selection: String?,
+        selectionArgs: Array<out String>?
+    ) = 0
 }
 
 /** Kurulum sonucu: kullanıcı onayı gerekiyorsa sistemin onay ekranını açar. */

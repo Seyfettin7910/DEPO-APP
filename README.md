@@ -5,6 +5,9 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.27.1 – Güncelleme telefonun kendi yükleyicisiyle
+- Sessiz kurulum (PackageInstaller oturumu, USER_ACTION_NOT_REQUIRED) kaldırıldı: Xiaomi / HyperOS'ta izinlere takılıyordu. İndirilen APK `ApkSaglayici` (content://<paket>.apk/…) ile `ACTION_VIEW` olarak telefonun yükleyicisine verilir; "bilinmeyen kaynak" iznini yükleyici kendisi sorar. Yükleyiciden kurulmadan dönülürse pencerede "Tekrar dene". `UPDATE_PACKAGES_WITHOUT_USER_ACTION` izni kaldırıldı.
+
 ## 1.27.0 – Malzemeler Okut'ta (barkod, kutu içeriği)
 - **Supabase SQL:** `supabase_guncelleme_1_27_0.sql` (urunler.kutu_icerigi). Çalıştırılana kadar senkron bu sütunu atlar (`_yeniKolonlar` / `_eksikKolonlar`), uzaktan gelen satırda olmayan sütun yereldekini silmez.
 - Yerel veritabanı v13: `urunler.kutu_icerigi`; `Urun.okutmaMiktari`, `kutuluMetin`.
