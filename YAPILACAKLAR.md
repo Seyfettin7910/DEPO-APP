@@ -14,6 +14,13 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 - [ ] 1.29.1: bütün alanlar büyük harf (Türkçe İ / I; seri no, plaka Latin), klavye büyük harfle açılıyor mu, eski kayıtlar çevrildi mi.
 - [ ] 1.29.0: kamera 15 sn'de yavaşlama / 30 sn'de durma + dokununca açılma, fener sönmesi; iki telefonla (biri uçak modunda) senkron denemesi; Android'de S/N yazıdan okuma (gerçek etiketlerle), iPhone'da kamera durup açılınca izin tekrar soruluyor mu.
 
+## Sıradaki: 1.29.2 – Kamera ekranı düzeni ("yap" bekliyor)
+Bütün kamera ekranlarında (Okut, toplu giriş / transfer, montaj, sayım…). Sorun: Karekod modunda pembe "Yazı da okunuyor" şeridi sağ üstteki Karekod düğmesinin altında kalıyor; alttaki uzun yazı çerçeveye biniyor, 1x · 2x · 3x seçici de yazıyı örtüyor.
+- [ ] **Barkod / Karekod düğmesi kaldırılır.** Geçiş yalnız yana kaydırarak (iki modda da her kod okunur; fark yalnız çerçeve şekli).
+- [ ] **Üst kısım, yukarıdan aşağıya:** sayaç (100/100, varsa) → kaydırma ipucu (düz yazı: barkod modunda "Karekod için yana kaydırın", karekod modunda "Barkod için yana kaydırın") → pembe şerit (yalnız yazıdan okuma devredeyken) → çerçeve. Hiçbiri çerçevenin içine taşmaz.
+- [ ] **Karekod çerçevesi** üstteki yazılara ve alttaki yazı + seçiciye yer kalacak kadar küçülür (barkod şeridi aynı).
+- [ ] **Alt yazı** kısalır, tek satır: "Kodu çerçeveye alın · 15-25 cm uzakta"; çerçeve ile seçici arasına sığmıyorsa hiç gösterilmez.
+
 ## Sonraya
 - [ ] **"Nerede kullanıldı?"nın konumdan otomatik dolması – Google'dan çekme ERTELENDİ** (Google hesabı 1.500 TL ön ödeme istiyor; Geocoding anahtarı / günlük kota 250 hazır bekliyor). Kararlar:
   - Önce eski montajlardan öğrenme: yeni konumun **en fazla 15 m** yakınında daha önce yazılmış ad varsa o gelir; konum hassasiyeti **±15 m'den kötüyse** eski ad önerilmez.
