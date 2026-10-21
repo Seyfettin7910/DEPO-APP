@@ -3,6 +3,9 @@ import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:share_plus/share_plus.dart';
+import 'tarayici.dart';
 
 import 'rapor/rapor_modeli.dart';
 
@@ -60,6 +63,16 @@ class PdfReportService {
     final bytes = await doc.save();
     final ad =
         '${rapor.dosyaOn}_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.pdf';
+    // iPhone'da (Safari) yazdırma penceresi yerine Paylaş menüsü:
+    // WhatsApp, e-posta, Dosyalar'a kaydet…
+    if (kIsWeb && iosTarayici()) {
+      await Share.shareXFiles(
+        [XFile.fromData(bytes, name: ad, mimeType: 'application/pdf')],
+        fileNameOverrides: [ad],
+        subject: rapor.baslik,
+      );
+      return;
+    }
     await Printing.layoutPdf(
       onLayout: (_) async => bytes,
       name: ad,

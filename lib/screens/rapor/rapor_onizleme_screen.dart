@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../services/excel_rapor_service.dart';
 import '../../services/pdf_report_service.dart';
 import '../../services/rapor/rapor_modeli.dart';
+import '../../services/tarayici.dart';
 
 /// Bir raporu uygulama içinde gösterir; üstteki düğmelerle aynı raporu
 /// PDF veya Excel olarak dışa aktarır (ikisi de aynı başlıklarla).
@@ -18,6 +20,9 @@ class RaporOnizlemeScreen extends StatefulWidget {
 
 class _RaporOnizlemeScreenState extends State<RaporOnizlemeScreen> {
   bool _calisiyor = false;
+
+  /// iPhone'da (Safari) dosya indirilmez, Paylaş menüsü açılır.
+  bool get _iphone => kIsWeb && iosTarayici();
 
   /// Önizlemede bölüm başına gösterilen en fazla satır (tamamı dosyada).
   static const _onizlemeSiniri = 200;
@@ -48,29 +53,55 @@ class _RaporOnizlemeScreenState extends State<RaporOnizlemeScreen> {
     final tema = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text(r.baslik, overflow: TextOverflow.ellipsis),
-        actions: [
-          if (_calisiyor)
-            const Padding(
-              padding: EdgeInsets.all(14),
-              child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2)),
-            )
-          else ...[
-            IconButton(
-              icon: const Icon(Icons.picture_as_pdf_outlined),
-              tooltip: 'PDF olarak al',
-              onPressed: () => _disaAktar(true),
-            ),
-            IconButton(
-              icon: const Icon(Icons.grid_on),
-              tooltip: 'Excel olarak al',
-              onPressed: () => _disaAktar(false),
-            ),
-          ],
-        ],
+        // Rapor adı tam görünsün (uzunsa iki satır).
+        toolbarHeight: 64,
+        title: Text(r.baslik,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 19, height: 1.2)),
+      ),
+      // Dışa aktarma: altta yazılı, renkli iki büyük düğme.
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+          child: Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFFC62828),
+                    minimumSize: const Size.fromHeight(52),
+                    textStyle: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                  icon: const Icon(Icons.picture_as_pdf),
+                  label: Text(_iphone ? 'PDF paylaş' : 'PDF olarak al'),
+                  onPressed: _calisiyor ? null : () => _disaAktar(true),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF1D6F42), // Excel yeşili
+                    minimumSize: const Size.fromHeight(52),
+                    textStyle: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                  icon: _calisiyor
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white))
+                      : const Icon(Icons.table_chart),
+                  label: Text(_iphone ? 'Excel paylaş' : 'Excel olarak al'),
+                  onPressed: _calisiyor ? null : () => _disaAktar(false),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),

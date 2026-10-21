@@ -31,7 +31,7 @@ jobs:
           if [ -n "$uyarilar" ]; then echo "::warning title=Analiz uyarıları::$uyarilar"; fi
           exit $durum
       - name: Testler (Okut kuralları vb.)
-        run: flutter test test/okut_listesi_test.dart
+        run: flutter test test/okut_listesi_test.dart test/bolge_adi_test.dart
       - run: flutter build web --release
       - name: Web duman testi (giriş ekranı, tarayıcı tanıma)
         run: |

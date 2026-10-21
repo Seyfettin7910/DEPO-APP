@@ -132,7 +132,8 @@ class RaporOlusturucu {
 
     return Rapor(
       baslik: 'Kullanım Raporu – Montajı Yapılanlar',
-      altBaslik: '${_aralik(baslangic, bitis)} · ${_olusturma()}',
+      altBaslik: '${_aralik(baslangic, bitis)} · yapılmış tüm montajlar '
+          '(sonradan geri alınanlar dahil) · ${_olusturma()}',
       dosyaOn: 'kullanim_raporu',
       ozet: [
         MapEntry('Montaj (cihaz)', '${cihazlar.length}'),
@@ -144,6 +145,10 @@ class RaporOlusturucu {
             '${cihazlar.where((s) => s.tutanak == 'alinacak').length}'),
         MapEntry('Kurum içi',
             '${cihazlar.where((s) => s.tutanak == 'kurum_ici').length}'),
+        // Tutanak seçeneği gelmeden (1.24.0 öncesi) yapılan montajlar
+        if (cihazlar.any((s) => s.tutanak == null))
+          MapEntry('Tutanak belirtilmemiş',
+              '${cihazlar.where((s) => s.tutanak == null).length}'),
         MapEntry('Konumu kayıtlı',
             '${satirlar.where((s) => s.enlem != null).length}'),
       ],
@@ -689,33 +694,54 @@ class RaporOlusturucu {
           .toList();
     }
 
+    // Aynı yer farklı yazılmış olabilir ("KULAT" / "Kulat", "Sakarya
+    // Mahallesi" / "Sakarya Mah."): ekler atılır, büyük / küçük harf yok
+    // sayılır, ekranda düzgün yazılır ("Kulat").
     String deger(Object? v) {
-      final t = (v as String?)?.trim() ?? '';
+      final t = bolgeAdiDuzelt(v as String?);
       return t.isEmpty ? 'Belirsiz' : t;
     }
 
-    // il|ilçe|mahalle -> kayıtlar (sorgu zaten bu sırayla gelir)
+    // il|ilçe|mahalle -> kayıtlar
     final gruplar = <String, List<Map<String, Object?>>>{};
+    final adlar = <String, List<String>>{};
     for (final r in rows) {
-      final k = '${deger(r['il'])}|${deger(r['ilce'])}|${deger(r['mahalle'])}';
+      final p = [deger(r['il']), deger(r['ilce']), deger(r['mahalle'])];
+      final k = p.map(trKucuk).join('|');
       gruplar.putIfAbsent(k, () => []).add(r);
+      adlar.putIfAbsent(k, () => p);
     }
 
     final iller = <String>{};
     final ilceler = <String>{};
     var belirsiz = 0;
     for (final r in rows) {
-      if ((r['il'] as String?)?.isNotEmpty ?? false) iller.add(r['il'] as String);
-      if ((r['ilce'] as String?)?.isNotEmpty ?? false) {
-        ilceler.add('${r['il']}|${r['ilce']}');
+      final il = bolgeAdiDuzelt(r['il'] as String?);
+      final ilce = bolgeAdiDuzelt(r['ilce'] as String?);
+      if (il.isNotEmpty) iller.add(trKucuk(il));
+      if (ilce.isNotEmpty) ilceler.add('${trKucuk(il)}|${trKucuk(ilce)}');
+      if (bolgeAdiDuzelt(r['mahalle'] as String?).isEmpty) belirsiz++;
+    }
+    // "Belirsiz" mahalle sayılmaz.
+    final mahalleSayisi = gruplar.keys.where((k) => !k.endsWith('|belirsiz')).length;
+    // Kurulum noktası = farklı konum (aynı yere toplu takılanlar tek nokta);
+    // konumu olmayan her montaj ayrı sayılır.
+    final noktalar = <String>{};
+    var konumsuz = 0;
+    for (final r in rows) {
+      final en = (r['enlem'] as num?)?.toDouble();
+      final boy = (r['boylam'] as num?)?.toDouble();
+      if (en == null || boy == null) {
+        konumsuz++;
+      } else {
+        noktalar.add('${en.toStringAsFixed(5)},${boy.toStringAsFixed(5)}');
       }
-      if (((r['mahalle'] as String?) ?? '').isEmpty) belirsiz++;
     }
 
     final ozetSatirlari = <List<Object?>>[];
     final detaylar = <RaporBolumu>[];
     for (final e in gruplar.entries) {
-      final p = e.key.split('|');
+      final p = adlar[e.key]!;
       final konumlu = e.value.where((r) => r['enlem'] != null).length;
       ozetSatirlari.add([p[0], p[1], p[2], e.value.length, konumlu]);
       detaylar.add(RaporBolumu(
@@ -740,15 +766,16 @@ class RaporOlusturucu {
       baslik: 'Bölge Raporu (Kurulum Noktaları)',
       altBaslik: [
         if (f.isNotEmpty) 'Filtre: "$filtre"',
-        'Montajlı cihazlar',
+        'Şu an takılı cihazlar (geri alınanlar hariç)',
         _olusturma(),
       ].join(' · '),
       dosyaOn: 'bolge_raporu',
       ozet: [
-        MapEntry('Kurulum noktası', '${rows.length}'),
+        MapEntry('Montajlı cihaz', '${rows.length}'),
+        MapEntry('Kurulum noktası', '${noktalar.length + konumsuz}'),
         MapEntry('İl', '${iller.length}'),
         MapEntry('İlçe', '${ilceler.length}'),
-        MapEntry('Mahalle / köy', '${gruplar.length}'),
+        MapEntry('Mahalle / köy', '$mahalleSayisi'),
         if (belirsiz > 0) MapEntry('Mahallesi belirsiz', '$belirsiz'),
       ],
       sutunlar: const [
@@ -1346,4 +1373,38 @@ class _Sayac {
     arizali += s.arizali;
     hurda += s.hurda;
   }
+}
+
+
+/// Türkçe küçük harf (I → ı, İ → i).
+String trKucuk(String s) =>
+    s.replaceAll('I', 'ı').replaceAll('İ', 'i').toLowerCase();
+
+/// Türkçe büyük harf (i → İ, ı → I).
+String trBuyuk(String s) =>
+    s.replaceAll('i', 'İ').replaceAll('ı', 'I').toUpperCase();
+
+/// Bölge adını düzeltir: "KULAT" → "Kulat", "Sakarya Mahallesi" / "Sakarya
+/// Mah." → "Sakarya", "Kayalar Köyü" → "Kayalar". Boşsa ''.
+String bolgeAdiDuzelt(String? ad) {
+  var t = (ad ?? '').trim().replaceAll(RegExp(r'\s+'), ' ');
+  if (t.isEmpty) return '';
+  t = t.replaceAll(
+      RegExp(r'\s+(mahallesi|mahalle|mah\.?|köyü|köy|koyu|koy)$',
+          caseSensitive: false),
+      '');
+  // "MAHALLESİ" gibi Türkçe büyük harfli ekler de (İ / I) atılsın.
+  final kucuk = trKucuk(t);
+  for (final ek in [' mahallesi', ' mahalle', ' mah.', ' mah', ' köyü', ' köy']) {
+    if (kucuk.endsWith(ek)) {
+      t = t.substring(0, t.length - ek.length).trimRight();
+      break;
+    }
+  }
+  return t
+      .split(' ')
+      .map((k) => k.isEmpty
+          ? k
+          : trBuyuk(k.substring(0, 1)) + trKucuk(k.substring(1)))
+      .join(' ');
 }

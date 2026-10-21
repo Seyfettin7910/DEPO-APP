@@ -5,6 +5,10 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.27.3 – Raporlar: PDF / Excel düğmeleri, bölge adları
+- Rapor önizlemede dışa aktarma altta yazılı, renkli iki düğme (PDF kırmızı, Excel yeşil); başlık iki satıra kadar. iPhone (Safari) web'de PDF ve Excel `Share.shareXFiles` ile Paylaş menüsüne gider.
+- Bölge raporu: `bolgeAdiDuzelt` (Türkçe büyük / küçük harf, "Mahallesi / Mah. / Köyü" atılır; testleri test/bolge_adi_test.dart) ile gruplama; "Belirsiz" mahalle sayılmaz; özet "Montajlı cihaz" + "Kurulum noktası" (farklı koordinat, 5 ondalık). Kullanım raporuna "Tutanak belirtilmemiş" ve alt başlık açıklamaları.
+
 ## 1.27.2 – Kamera 2x sabit, 1x · 2x · 3x seçici
 - `autoZoom` kapatıldı (ani yakınlaşma / zoom kamerasına geçiş okumayı bozuyordu). `HedefliTarayici` kamera her açıldığında (ve arka plandan dönüşte) seçili yakınlığı uygular; varsayılan 2x. Android'de doğrusal değerler yaklaşık: 1x=0, 2x≈0.56, 3x≈0.75. Web'de `tarayici.js` (`depoZoomAraligi` / `depoZoomAyarla`, MediaStreamTrack `zoom`) destekleniyorsa seçici görünür. Eski sol üst "Yakınlaştır" düğmesi kaldırıldı.
 

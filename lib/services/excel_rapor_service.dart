@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 
+import 'tarayici.dart';
+
 import 'rapor/rapor_modeli.dart';
 
 /// Ortak [Rapor] nesnesini Excel (.xlsx) dosyasına döker. PDF çıktısıyla
@@ -94,7 +96,8 @@ class ExcelRaporService {
     final dosyaAdi =
         '${rapor.dosyaOn}_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.xlsx';
 
-    if (kIsWeb) {
+    // iPhone'da (Safari) indirme yerine Paylaş menüsü açılır.
+    if (kIsWeb && !iosTarayici()) {
       excel.save(fileName: dosyaAdi); // tarayıcıda indirir
       return;
     }

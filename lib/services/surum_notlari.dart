@@ -36,6 +36,33 @@ class NotMaddesi {
 
 const surumNotlari = <SurumNotu>[
   SurumNotu(
+    surum: '1.27.3',
+    tarih: '21.10.2026',
+    bolumler: [
+      NotBolumu('Değişen', [
+        NotMaddesi(
+          'PDF / Excel',
+          'Raporun altında yazılı iki büyük düğme: kırmızı PDF, yeşil Excel.',
+          'Rapor adı üstte tam görünür. iPhone\'da dosya inmez, Paylaş '
+              'menüsü açılır (WhatsApp, e-posta, Dosyalar\'a kaydet).',
+        ),
+        NotMaddesi(
+          'Bölge raporu',
+          'Aynı yerin farklı yazılışları tek satırda ("KULAT" = "Kulat").',
+          '"Mahallesi / Mah. / Köyü" ekleri atılır. "Montajlı cihaz" ile '
+              '"Kurulum noktası" (farklı konum; aynı yere toplu takılanlar tek '
+              'nokta) ayrı yazılır; "Belirsiz" mahalle sayılmaz.',
+        ),
+        NotMaddesi(
+          'Kullanım raporu',
+          '"Tutanak belirtilmemiş" kutusu eklendi (eski montajlar).',
+          'Alt başlıkta yazar: kullanım raporu yapılmış tüm montajları, bölge '
+              'raporu şu an takılı cihazları gösterir.',
+        ),
+      ]),
+    ],
+  ),
+  SurumNotu(
     surum: '1.27.2',
     tarih: '21.10.2026',
     bolumler: [
