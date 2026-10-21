@@ -3,15 +3,23 @@
 Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlarına taşınır.
 
 ## Yayınlananların telefonda denenmesi (21.10.2026 sabahı)
-- [ ] **Supabase SQL:** `supabase_guncelleme_1_27_0.sql` (malzemede kutu içeriği) — kutu içeriği tanımlamadan ÖNCE çalıştırılmalı.
+- [x] **Supabase SQL:** `supabase_guncelleme_1_27_0.sql` çalıştırıldı.
 - [ ] 1.26.0: Okut arka arkaya okutma (2 kayıtsız), hızlı işlemler, koli, 100/100, toplu montaj + Kaydet anındaki konum, Sonraki nokta, transfer "Arızalı", varsayılan giriş deposu, karışık model, depo ekranında Sayım.
 - [ ] 1.26.1: iPhone Safari (Ana Ekrana Ekle rehberi, Safari dışı uyarı, ses, görsel onay), giriş kayıtlarında tarayıcı.
 - [ ] 1.27.0: malzeme barkodu (kutu içeriği), 🔗+ malzeme ekle / yeni tanımla, giriş / transfer / montajda birlikte kayıt.
+- [ ] 1.27.1: güncelleme telefonun kendi yükleyicisiyle (Güncelle'ye bir dokunuş).
+- [ ] 1.27.2: kamera 2x sabit, altta 1x · 2x · 3x seçici (otomatik yakınlaştırma kapalı).
 
 ## Sonraya
-- [ ] iPhone denemesine göre: kamera çözünürlüğü, yakınlaştırma / netleme (destekleniyorsa), dönüşte kameranın yeniden açılması, raporu Paylaş ile gönderme.
-- [ ] Android'de **yazıdan okuma** (S/N satırı; barkoddan sonra yedek; Ayarlar'dan açık / kapalı).
-- [ ] Montajda "Nerede kullanıldı?"nın konumdan otomatik doldurulması: şimdilik yok (şehir / ilçe merkezindeki tesislerde sorun çıkarır). Google Geocoding ön ödeme (1.500 TL) yüzünden bırakıldı.
+- [ ] **Raporlar – PDF / Excel düğmeleri:** üstteki simgeler yerine altta yazılı, renkli iki büyük düğme (kırmızı "PDF olarak al", yeşil "Excel olarak al"); rapor adı üstte tam görünsün. iPhone'da indirme yerine Paylaş menüsü (WhatsApp, e-posta, Dosyalar).
+  - Aynı pakette rapor düzeltmeleri: bölge raporunda yazılış farkları birleşsin ("KULAT" = "Kulat", "Mahallesi / Mah. / Köyü" ekleri atılsın), "Belirsiz" mahalle sayısına katılmasın, "Montajlı cihaz" ile "Kurulum noktası" (farklı konum) ayrı; kullanım raporunda "Tutanak belirtilmemiş" kutusu; alt başlıklar (tüm montajlar / şu an takılı olanlar).
+- [ ] **Android'de S/N satırını yazıdan okuma:** etikette "S/N", "SN", "Seri No" yazan satırdaki harf-rakam karışımı ayrılır. Barkod önce; 1-1,5 sn içinde barkod okunmazsa yazıdan okunan alınır (yalnız etiketli satır). Kayıtlı cihazla eşleşirse doğrudan, değilse "Doğru mu?" onayı. Ayarlar'dan açık / kapalı. (iPhone'da yerine "Metni Tara".)
+- [ ] **"Nerede kullanıldı?"nın konumdan otomatik dolması – Google'dan çekme ERTELENDİ** (Google hesabı 1.500 TL ön ödeme istiyor; Geocoding anahtarı / günlük kota 250 hazır bekliyor). Kararlar:
+  - Önce eski montajlardan öğrenme: yeni konumun **en fazla 15 m** yakınında daha önce yazılmış ad varsa o gelir; konum hassasiyeti **±15 m'den kötüyse** eski ad önerilmez.
+  - Yakında eski ad yoksa adres servisinden (OpenStreetMap / ileride Google) ilçe + mahalle.
+  - İnternet yokken satır boş bırakılabilir, bağlantı gelince otomatik dolar (konum da yoksa elle yazmak zorunlu).
+  - Şehir / ilçe merkezindeki belediye tesislerinde sorun çıkarmaması için ayrıca düşünülecek.
+- [ ] iPhone denemesine göre: kamera çözünürlüğü, netleme, dönüşte kameranın yeniden açılması.
 - Not: **test** ve **Mustafa** kullanıcılarının eklediği her şey deneme verisidir (iPhone denemesi dahil).
 
 ## Excel dökümü gelince (ayrı paket)
