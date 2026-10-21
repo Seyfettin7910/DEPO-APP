@@ -121,8 +121,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && mounted) {
       unawaited(onPlandaIsaretle(true));
-      // Arka plan görevi oturumu yenilemiş olabilir.
-      unawaited(SupabaseService.oturumuDisktenYenile());
+      // Arka plan görevi oturumu yenilemiş olabilir; sonra tam senkron
+      // (uygulama kapalıyken kaçan değişiklikler).
+      unawaited(() async {
+        try {
+          await SupabaseService.oturumuDisktenYenile();
+        } catch (_) {}
+        if (mounted) unawaited(ref.read(syncServiceProvider).syncNow());
+      }());
       unawaited(GuncellemeServisi.kontrolEt());
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.detached) {

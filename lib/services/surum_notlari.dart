@@ -36,6 +36,35 @@ class NotMaddesi {
 
 const surumNotlari = <SurumNotu>[
   SurumNotu(
+    surum: '1.29.0',
+    tarih: '21.10.2026',
+    bolumler: [
+      NotBolumu('Yeni', [
+        NotMaddesi(
+          'Yazıdan da oku',
+          'Barkod okunmazsa etiketteki S/N satırı yazıdan okunur (Android).',
+          'Barkod 2,5 saniye okunmazsa çerçevenin üstünde "Yazı da '
+              'okunuyor" yazar; S/N satırını çerçeveye alın. Kayıtlı cihazsa '
+              'doğrudan açılır, değilse "Doğru mu?" diye sorulur. Ayarlar → '
+              '"Yazıdan da oku" ile kapatılabilir.',
+        ),
+      ]),
+      NotBolumu('Değişen', [
+        NotMaddesi(
+          'Kamera pil tasarrufu',
+          '15 sn kod görmezse yavaşlar, 30 sn sonra durur; dokununca açılır.',
+          'Kamera durunca fener de söner. Kod görünce ya da ekrana dokununca '
+              'kaldığı yerden normal hızda devam eder.',
+        ),
+        NotMaddesi(
+          'Telefonlar arası kayıtlar',
+          'Başka telefonda yapılan kayıt birkaç saniyede gelir, daha az pil.',
+          'Uygulama açılınca ve internet gelince ayrıca tam kontrol yapılır.',
+        ),
+      ]),
+    ],
+  ),
+  SurumNotu(
     surum: '1.28.0',
     tarih: '21.10.2026',
     bolumler: [

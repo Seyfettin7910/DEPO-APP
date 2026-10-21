@@ -5,6 +5,12 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.29.0 – Pil tasarrufu, anlık senkron, S/N'yi yazıdan okuma
+- **Supabase SQL:** `supabase_guncelleme_1_29_0.sql` (12 tablo `supabase_realtime` yayınına). Çalıştırılana kadar uygulama yedek kontrolle (5 dk) çalışır.
+- Kamera (`HedefliTarayici`): 15 sn kod görülmezse okuma aralığı 120 → 333 ms (`MetinOkuma.hizAyarla`), kod / dokunuş gelince normale; 30 sn olmazsa `controller.stop()` (fener de söner), "Kamera durdu · başlatmak için dokunun".
+- Senkron (`SyncService`): 30 sn yoklama kaldırıldı. Realtime `postgres_changes` → değişen tablolar 1 sn toplanıp yalnız onlar çekilir (`syncNow(tablolar:)`); tam kontrol: internet gelince, Realtime yeniden bağlanınca, uygulama öne gelince (home_screen), açıkken 5 dk'da bir. Tur sürerken gelen istek kaybolmaz (tur bitince çalışır). Geriye pay 5 sn → 1 dk.
+- S/N yazıdan okuma (Android): `mobile_scanner` 7.4.2 `packages/mobile_scanner`'a alındı (değişiklikler `DEPO.md`). 2,5 sn barkod yoksa çerçeve içi (dikeyde %35 geniş) ML Kit yazı tanımaya (Play Hizmetleri, en fazla 0,5 sn'de bir); satırlardan `snAyikla` (`lib/services/sn_metni.dart`, testleri `test/sn_metni_test.dart`) "S/N / SN / S.N. / Serial No / Seri No" etiketli değeri alır; aynı değer iki kez okununca kabul. Kayıtlı değilse "Yazıdan okundu · Doğru mu?". Ayarlar → "Yazıdan da oku" (varsayılan açık, `CihazTercihleri.yazidanOku`). Etiket doğrulamada ve ürün barkodu okurken kapalı.
+
 ## 1.28.0 – "Nerede kullanıldı?" konumdan
 - Montaj ekranında: konum ±15 m'den iyiyse `yakindakiKullanimYerleri` (15 m içinde, hassasiyeti ≤15 m eski kayıtlar, haversine `mesafeMetre`) ilk adı yazar; yoksa adres bulununca `yerMetni` ("İLÇE MAHALLE", `lib/services/bolge_adi.dart`). Elle yazılan değiştirilmez; birden çok yakın ad çip olarak.
 - Konum kaydedilecekse yer boş bırakılabilir; `AdresTamamlayici` internet gelince önce yakın eski adı, yoksa ilçe + mahalleyi, o da yoksa koordinatı `kullanimYeriTamamla` ile yazar (kullanım kaydı + boşsa cihaz kartı).

@@ -229,6 +229,8 @@ class _EtiketDogrulaScreenState extends ConsumerState<EtiketDogrulaScreen> {
               // 1. adım kurum etiketi (karekod), 2. adım cihazın kendi
               // seri no barkodu: çerçeve kendiliğinden değişir.
               child: HedefliTarayici(
+                // Kurum etiketi doğrulanırken yazıdan okunmaz.
+                yazidanOku: false,
                 controller: _kamera,
                 onDetect: _okundu,
                 mod: ikinci ? TaramaModu.barkod : TaramaModu.karekod,

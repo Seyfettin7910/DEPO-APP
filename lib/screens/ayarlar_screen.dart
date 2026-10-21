@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -116,6 +117,20 @@ class AyarlarScreen extends ConsumerWidget {
               baslik: 'Kurum etiketi ayarları',
               onTap: () => ac(const EtiketAyarlariScreen()),
             ),
+            if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android)
+              ValueListenableBuilder<bool>(
+                valueListenable: CihazTercihleri.yazidanOku,
+                builder: (context, acik, _) => _Satir(
+                  ikon: Icons.document_scanner_outlined,
+                  renk: Renkler.montaj,
+                  zemin: Renkler.montajZemin,
+                  baslik: 'Yazıdan da oku',
+                  alt: 'Barkod okunmazsa etiketteki S/N satırı okunur',
+                  sag: Switch(
+                      value: acik, onChanged: CihazTercihleri.yazidanOkuAyarla),
+                  onTap: () => CihazTercihleri.yazidanOkuAyarla(!acik),
+                ),
+              ),
             ValueListenableBuilder<bool>(
               valueListenable: GorunumAyari.buyukYazi,
               builder: (context, acik, _) => _Satir(

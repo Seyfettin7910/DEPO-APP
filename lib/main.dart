@@ -8,6 +8,7 @@ import 'package:intl/date_symbol_data_local.dart';
 
 import 'database/platform/db_fabrika.dart';
 
+import 'services/cihaz_tercihleri.dart';
 import 'services/gorunum_ayari.dart';
 import 'services/ses_servisi.dart';
 import 'services/guncelleme_servisi.dart';
@@ -40,6 +41,7 @@ Future<void> main() async {
     SemanticsBinding.instance.ensureSemantics();
   }
   await GorunumAyari.yukle();
+  await CihazTercihleri.yukle();
   runApp(const ProviderScope(child: DepoApp()));
 }
 

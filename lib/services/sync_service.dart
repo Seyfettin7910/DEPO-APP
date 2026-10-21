@@ -43,6 +43,15 @@ class SyncDurum {
 /// Çakışmada updated_at'i daha yeni olan kazanır. Sunucu tarafında
 /// değişiklikler kendi saatiyle (synced_at) damgalanır, bu yüzden telefon
 /// saati yanlış olsa da hiçbir değişiklik kaçmaz.
+///
+/// Ne zaman bakılır (1.29.0):
+/// - Telefonda kayıt yapılınca (2 sn sonra) gönderilir.
+/// - Sunucu "şu tabloda değişiklik var" der (Supabase Realtime): yalnız o
+///   tablo, kaldığı yerden çekilir. Bu yalnızca bir "zil"; veri yine damga
+///   yöntemiyle çekildiği için zil kaçsa da kayıt kaçmaz, gecikir.
+/// - Tam kontrol: internet geri gelince, Realtime yeniden bağlanınca,
+///   uygulama öne gelince (home_screen) ve uygulama açıkken 5 dakikada bir
+///   (zil kaçarsa en fazla 5 dk gecikme).
 class SyncService {
   static const _tablolar = [
     'depolar',
@@ -98,7 +107,8 @@ class SyncService {
       '(${_yeniTablolar[tablo]}) çalıştırın';
   static const _sayfa = 500;
   // Commit sırası yüzünden kaçabilecek satırlar için geriye doğru pay (ms).
-  static const _binisme = 5000;
+  // 1.29.0: 5 sn → 1 dk (sigorta; son 1 dakikanın birkaç satırı yeniden okunur).
+  static const _binisme = 60000;
 
   final AppDatabase db;
   final void Function(SyncDurum) onDurum;
@@ -111,6 +121,16 @@ class SyncService {
   Timer? _gecikme;
   bool _calisiyor = false;
   bool _kapandi = false;
+
+  // Tur sürerken gelen istekler kaybolmasın: tur bitince yeniden çalışır.
+  bool _tamBekliyor = false;
+  final _bekleyenTablolar = <String>{};
+
+  // Realtime "zil"i
+  RealtimeChannel? _kanal;
+  bool _kanalBaglandi = false;
+  Timer? _zilGecikme;
+  final _zilTablolari = <String>{};
 
   /// false: bildirim kontrolünü çağıran kendisi yapar (arka plan görevi).
   final bool bildirimCalistir;
@@ -134,14 +154,21 @@ class SyncService {
       if (sonuclar.any((r) => r != ConnectivityResult.none)) syncNow();
     });
     _authSub = SupabaseService.client.auth.onAuthStateChange.listen((e) {
-      if (e.session != null) syncNow();
+      if (e.session != null) {
+        _kanalKur();
+        syncNow();
+      } else if (e.event == AuthChangeEvent.signedOut) {
+        _kanalKapat();
+      }
     });
     // Yerel değişiklik olunca kısa bir gecikmeyle gönder.
     _degisiklikSub = db.degisiklikler.listen((_) {
       _gecikme?.cancel();
       _gecikme = Timer(const Duration(seconds: 2), _degisiklikSonrasi);
     });
-    _periyodik = Timer.periodic(const Duration(seconds: 30), (_) => syncNow());
+    // Yedek tam kontrol (Realtime zili kaçarsa): uygulama açıkken 5 dk'da bir.
+    _periyodik = Timer.periodic(const Duration(minutes: 5), (_) => syncNow());
+    if (SupabaseService.girisYapildi) _kanalKur();
     syncNow();
   }
 
@@ -152,6 +179,56 @@ class SyncService {
     _degisiklikSub?.cancel();
     _periyodik?.cancel();
     _gecikme?.cancel();
+    _zilGecikme?.cancel();
+    _kanalKapat();
+  }
+
+  // -------------------------------------------------------------------
+  // Realtime: sunucu hangi tabloda değişiklik olduğunu söyler
+  // -------------------------------------------------------------------
+  void _kanalKur() {
+    if (_kanal != null || _kapandi) return;
+    try {
+      _kanalBaglandi = false;
+      _kanal = SupabaseService.client
+          .channel('depo-degisiklikler')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            callback: (p) => _zilCaldi(p.table),
+          )
+          .subscribe((durum, hata) {
+        if (durum != RealtimeSubscribeStatus.subscribed || _kapandi) return;
+        // İlk bağlanışta zaten tam kontrol yapıldı; kopup yeniden
+        // bağlanınca aradaki değişiklikler için tam kontrol.
+        if (_kanalBaglandi) syncNow();
+        _kanalBaglandi = true;
+      });
+    } catch (_) {
+      _kanal = null; // Realtime yoksa yedek kontrol yeter
+    }
+  }
+
+  void _kanalKapat() {
+    final k = _kanal;
+    _kanal = null;
+    _kanalBaglandi = false;
+    if (k != null) {
+      unawaited(SupabaseService.client.removeChannel(k).catchError((_) => ''));
+    }
+  }
+
+  /// Aynı anda çok değişiklik gelir (100 cihazlık giriş): 1 sn toplanır,
+  /// değişen tablolar tek seferde çekilir.
+  void _zilCaldi(String tablo) {
+    if (_kapandi || !_tablolar.contains(tablo)) return;
+    _zilTablolari.add(tablo);
+    _zilGecikme ??= Timer(const Duration(seconds: 1), () {
+      _zilGecikme = null;
+      final t = Set.of(_zilTablolari);
+      _zilTablolari.clear();
+      syncNow(tablolar: t);
+    });
   }
 
   void _yayinla(SyncDurum d) {
@@ -166,9 +243,18 @@ class SyncService {
     if (bekleyen > 0) syncNow();
   }
 
-  /// Hemen senkronize eder (zaten çalışıyorsa yeni bir tur başlatmaz).
-  Future<void> syncNow() async {
-    if (_calisiyor || _kapandi) return;
+  /// Hemen senkronize eder. [tablolar] verilirse yalnız onlar çekilir
+  /// (gönderme her zaman tümü). Tur sürerken çağrılırsa tur bitince yapılır.
+  Future<void> syncNow({Set<String>? tablolar}) async {
+    if (_kapandi) return;
+    if (_calisiyor) {
+      if (tablolar == null) {
+        _tamBekliyor = true;
+      } else {
+        _bekleyenTablolar.addAll(tablolar);
+      }
+      return;
+    }
     _calisiyor = true;
     // İlk durum bildirimi sağlayıcı oluşturulurken olmasın.
     await Future<void>.delayed(Duration.zero);
@@ -187,7 +273,7 @@ class SyncService {
       _yayinla(_durum.kopya(calisiyor: true, hataTemizle: true));
       final sorunlar = <String>[];
       await _gonder(sorunlar);
-      await _cek(sorunlar);
+      await _cek(sorunlar, tablolar);
       // İnternetsiz kaydedilmiş kurulum noktalarının il/ilçe/mahallesini bul.
       unawaited(AdresTamamlayici.calistir(db));
 
@@ -208,6 +294,15 @@ class SyncService {
       ));
     } finally {
       _calisiyor = false;
+      // Tur sürerken gelen istek varsa şimdi yapılır.
+      if (!_kapandi && (_tamBekliyor || _bekleyenTablolar.isNotEmpty)) {
+        final tam = _tamBekliyor;
+        final t = Set.of(_bekleyenTablolar);
+        _tamBekliyor = false;
+        _bekleyenTablolar.clear();
+        unawaited(Future<void>.delayed(const Duration(milliseconds: 300),
+            () => syncNow(tablolar: tam ? null : t)));
+      }
       // Senkrondan sonra yeni olaylar için bildirim kontrolü (çevrimdışı da
       // çalışır: gönderilmemiş kayıt hatırlatması vb.)
       if (bildirimCalistir && !_kapandi && SupabaseService.girisYapildi) {
@@ -285,8 +380,9 @@ class SyncService {
   // -------------------------------------------------------------------
   // Sunucu -> yerel
   // -------------------------------------------------------------------
-  Future<void> _cek(List<String> sorunlar) async {
+  Future<void> _cek(List<String> sorunlar, [Set<String>? yalniz]) async {
     for (final tablo in _tablolar) {
+      if (yalniz != null && !yalniz.contains(tablo)) continue;
       try {
         await _tabloCek(tablo, sorunlar);
       } on PostgrestException catch (e) {

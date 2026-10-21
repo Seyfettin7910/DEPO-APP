@@ -6,8 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../services/cihaz_tercihleri.dart';
 import '../services/etiket/etiket_kodu.dart';
 import '../services/ses_servisi.dart';
+import '../services/sn_metni.dart';
 import '../services/tarayici.dart';
 import 'kod_yardimci.dart';
 
@@ -37,6 +39,12 @@ enum TaramaModu { barkod, karekod }
 ///     kod 1,5 sn içinde ikinci kez okununca kabul edilir,
 ///   * "S/N:" öneki ve sondaki ek bilgi ("EU/3.0") atılıp seri no ayıklanır,
 ///   * tek parmakla yana kaydırınca Barkod ⇄ Karekod değişir.
+/// - Pil (1.29.0): 15 sn hiçbir kod görülmezse okuma seyrekleşir (saniyede
+///   ~3), kod görülünce normale döner; 30 sn olmazsa kamera (ve fener) durur,
+///   dokununca yeniden açılır.
+/// - Yazıdan okuma (1.29.0, Android, Ayarlar → "Yazıdan da oku"): 2,5 sn
+///   barkod okunmazsa çerçevedeki "S/N" satırı yazıdan okunur; iki kez aynı
+///   okununca kabul edilir. Kayıtlı cihazla eşleşmezse "Doğru mu?" sorulur.
 class HedefliTarayici extends StatefulWidget {
   const HedefliTarayici({
     super.key,
@@ -46,7 +54,11 @@ class HedefliTarayici extends StatefulWidget {
     this.urunBarkodu = false,
     this.bilinenMi,
     this.ustOrta,
+    this.yazidanOku = true,
   });
+
+  /// false: bu ekranda yazıdan okuma yapılmaz (ör. etiket doğrulama).
+  final bool yazidanOku;
 
   /// Kameranın üstünde ortada gösterilecek küçük bilgi (ör. "98/100").
   final Widget? ustOrta;
@@ -106,6 +118,30 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
   // Tek parmakla yatay kaydırma: Barkod ⇄ Karekod
   double _kaydirma = 0;
 
+  // --- Pil tasarrufu: normal → bekleme (seyrek okuma) → durdu ---
+  static const _normalHiz = 120; // ms (≈ saniyede 8)
+  static const _bekleHiz = 333; // ms (≈ saniyede 3)
+  static const _bekleSuresi = Duration(seconds: 15);
+  static const _durdurSuresi = Duration(seconds: 30);
+  DateTime _sonEtkinlik = DateTime.now();
+  bool _beklemede = false;
+  bool _durduruldu = false;
+  Timer? _pil;
+
+  // --- Yazıdan okuma (S/N satırı) ---
+  static const _metinBekleme = Duration(milliseconds: 2500);
+  StreamSubscription<List<String>>? _metinAboneligi;
+  String? _metinAday;
+  DateTime _metinAdayZamani = DateTime.fromMillisecondsSinceEpoch(0);
+  bool _metinSoruluyor = false;
+  bool _metinIpucu = false;
+
+  bool get _yaziAcik =>
+      MetinOkuma.destekleniyor &&
+      widget.yazidanOku &&
+      !widget.urunBarkodu &&
+      CihazTercihleri.yazidanOku.value;
+
   @override
   void initState() {
     super.initState();
@@ -125,6 +161,143 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
           _ortayaNetle(goster: false);
         }
       });
+    }
+    _pil = Timer.periodic(const Duration(seconds: 1), _pilDenetle);
+    _metinAboneligi = MetinOkuma.satirlar.listen(_metinGeldi);
+  }
+
+  // ------------------------------------------------------- pil tasarrufu
+
+  /// Kod okundu / ekrana dokunuldu: normal hıza dönülür, süre baştan.
+  void _etkinlik() {
+    _sonEtkinlik = DateTime.now();
+    if (_beklemede) {
+      _beklemede = false;
+      unawaited(MetinOkuma.hizAyarla(_normalHiz));
+    }
+    if (_metinIpucu && mounted) setState(() => _metinIpucu = false);
+  }
+
+  void _pilDenetle(Timer _) {
+    if (!mounted || _durduruldu || !widget.controller.value.isRunning) return;
+    if (_metinSoruluyor) {
+      _sonEtkinlik = DateTime.now();
+      return;
+    }
+    final bos = DateTime.now().difference(_sonEtkinlik);
+    if (bos >= _durdurSuresi) {
+      unawaited(_kameraDurdur());
+      return;
+    }
+    if (bos >= _bekleSuresi && !_beklemede) {
+      _beklemede = true;
+      unawaited(MetinOkuma.hizAyarla(_bekleHiz));
+    }
+    final ipucu = _yaziAcik && bos >= _metinBekleme;
+    if (ipucu != _metinIpucu) setState(() => _metinIpucu = ipucu);
+  }
+
+  /// 30 sn kod yok: kamera durur (fener de söner), dokununca açılır.
+  Future<void> _kameraDurdur() async {
+    setState(() {
+      _durduruldu = true;
+      _metinIpucu = false;
+    });
+    try {
+      await widget.controller.stop();
+    } catch (_) {}
+  }
+
+  Future<void> _kameraBaslat() async {
+    _etkinlik();
+    setState(() => _durduruldu = false);
+    try {
+      await widget.controller.start();
+    } catch (_) {}
+  }
+
+  // ------------------------------------------------ yazıdan okuma (S/N)
+
+  void _metinGeldi(List<String> satirlar) {
+    if (!mounted || _metinSoruluyor || _durduruldu || !_yaziAcik) return;
+    // Yalnız ekranda görünen (en üstteki) kamera.
+    if (!(ModalRoute.of(context)?.isCurrent ?? true)) return;
+    final sn = snAyikla(satirlar);
+    if (sn == null) return;
+    final simdi = DateTime.now();
+    if (sn == _okunan &&
+        simdi.difference(_okunmaZamani) < const Duration(seconds: 3)) {
+      _okunmaZamani = simdi; // hâlâ çerçevede: tekrar okunmaz
+      return;
+    }
+    // Yanlış okumaya karşı: aynı değer arka arkaya iki kez okunmalı.
+    if (sn != _metinAday ||
+        simdi.difference(_metinAdayZamani) > const Duration(seconds: 3)) {
+      _metinAday = sn;
+      _metinAdayZamani = simdi;
+      return;
+    }
+    _metinAday = null;
+    _etkinlik();
+    unawaited(_metinOnayla(sn));
+  }
+
+  Future<void> _metinOnayla(String sn) async {
+    _metinSoruluyor = true;
+    try {
+      var kayitli = false;
+      final kontrol = widget.bilinenMi;
+      if (kontrol != null) {
+        try {
+          kayitli = await kontrol(sn);
+        } catch (_) {}
+      }
+      if (!mounted) return;
+      if (!kayitli) {
+        final evet = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            icon: const Icon(Icons.document_scanner_outlined),
+            title: const Text('Yazıdan okundu'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SelectableText(
+                  sn,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1),
+                ),
+                const SizedBox(height: 12),
+                const Text('Seri numarası doğru mu? Etiketteki ile '
+                    'karşılaştırın (0 / O, 1 / I, 8 / B karışabilir).'),
+              ],
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Hayır')),
+              FilledButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text('Evet, doğru')),
+            ],
+          ),
+        );
+        // "Hayır" da olsa aynı yazı çerçevede kaldıkça yeniden sorulmaz.
+        _okunan = sn;
+        _okunmaZamani = DateTime.now();
+        if (evet != true || !mounted) return;
+      }
+      _okunan = sn;
+      _okunmaZamani = DateTime.now();
+      widget.onDetect(BarcodeCapture(barcodes: [
+        Barcode(rawValue: sn, format: BarcodeFormat.unknown),
+      ]));
+    } finally {
+      _metinSoruluyor = false;
+      _sonEtkinlik = DateTime.now();
     }
   }
 
@@ -161,6 +334,9 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
   @override
   void dispose() {
     _netleme?.cancel();
+    _pil?.cancel();
+    unawaited(_metinAboneligi?.cancel());
+    if (MetinOkuma.destekleniyor) unawaited(MetinOkuma.ayarla(acik: false));
     _kayip?.cancel();
     _ipucuZamanlayici?.cancel();
     _yanmaZamanlayici?.cancel();
@@ -231,6 +407,7 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
   bool get _seciciVar => !kIsWeb || _webAralik != null;
 
   Future<void> _kademeSec(int k) async {
+    _etkinlik();
     setState(() => _kademe = k);
     await _kademeUygula();
   }
@@ -335,6 +512,8 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
   void _algilandi(BarcodeCapture capture, Size alan, Rect pencere) {
     final simdi = DateTime.now();
     _sonOkuma = simdi;
+    _etkinlik();
+    if (_metinSoruluyor) return;
     if (simdi.isBefore(_hazir)) return;
 
     final goruntu = capture.size != Size.zero
@@ -450,6 +629,17 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
       _aday = null;
       _webDeneme = 0;
       _acilistaYakinlik();
+      // Pil: normal hızla başlar; yazıdan okuma bu ekrana göre açılır.
+      _beklemede = false;
+      _sonEtkinlik = DateTime.now();
+      _metinAday = null;
+      if ((_durduruldu || _metinIpucu) && mounted) {
+        setState(() {
+          _durduruldu = false;
+          _metinIpucu = false;
+        });
+      }
+      unawaited(MetinOkuma.ayarla(acik: _yaziAcik, bekleme: _metinBekleme));
     }
     _calisiyordu = calisiyor;
   }
@@ -499,8 +689,12 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
         children: [
           GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTapUp: (_) => _ortayaNetle(),
+            onTapUp: (_) {
+              _etkinlik();
+              _ortayaNetle();
+            },
             onScaleStart: (_) {
+              _etkinlik();
               _zoomBaslangic = _zoom;
               _kaydirma = 0;
             },
@@ -594,6 +788,39 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
                 ),
               ),
             ),
+          if (_metinIpucu && _ipucu == null && !_durduruldu)
+            Positioned(
+              left: 12,
+              right: 12,
+              top: math.max(pencere.top - 34, 4),
+              child: IgnorePointer(
+                child: Center(
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xCCC2185B),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.document_scanner_outlined,
+                            color: Colors.white, size: 14),
+                        SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            'Yazı da okunuyor · S/N satırını çerçeveye alın',
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(color: Colors.white, fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
           Positioned(
             top: kucuk ? 6 : 12,
             right: kucuk ? 6 : 12,
@@ -642,6 +869,39 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
                     color: Colors.white,
                     fontSize: 13,
                     shadows: [Shadow(blurRadius: 4)]),
+              ),
+            ),
+          // Pil: 30 sn kod okunmadı, kamera durdu.
+          if (_durduruldu)
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: _kameraBaslat,
+                child: ColoredBox(
+                  color: const Color(0xF0101418),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.no_photography_outlined,
+                            color: Colors.white70, size: kucuk ? 32 : 48),
+                        SizedBox(height: kucuk ? 6 : 12),
+                        Text(
+                          'Kamera durdu',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: kucuk ? 15 : 18,
+                              fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Başlatmak için dokunun',
+                          style: TextStyle(color: Colors.white70, fontSize: 14),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
         ],

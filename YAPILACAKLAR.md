@@ -9,11 +9,10 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 - [ ] 1.27.0: malzeme barkodu (kutu içeriği), 🔗+ malzeme ekle / yeni tanımla, giriş / transfer / montajda birlikte kayıt.
 - [ ] 1.27.1: güncelleme telefonun kendi yükleyicisiyle (Güncelle'ye bir dokunuş).
 - [ ] 1.27.2: kamera 2x sabit, altta 1x · 2x · 3x seçici (otomatik yakınlaştırma kapalı).
+- [ ] **Supabase SQL:** `supabase_guncelleme_1_29_0.sql` (anlık senkron).
+- [ ] 1.29.0: kamera 15 sn'de yavaşlama / 30 sn'de durma + dokununca açılma, fener sönmesi; iki telefonla (biri uçak modunda) senkron denemesi; Android'de S/N yazıdan okuma (gerçek etiketlerle), iPhone'da kamera durup açılınca izin tekrar soruluyor mu.
 
 ## Sonraya
-- [ ] **Raporlar – PDF / Excel düğmeleri:** üstteki simgeler yerine altta yazılı, renkli iki büyük düğme (kırmızı "PDF olarak al", yeşil "Excel olarak al"); rapor adı üstte tam görünsün. iPhone'da indirme yerine Paylaş menüsü (WhatsApp, e-posta, Dosyalar).
-  - Aynı pakette rapor düzeltmeleri: bölge raporunda yazılış farkları birleşsin ("KULAT" = "Kulat", "Mahallesi / Mah. / Köyü" ekleri atılsın), "Belirsiz" mahalle sayısına katılmasın, "Montajlı cihaz" ile "Kurulum noktası" (farklı konum) ayrı; kullanım raporunda "Tutanak belirtilmemiş" kutusu; alt başlıklar (tüm montajlar / şu an takılı olanlar).
-- [ ] **Android'de S/N satırını yazıdan okuma:** etikette "S/N", "SN", "Seri No" yazan satırdaki harf-rakam karışımı ayrılır. Barkod önce; 1-1,5 sn içinde barkod okunmazsa yazıdan okunan alınır (yalnız etiketli satır). Kayıtlı cihazla eşleşirse doğrudan, değilse "Doğru mu?" onayı. Ayarlar'dan açık / kapalı. (iPhone'da yerine "Metni Tara".)
 - [ ] **"Nerede kullanıldı?"nın konumdan otomatik dolması – Google'dan çekme ERTELENDİ** (Google hesabı 1.500 TL ön ödeme istiyor; Geocoding anahtarı / günlük kota 250 hazır bekliyor). Kararlar:
   - Önce eski montajlardan öğrenme: yeni konumun **en fazla 15 m** yakınında daha önce yazılmış ad varsa o gelir; konum hassasiyeti **±15 m'den kötüyse** eski ad önerilmez.
   - Yakında eski ad yoksa adres servisinden (OpenStreetMap / ileride Google) ilçe + mahalle.

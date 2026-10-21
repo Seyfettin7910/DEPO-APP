@@ -1,7 +1,7 @@
 name: depo_app
 description: Çok kullanıcılı, çoklu depo stok ve kullanım takip uygulaması (iOS / Android / Windows / Web)
 publish_to: 'none'
-version: 1.28.0+57
+version: 1.29.0+58
 
 environment:
   sdk: '>=3.3.0 <4.0.0'
@@ -30,8 +30,11 @@ dependencies:
   # Merkezi backend + senkronizasyon
   supabase_flutter: ^2.5.6
 
-  # Barkod / QR okuma
-  mobile_scanner: ^7.4.2
+  # Barkod / QR okuma. 7.4.2'nin projeye alınmış kopyası (packages/):
+  # Android'de barkod yokken çerçeve içindeki "S/N" satırını yazıdan okuma ve
+  # kamera hızını çalışırken değiştirme eklendi (bkz. packages/mobile_scanner/DEPO.md).
+  mobile_scanner:
+    path: packages/mobile_scanner
   # Bildirimler (Android) ve uygulama kapalıyken arka plan kontrolü
   flutter_local_notifications: ^19.4.0
   workmanager: ^0.10.0
