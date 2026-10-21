@@ -1,6 +1,8 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
@@ -32,6 +34,11 @@ Future<void> main() async {
   // Uygulama hemen açılır; Supabase ve veritabanı hazırlığı açılış
   // ekranında yapılır. Böylece takılan/çöken bir adım beyaz ekran yerine
   // anlaşılır bir hata mesajı olarak görünür.
+  // Web duman testi (tool/web_duman_testi.py): ?semantik=1 ile ekrandaki
+  // yazılar tarayıcıda okunabilir olsun.
+  if (kIsWeb && Uri.base.queryParameters['semantik'] == '1') {
+    SemanticsBinding.instance.ensureSemantics();
+  }
   await GorunumAyari.yukle();
   runApp(const ProviderScope(child: DepoApp()));
 }
