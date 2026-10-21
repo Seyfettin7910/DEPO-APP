@@ -8,6 +8,7 @@ import '../../database/app_database.dart';
 import '../../database/models.dart';
 import '../../providers/app_providers.dart';
 import '../../services/adres_servisi.dart';
+import '../../services/bolge_adi.dart';
 import '../../services/konum_izleyici.dart';
 import '../../services/konum_servisi.dart';
 import '../../services/ses_servisi.dart';
@@ -74,6 +75,34 @@ class _MontajScreenState extends ConsumerState<MontajScreen>
   final _bekleyenMalzemeler = <String, int>{};
 
   bool _adresIstendi = false;
+
+  // "Nerede kullanıldı?" konumdan: önce 15 m içindeki eski montajın adı
+  // (konum en fazla ±15 m), yoksa "İLÇE MAHALLE". Elle yazılırsa dokunulmaz.
+  bool _yerElle = false;
+  bool _yerYaziliyor = false; // programdan yazılırken (elle sayılmasın)
+  String? _yerOtomatik; // en son otomatik yazılan
+  String? _yerKaynagi; // alanın altındaki açıklama
+  bool _yakinBakildi = false;
+  List<String> _yakinAdlar = const [];
+
+  void _yerYaz(String yer, String kaynak) {
+    if (_yerElle) return;
+    final mevcut = _yerCtrl.text.trim();
+    // Boşsa ya da önceki otomatik yazılansa değiştirilir.
+    if (mevcut.isNotEmpty && mevcut != _yerOtomatik) return;
+    _yerYaziliyor = true;
+    _yerCtrl.text = yer;
+    _yerYaziliyor = false;
+    _yerOtomatik = yer;
+    _yerKaynagi = kaynak;
+  }
+
+  void _yerDegisti() {
+    if (_yerYaziliyor) return;
+    final t = _yerCtrl.text.trim();
+    _yerElle = t.isNotEmpty && t != _yerOtomatik;
+    if (_yerElle && _yerKaynagi != null) setState(() => _yerKaynagi = null);
+  }
   String? _adresDurumu;
 
   /// Kaydedilen son noktanın özeti (doluysa "Sonraki nokta" ekranı görünür).
@@ -83,6 +112,7 @@ class _MontajScreenState extends ConsumerState<MontajScreen>
   void initState() {
     super.initState();
     _bekleyenMalzemeler.addAll(widget.onceMalzemeler);
+    _yerCtrl.addListener(_yerDegisti);
     _konum.addListener(_konumDegisti);
     unawaited(_konum.baslat());
     if (widget.onceSeriNolari.isNotEmpty) {
@@ -203,6 +233,24 @@ class _MontajScreenState extends ConsumerState<MontajScreen>
       _adresIstendi = true;
       unawaited(_adresBul(p.latitude, p.longitude));
     }
+    // Konum ±15 m'den iyiyse: 15 m içinde daha önce yazılmış yer adı var mı?
+    if (!_yakinBakildi && _konum.gpsVar && p != null && p.accuracy <= 15) {
+      _yakinBakildi = true;
+      unawaited(_yakinAdlariBul(p.latitude, p.longitude));
+    }
+  }
+
+  Future<void> _yakinAdlariBul(double enlem, double boylam) async {
+    final adlar = await ref
+        .read(appDatabaseProvider)
+        .yakindakiKullanimYerleri(enlem, boylam);
+    if (!mounted) return;
+    setState(() {
+      _yakinAdlar = adlar;
+      if (adlar.isNotEmpty) {
+        _yerYaz(adlar.first, 'Yakındaki eski montajdan (15 m içinde)');
+      }
+    });
   }
 
   Future<void> _adresBul(double enlem, double boylam) async {
@@ -219,6 +267,11 @@ class _MontajScreenState extends ConsumerState<MontajScreen>
       if (_mahalleCtrl.text.isEmpty) _mahalleCtrl.text = a.mahalle ?? '';
       _adresDurumu =
           a.bos ? 'Bu konum için bölge bulunamadı' : 'Konumdan bulundu';
+      // Yakında eski ad yoksa "İLÇE MAHALLE".
+      final yer = yerMetni(a.ilce, a.mahalle);
+      if (yer.isNotEmpty && _yakinAdlar.isEmpty) {
+        _yerYaz(yer, 'Konumdan bulundu, gerekirse düzeltin');
+      }
     });
   }
 
@@ -458,8 +511,10 @@ class _MontajScreenState extends ConsumerState<MontajScreen>
       _mesaj('Önce cihazları okutun', hata: true);
       return;
     }
-    if (_yerCtrl.text.trim().isEmpty) {
-      _mesaj('Nerede kullanıldığını yazın', hata: true);
+    // Yer boş bırakılabilir: konum kaydedilecekse internet gelince
+    // konumdan kendiliğinden dolar.
+    if (_yerCtrl.text.trim().isEmpty && !_konumKaydet) {
+      _mesaj('Nerede kullanıldığını yazın (konum kaydedilmiyor)', hata: true);
       return;
     }
     if (_tutanak == null) {
@@ -506,6 +561,10 @@ class _MontajScreenState extends ConsumerState<MontajScreen>
           if (secim != 'konumsuz') return;
           k = null;
         }
+      }
+      if (_yerCtrl.text.trim().isEmpty && k == null) {
+        _mesaj('Konum yok: nerede kullanıldığını yazın', hata: true);
+        return;
       }
       String? bosIseNull(TextEditingController c) =>
           c.text.trim().isEmpty ? null : c.text.trim();
@@ -580,7 +639,17 @@ class _MontajScreenState extends ConsumerState<MontajScreen>
     _ilCtrl.clear();
     _ilceCtrl.clear();
     _mahalleCtrl.clear();
+    // Konumdan gelen yer yeni noktada yeniden bulunur; elle yazılan kalır.
+    if (!_yerElle) {
+      _yerYaziliyor = true;
+      _yerCtrl.clear();
+      _yerYaziliyor = false;
+      _yerOtomatik = null;
+    }
     setState(() {
+      _yerKaynagi = null;
+      _yakinBakildi = false;
+      _yakinAdlar = const [];
       _kaydedildi = null;
       _liste.clear();
       _kullanilan.clear();
@@ -874,11 +943,40 @@ class _MontajScreenState extends ConsumerState<MontajScreen>
                   children: [
                     TextField(
                       controller: _yerCtrl,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Nerede kullanıldı?',
                         hintText: 'Örn: SUSURLUK KULAT',
+                        helperText: _yerKaynagi ??
+                            (_konumKaydet
+                                ? 'Boş bırakılırsa konumdan doldurulur'
+                                : null),
                       ),
                     ),
+                    // 15 m içinde birden çok eski ad varsa seçilebilsin.
+                    if (_yakinAdlar.length > 1)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Wrap(
+                            spacing: 6,
+                            runSpacing: 4,
+                            children: [
+                              for (final ad in _yakinAdlar.take(4))
+                                ActionChip(
+                                  avatar: const Icon(Icons.history, size: 16),
+                                  label: Text(ad),
+                                  onPressed: () => setState(() {
+                                    _yerElle = false;
+                                    _yerOtomatik = _yerCtrl.text.trim();
+                                    _yerYaz(ad,
+                                        'Yakındaki eski montajdan (15 m içinde)');
+                                  }),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
                     TextField(
                       controller: _notCtrl,
                       decoration: const InputDecoration(

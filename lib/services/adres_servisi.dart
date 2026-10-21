@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:http/http.dart' as http;
 
 import '../database/app_database.dart';
+import 'bolge_adi.dart';
 
 /// İl / ilçe / mahalle (köy) bilgisi.
 class Adres {
@@ -81,8 +82,10 @@ class AdresServisi {
   }
 }
 
-/// Konumu kayıtlı ama il/ilçe/mahallesi henüz bulunmamış kullanım kayıtlarını
-/// (örn. köyde internetsiz kaydedilmiş) internet gelince arka planda tamamlar.
+/// Konumu kayıtlı ama il/ilçe/mahallesi henüz bulunmamış ya da "Nerede
+/// kullanıldı?"sı boş bırakılmış (internetsiz) montajları internet gelince
+/// arka planda tamamlar. Yer adı: önce 15 m içindeki eski montajın adı, yoksa
+/// "İLÇE MAHALLE"; o da bulunamazsa koordinat.
 class AdresTamamlayici {
   static bool _calisiyor = false;
 
@@ -92,11 +95,36 @@ class AdresTamamlayici {
     try {
       final eksikler = await db.adresiEksikKullanimlar(limit: enFazla);
       for (final r in eksikler) {
-        final adres = await AdresServisi.konumdanAdres(
-            (r['enlem'] as num).toDouble(), (r['boylam'] as num).toDouble());
-        if (adres == null) break; // internet yok: sonra tekrar denenir
-        await db.kullanimAdresiTamamla(r['id'] as String, adres.il,
-            adres.ilce, adres.mahalle);
+        final id = r['id'] as String;
+        final enlem = (r['enlem'] as num).toDouble();
+        final boylam = (r['boylam'] as num).toDouble();
+        final yerBos = ((r['kullanim_yeri'] as String?) ?? '').trim().isEmpty;
+        String? ilce = r['ilce'] as String?;
+        String? mahalle = r['mahalle'] as String?;
+        // Yer adı boşsa önce yakındaki eski montajın adı (internetsiz).
+        final hassasiyet = (r['konum_hassasiyet'] as num?)?.toDouble();
+        if (yerBos && hassasiyet != null && hassasiyet <= 15) {
+          final yakin = await db.yakindakiKullanimYerleri(enlem, boylam);
+          if (yakin.isNotEmpty) {
+            await db.kullanimYeriTamamla(id, yakin.first);
+            if (ilce != null || mahalle != null) continue;
+          }
+        }
+        if (ilce == null && mahalle == null) {
+          final adres = await AdresServisi.konumdanAdres(enlem, boylam);
+          if (adres == null) break; // internet yok: sonra tekrar denenir
+          await db.kullanimAdresiTamamla(id, adres.il, adres.ilce, adres.mahalle);
+          ilce = adres.ilce;
+          mahalle = adres.mahalle;
+        }
+        if (yerBos) {
+          final yer = yerMetni(ilce, mahalle);
+          await db.kullanimYeriTamamla(
+              id,
+              yer.isNotEmpty
+                  ? yer
+                  : '${enlem.toStringAsFixed(5)}, ${boylam.toStringAsFixed(5)}');
+        }
       }
     } catch (e) {
       debugPrint('Adres tamamlama hatası: $e');

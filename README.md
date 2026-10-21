@@ -5,6 +5,10 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.28.0 – "Nerede kullanıldı?" konumdan
+- Montaj ekranında: konum ±15 m'den iyiyse `yakindakiKullanimYerleri` (15 m içinde, hassasiyeti ≤15 m eski kayıtlar, haversine `mesafeMetre`) ilk adı yazar; yoksa adres bulununca `yerMetni` ("İLÇE MAHALLE", `lib/services/bolge_adi.dart`). Elle yazılan değiştirilmez; birden çok yakın ad çip olarak.
+- Konum kaydedilecekse yer boş bırakılabilir; `AdresTamamlayici` internet gelince önce yakın eski adı, yoksa ilçe + mahalleyi, o da yoksa koordinatı `kullanimYeriTamamla` ile yazar (kullanım kaydı + boşsa cihaz kartı).
+
 ## 1.27.3 – Raporlar: PDF / Excel düğmeleri, bölge adları
 - Rapor önizlemede dışa aktarma altta yazılı, renkli iki düğme (PDF kırmızı, Excel yeşil); başlık iki satıra kadar. iPhone (Safari) web'de PDF ve Excel `Share.shareXFiles` ile Paylaş menüsüne gider.
 - Bölge raporu: `bolgeAdiDuzelt` (Türkçe büyük / küçük harf, "Mahallesi / Mah. / Köyü" atılır; testleri test/bolge_adi_test.dart) ile gruplama; "Belirsiz" mahalle sayılmaz; özet "Montajlı cihaz" + "Kurulum noktası" (farklı koordinat, 5 ondalık). Kullanım raporuna "Tutanak belirtilmemiş" ve alt başlık açıklamaları.

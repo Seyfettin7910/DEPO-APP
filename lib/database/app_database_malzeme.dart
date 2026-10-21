@@ -193,7 +193,8 @@ extension MalzemeVeritabani on AppDatabase {
       throw StateError('Nereden ve nereye aynı olamaz');
     }
     final yer = (kullanimYeri ?? '').trim();
-    if (islem == MalzemeIslemi.kullanim && yer.isEmpty) {
+    // Konum varsa yer boş bırakılabilir (internet gelince konumdan dolar).
+    if (islem == MalzemeIslemi.kullanim && yer.isEmpty && enlem == null) {
       throw StateError('Nerede kullanıldığını yazın');
     }
     final simdi = DateTime.now();
@@ -236,7 +237,7 @@ extension MalzemeVeritabani on AppDatabase {
           KullanimKaydi(
             id: _uuid.v4(),
             stokHareketId: hareketId,
-            kullanimYeri: yer,
+            kullanimYeri: yer.isEmpty ? null : yer,
             not_: (not_ ?? '').trim().isEmpty ? null : not_!.trim(),
             enlem: enlem,
             boylam: boylam,

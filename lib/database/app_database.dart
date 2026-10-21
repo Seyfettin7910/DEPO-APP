@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:async';
 import 'package:path/path.dart' as p;
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -1934,11 +1935,66 @@ class AppDatabase {
       {int limit = 15}) async {
     final db = await _database;
     return db.rawQuery(
-        'SELECT id, enlem, boylam FROM kullanim_kayitlari '
+        'SELECT id, enlem, boylam, konum_hassasiyet, il, ilce, mahalle, '
+        'kullanim_yeri '
+        'FROM kullanim_kayitlari '
         'WHERE deleted = 0 AND enlem IS NOT NULL AND boylam IS NOT NULL '
-        'AND mahalle IS NULL AND ilce IS NULL '
+        "AND ((mahalle IS NULL AND ilce IS NULL) "
+        "     OR kullanim_yeri IS NULL OR kullanim_yeri = '') "
         'ORDER BY updated_at DESC LIMIT ?',
         [limit]);
+  }
+
+  /// Konumun en fazla [metre] yakınında daha önce yazılmış kullanım yerleri
+  /// (yakından uzağa, tekrarsız). Yalnız hassasiyeti en fazla [metre] olan
+  /// eski konumlar sayılır. İnternetsiz çalışır.
+  Future<List<String>> yakindakiKullanimYerleri(double enlem, double boylam,
+      {double metre = 15}) async {
+    final db = await _database;
+    final dEnlem = metre / 111320.0;
+    final dBoylam =
+        metre / (111320.0 * math.max(0.01, math.cos(enlem * math.pi / 180)));
+    final rows = await db.rawQuery(
+        "SELECT kullanim_yeri, enlem, boylam FROM kullanim_kayitlari "
+        "WHERE deleted = 0 AND kullanim_yeri IS NOT NULL AND kullanim_yeri <> '' "
+        'AND konum_hassasiyet IS NOT NULL AND konum_hassasiyet <= ? '
+        'AND enlem BETWEEN ? AND ? AND boylam BETWEEN ? AND ?',
+        [metre, enlem - dEnlem, enlem + dEnlem, boylam - dBoylam,
+         boylam + dBoylam]);
+    final mesafeler = <String, double>{};
+    for (final r in rows) {
+      final ad = (r['kullanim_yeri'] as String).trim();
+      final m = mesafeMetre(enlem, boylam, (r['enlem'] as num).toDouble(),
+          (r['boylam'] as num).toDouble());
+      if (m > metre) continue;
+      final onceki = mesafeler[ad];
+      if (onceki == null || m < onceki) mesafeler[ad] = m;
+    }
+    final adlar = mesafeler.keys.toList()
+      ..sort((a, b) => mesafeler[a]!.compareTo(mesafeler[b]!));
+    return adlar;
+  }
+
+  /// Bir montaj kaydında boş kalan kullanım yerini doldurur (internetsiz
+  /// kaydedilmişse sonradan); cihazın kartındaki yer de boşsa yazılır.
+  Future<void> kullanimYeriTamamla(String kayitId, String yer) async {
+    final db = await _database;
+    final simdi = DateTime.now().millisecondsSinceEpoch;
+    await db.transaction((txn) async {
+      final n = await txn.rawUpdate(
+          'UPDATE kullanim_kayitlari SET kullanim_yeri = ?, updated_at = ?, '
+          "dirty = 1 WHERE id = ? AND (kullanim_yeri IS NULL OR kullanim_yeri = '')",
+          [yer, simdi, kayitId]);
+      if (n == 0) return;
+      await txn.rawUpdate(
+          'UPDATE cihazlar SET kullanim_yeri = ?, updated_at = ?, dirty = 1 '
+          "WHERE (kullanim_yeri IS NULL OR kullanim_yeri = '') "
+          "AND durum = 'kullanimda' AND id = (SELECT sh.cihaz_id FROM "
+          'stok_hareketleri sh JOIN kullanim_kayitlari kk ON '
+          'kk.stok_hareket_id = sh.id WHERE kk.id = ?)',
+          [yer, simdi, kayitId]);
+    });
+    _notify();
   }
 
   /// Arka planda bulunan adresi yazar; elle girilmiş alanlara dokunmaz.
@@ -2750,4 +2806,18 @@ class AppDatabase {
 
   /// Yerel değişiklik olduğunda tetiklenir (senkron servisi dinler).
   Stream<void> get degisiklikler => _changes.stream;
+}
+
+
+/// İki koordinat arası yaklaşık mesafe (metre, haversine).
+double mesafeMetre(double e1, double b1, double e2, double b2) {
+  const r = 6371000.0;
+  final de = (e2 - e1) * math.pi / 180;
+  final db = (b2 - b1) * math.pi / 180;
+  final a = math.sin(de / 2) * math.sin(de / 2) +
+      math.cos(e1 * math.pi / 180) *
+          math.cos(e2 * math.pi / 180) *
+          math.sin(db / 2) *
+          math.sin(db / 2);
+  return 2 * r * math.atan2(math.sqrt(a), math.sqrt(1 - a));
 }

@@ -6,6 +6,8 @@ import '../adres_servisi.dart';
 import '../giris_kaydi_servisi.dart';
 import '../konum_servisi.dart';
 import 'rapor_modeli.dart';
+import '../bolge_adi.dart';
+export '../bolge_adi.dart' show bolgeAdiDuzelt, trBuyuk, trKucuk, yerMetni;
 
 /// Veritabanından [Rapor] nesneleri üretir. Önizleme, PDF ve Excel aynı
 /// nesneyi kullanır.
@@ -1376,35 +1378,3 @@ class _Sayac {
 }
 
 
-/// Türkçe küçük harf (I → ı, İ → i).
-String trKucuk(String s) =>
-    s.replaceAll('I', 'ı').replaceAll('İ', 'i').toLowerCase();
-
-/// Türkçe büyük harf (i → İ, ı → I).
-String trBuyuk(String s) =>
-    s.replaceAll('i', 'İ').replaceAll('ı', 'I').toUpperCase();
-
-/// Bölge adını düzeltir: "KULAT" → "Kulat", "Sakarya Mahallesi" / "Sakarya
-/// Mah." → "Sakarya", "Kayalar Köyü" → "Kayalar". Boşsa ''.
-String bolgeAdiDuzelt(String? ad) {
-  var t = (ad ?? '').trim().replaceAll(RegExp(r'\s+'), ' ');
-  if (t.isEmpty) return '';
-  t = t.replaceAll(
-      RegExp(r'\s+(mahallesi|mahalle|mah\.?|köyü|köy|koyu|koy)$',
-          caseSensitive: false),
-      '');
-  // "MAHALLESİ" gibi Türkçe büyük harfli ekler de (İ / I) atılsın.
-  final kucuk = trKucuk(t);
-  for (final ek in [' mahallesi', ' mahalle', ' mah.', ' mah', ' köyü', ' köy']) {
-    if (kucuk.endsWith(ek)) {
-      t = t.substring(0, t.length - ek.length).trimRight();
-      break;
-    }
-  }
-  return t
-      .split(' ')
-      .map((k) => k.isEmpty
-          ? k
-          : trBuyuk(k.substring(0, 1)) + trKucuk(k.substring(1)))
-      .join(' ');
-}

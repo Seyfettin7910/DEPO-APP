@@ -36,6 +36,27 @@ class NotMaddesi {
 
 const surumNotlari = <SurumNotu>[
   SurumNotu(
+    surum: '1.28.0',
+    tarih: '21.10.2026',
+    bolumler: [
+      NotBolumu('Yeni', [
+        NotMaddesi(
+          'Nerede kullanıldı?',
+          'Montajda konumdan kendiliğinden dolar; elle yazılan değişmez.',
+          'Önce 15 m içinde daha önce yazılmış yer adı gelir (konum en fazla '
+              '±15 m iken); yoksa "SUSURLUK KULAT" gibi ilçe + mahalle. '
+              'Yakında birden çok eski ad varsa altında seçilebilir.',
+        ),
+        NotMaddesi(
+          'İnternetsiz montaj',
+          'Konum alındıysa "Nerede kullanıldı?" boş bırakılabilir.',
+          'İnternet gelince bölge ve yer adı kendiliğinden doldurulur '
+              '(cihaz kartında da). Konum yoksa yine elle yazılmalı.',
+        ),
+      ]),
+    ],
+  ),
+  SurumNotu(
     surum: '1.27.3',
     tarih: '21.10.2026',
     bolumler: [
