@@ -93,7 +93,7 @@ class OkutListesi {
   /// İşlem düğmesindeki sayı: cihazlar + malzeme kalemleri.
   int get kalemSayisi => seriler.length + malzemeler.length;
 
-  /// Ekranda "kalan/sınır" olarak gösterilir (100/100, 99/100…).
+  /// Ekranda "sınır/kalan" olarak gösterilir (100/100, 100/99…; 1.29.2).
   int get kalan => sinir - seriler.length;
   bool get bos => seriler.isEmpty && malzemeler.isEmpty;
   bool get aktif => islem != null;

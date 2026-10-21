@@ -20,8 +20,10 @@ enum TaramaModu { barkod, karekod }
 /// okur. Etikette seri no barkodunun yanında başka barkodlar ve karekodlar
 /// olsa bile, sadece çerçeveye alınan kod dikkate alınır.
 ///
-/// - Sağ üstteki düğmeyle çerçeve "Barkod" (ince-uzun) ve "Karekod" (kare)
-///   arasında değiştirilir; seçim telefonda hatırlanır.
+/// - Çerçeve yana kaydırınca "Barkod" (ince-uzun) ⇄ "Karekod" (kare) olur;
+///   üstte hangi yöne geçileceği yazar, seçim telefonda hatırlanır. İki
+///   modda da her kod okunur, fark yalnız çerçevenin şekli (1.29.2: düğme
+///   kalktı).
 /// - Görüntüye dokununca kamera çerçevenin ortasına yeniden netler; kod
 ///   okunmadığı sürece birkaç saniyede bir kendiliğinden de netler.
 /// - İki parmakla yakınlaştırılabilir (telefonu çok yaklaştırınca kamera
@@ -42,9 +44,13 @@ enum TaramaModu { barkod, karekod }
 /// - Pil (1.29.0): 15 sn hiçbir kod görülmezse okuma seyrekleşir (saniyede
 ///   ~3), kod görülünce normale döner; 30 sn olmazsa kamera (ve fener) durur,
 ///   dokununca yeniden açılır.
-/// - Yazıdan okuma (1.29.0, Android, Ayarlar → "Yazıdan da oku"): 2,5 sn
+/// - Yazıdan okuma (1.29.0, Android, Ayarlar → "Yazıdan da oku"): 3 sn
 ///   barkod okunmazsa çerçevedeki "S/N" satırı yazıdan okunur; iki kez aynı
-///   okununca kabul edilir. Kayıtlı cihazla eşleşmezse "Doğru mu?" sorulur.
+///   okununca, yarım saniye içinde barkod okunmazsa kabul edilir (barkod
+///   önceliği). Kayıtlı cihazla eşleşmezse "Doğru mu?" sorulur.
+/// - Düzen (1.29.2), yukarıdan aşağıya: sol üstte sayaç, ortada kaydırma
+///   ipucu; pembe "Yazı da okunuyor" şeridi; çerçeve (küçülmez); altta
+///   "15-25 cm uzakta tutun" (sığmazsa gizlenir); en altta 1x · 2x · 3x.
 class HedefliTarayici extends StatefulWidget {
   const HedefliTarayici({
     super.key,
@@ -53,15 +59,15 @@ class HedefliTarayici extends StatefulWidget {
     this.mod,
     this.urunBarkodu = false,
     this.bilinenMi,
-    this.ustOrta,
+    this.sayac,
     this.yazidanOku = true,
   });
 
   /// false: bu ekranda yazıdan okuma yapılmaz (ör. etiket doğrulama).
   final bool yazidanOku;
 
-  /// Kameranın üstünde ortada gösterilecek küçük bilgi (ör. "98/100").
-  final Widget? ustOrta;
+  /// Kameranın sol üstünde gösterilecek sayaç (ör. "100/98").
+  final Widget? sayac;
 
   final MobileScannerController controller;
   final void Function(BarcodeCapture capture) onDetect;
@@ -129,11 +135,15 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
   Timer? _pil;
 
   // --- Yazıdan okuma (S/N satırı) ---
-  static const _metinBekleme = Duration(milliseconds: 2500);
+  static const _metinBekleme = Duration(milliseconds: 3000);
+  // Barkod önceliği: yazıdan okunan, bu süre içinde barkod okunmazsa kabul.
+  static const _barkodOnceligi = Duration(milliseconds: 500);
+  DateTime _sonKabul = DateTime.fromMillisecondsSinceEpoch(0);
   StreamSubscription<List<String>>? _metinAboneligi;
   String? _metinAday;
   DateTime _metinAdayZamani = DateTime.fromMillisecondsSinceEpoch(0);
   bool _metinSoruluyor = false;
+  bool _metinBekliyor = false; // barkod önceliği için yarım saniye
   bool _metinIpucu = false;
 
   bool get _yaziAcik =>
@@ -219,7 +229,10 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
   // ------------------------------------------------ yazıdan okuma (S/N)
 
   void _metinGeldi(List<String> satirlar) {
-    if (!mounted || _metinSoruluyor || _durduruldu || !_yaziAcik) return;
+    if (!mounted || _metinSoruluyor || _metinBekliyor || _durduruldu ||
+        !_yaziAcik) {
+      return;
+    }
     // Yalnız ekranda görünen (en üstteki) kamera.
     if (!(ModalRoute.of(context)?.isCurrent ?? true)) return;
     final sn = snAyikla(satirlar);
@@ -238,8 +251,16 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
       return;
     }
     _metinAday = null;
-    _etkinlik();
-    unawaited(_metinOnayla(sn));
+    // Barkod önceliği: yarım saniye içinde barkod / karekod okunursa
+    // yazıdan okunan atılır.
+    final an = DateTime.now();
+    _metinBekliyor = true;
+    Future.delayed(_barkodOnceligi, () {
+      _metinBekliyor = false;
+      if (!mounted || _sonKabul.isAfter(an) || _durduruldu) return;
+      _etkinlik();
+      unawaited(_metinOnayla(sn));
+    });
   }
 
   Future<void> _metinOnayla(String sn) async {
@@ -452,19 +473,44 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
     } catch (_) {}
   }
 
-  /// Görüntü alanına göre hedef çerçeve.
-  Rect _pencere(Size alan) {
-    final merkez = Offset(alan.width / 2, alan.height / 2);
+  // Düzen payları (1.29.2): üstte sayaç + kaydırma ipucu satırı ve pembe
+  // şerit; altta "15-25 cm uzakta tutun" ve 1x · 2x · 3x seçici.
+  static const _satir = 30.0; // üst satır (sayaç / ipucu)
+  static const _serit = 28.0; // pembe şerit
+  static const _altYazi = 22.0;
+  double _seciciPay(bool kucuk) => _seciciVar ? (kucuk ? 42.0 : 50.0) : 6.0;
+
+  /// Görüntü alanına göre hedef çerçeve ve alt yazının sığıp sığmadığı.
+  /// Çerçevenin boyutu değişmez (karekod çerçevesi küçültülmez); sığdığı
+  /// sürece üst yazılarla alttaki seçici arasında ortalanır.
+  (Rect, bool) _pencere(Size alan) {
+    final Size boyut;
     if (_mod == TaramaModu.barkod) {
       // İnce şerit: yalnızca seri no barkodu sığsın, yandakiler girmesin.
       final g = math.min(alan.width * 0.70, 440.0);
       final y = math.min(math.max(alan.height * 0.18, 56.0), 104.0);
-      return Rect.fromCenter(center: merkez, width: g, height: y);
+      boyut = Size(g, y);
+    } else {
+      // Karekod (koli karekodu dahil) için kare.
+      final k = math.min(
+          math.min(alan.width * 0.62, alan.height * 0.72), 320.0);
+      boyut = Size(k, k);
     }
-    // Karekod (koli karekodu dahil) için kare.
-    final k = math.min(
-        math.min(alan.width * 0.62, alan.height * 0.72), 320.0);
-    return Rect.fromCenter(center: merkez, width: k, height: k);
+    final kucuk = alan.height < 260;
+    final ust = _satir + (_yaziAcik ? _serit : 0);
+    final alt = _seciciPay(kucuk);
+    Rect ortala(double ustSinir, double altSinir) => Rect.fromCenter(
+        center: Offset(alan.width / 2, (ustSinir + altSinir) / 2),
+        width: boyut.width,
+        height: boyut.height);
+    if (boyut.height + ust + alt + _altYazi <= alan.height) {
+      return (ortala(ust, alan.height - alt - _altYazi), true);
+    }
+    if (boyut.height + ust + alt <= alan.height) {
+      return (ortala(ust, alan.height - alt), false);
+    }
+    // Çok küçük alan: eskisi gibi tam ortada.
+    return (ortala(0, alan.height), false);
   }
 
   /// Kodun ekrandaki merkezi (önizleme "cover" ile sığdırılır); hesaplanamazsa
@@ -567,6 +613,7 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
       secilen = adaylar.first.$1;
     } else {
       // Konum hesaplanamıyor: eskisi gibi ekran "birden çok kod" uyarır.
+      _sonKabul = DateTime.now();
       widget.onDetect(BarcodeCapture(
         barcodes: [for (final a in adaylar) a.$1],
         image: capture.image,
@@ -613,6 +660,7 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
     }
     _okunan = deger;
     _okunmaZamani = DateTime.now();
+    _sonKabul = _okunmaZamani;
     _kayip?.cancel();
     setState(() => _aday = null);
     widget.onDetect(BarcodeCapture(barcodes: [kod]));
@@ -682,7 +730,7 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (context, c) {
       final alan = Size(c.maxWidth, c.maxHeight);
-      final pencere = _pencere(alan);
+      final (pencere, altYaziSigar) = _pencere(alan);
       final kucuk = alan.height < 260;
       return Stack(
         fit: StackFit.expand,
@@ -757,29 +805,72 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
                 ),
               ),
             ),
-          if (widget.ustOrta != null)
-            Positioned(
-              top: kucuk ? 6 : 12,
-              left: 0,
-              right: 0,
-              child: IgnorePointer(child: Center(child: widget.ustOrta)),
+          // Üst satır: sol üstte sayaç, ortada kaydırma ipucu (düğme yok).
+          Positioned(
+            top: kucuk ? 3 : 5,
+            left: 8,
+            right: 8,
+            child: IgnorePointer(
+              child: SizedBox(
+                height: _satir - 6,
+                child: Stack(
+                  children: [
+                    if (widget.sayac != null)
+                      Align(
+                          alignment: Alignment.centerLeft,
+                          child: widget.sayac),
+                    Padding(
+                      padding: EdgeInsets.symmetric(
+                          horizontal: widget.sayac != null ? 80 : 0),
+                      child: Center(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.swap_horiz,
+                                  color: Colors.white, size: 16,
+                                  shadows: [Shadow(blurRadius: 4)]),
+                              const SizedBox(width: 4),
+                              Text(
+                                _mod == TaramaModu.barkod
+                                    ? 'Karekod için yana kaydırın'
+                                    : 'Barkod için yana kaydırın',
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                    shadows: [Shadow(blurRadius: 4)]),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
+          ),
+          // Çerçevenin hemen üstü: "Yok sayıldı" ipucu ya da pembe şerit.
           if (_ipucu != null)
             Positioned(
               left: 12,
               right: 12,
-              top: math.max(pencere.top - 34, 4),
+              top: math.max(pencere.top - 26, _satir - 2),
               child: IgnorePointer(
                 child: Center(
                   child: Container(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                     decoration: BoxDecoration(
                       color: Colors.black54,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       _ipucu!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                           color: Color(0xFFBDBDBD), fontSize: 12),
@@ -792,12 +883,12 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
             Positioned(
               left: 12,
               right: 12,
-              top: math.max(pencere.top - 34, 4),
+              top: math.max(pencere.top - 26, _satir - 2),
               child: IgnorePointer(
                 child: Center(
                   child: Container(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                     decoration: BoxDecoration(
                       color: const Color(0xCCC2185B),
                       borderRadius: BorderRadius.circular(12),
@@ -811,6 +902,7 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
                         Flexible(
                           child: Text(
                             'Yazı da okunuyor · S/N satırını çerçeveye alın',
+                            maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(color: Colors.white, fontSize: 12),
                           ),
@@ -821,25 +913,30 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
                 ),
               ),
             ),
-          Positioned(
-            top: kucuk ? 6 : 12,
-            right: kucuk ? 6 : 12,
-            child: _Hap(
-              kucuk: kucuk,
-              onTap: _modDegistir,
-              ikon: _mod == TaramaModu.barkod
-                  ? Icons.view_week_outlined
-                  : Icons.qr_code_2,
-              metin: _mod == TaramaModu.barkod ? 'Barkod' : 'Karekod',
-              sonIkon: Icons.swap_horiz,
+          // Çerçevenin altı: tek satır (sığmazsa gösterilmez).
+          if (altYaziSigar)
+            Positioned(
+              left: 16,
+              right: 16,
+              top: pencere.bottom + 3,
+              child: const IgnorePointer(
+                child: Text(
+                  '15-25 cm uzakta tutun',
+                  maxLines: 1,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      shadows: [Shadow(blurRadius: 4)]),
+                ),
+              ),
             ),
-          ),
           // Yakınlık seçici: görüntünün altında ortada (1x · 2x · 3x)
           if (_seciciVar)
             Positioned(
               left: 0,
               right: 0,
-              bottom: kucuk ? 6 : 10,
+              bottom: kucuk ? 4 : 8,
               child: Center(
                 child: _YakinlikSecici(
                   secili: kIsWeb
@@ -851,24 +948,6 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
                   kucuk: kucuk,
                   onSec: _kademeSec,
                 ),
-              ),
-            ),
-          if (!kucuk)
-            Positioned(
-              left: 16,
-              right: 16,
-              top: math.min(
-                  pencere.bottom + 12, alan.height - (_seciciVar ? 92 : 44)),
-              child: Text(
-                kIsWeb
-                    ? 'Yalnızca çerçevenin içindeki kod okunur'
-                    : 'Kodu çerçeveye alın · 15-25 cm uzakta · netlemek için '
-                        'dokunun · Barkod / Karekod için yana kaydırın',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    shadows: [Shadow(blurRadius: 4)]),
               ),
             ),
           // Pil: 30 sn kod okunmadı, kamera durdu.
@@ -924,9 +1003,10 @@ class _YakinlikSecici extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final boyut = kucuk ? 36.0 : 44.0;
+    // 1.29.2: küçültüldü (44 → 34).
+    final boyut = kucuk ? 30.0 : 34.0;
     return Container(
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
         color: Colors.black54,
         borderRadius: BorderRadius.circular(boyut),
@@ -936,7 +1016,7 @@ class _YakinlikSecici extends StatelessWidget {
         children: [
           for (final k in const [1, 2, 3])
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 3),
+              padding: const EdgeInsets.symmetric(horizontal: 2),
               child: Material(
                 color: secili == k ? Colors.white : Colors.transparent,
                 shape: const CircleBorder(),
@@ -952,7 +1032,7 @@ class _YakinlikSecici extends StatelessWidget {
                         style: TextStyle(
                           color: secili == k ? Colors.black : Colors.white,
                           fontWeight: FontWeight.bold,
-                          fontSize: kucuk ? 13 : 15,
+                          fontSize: kucuk ? 12 : 13,
                         ),
                       ),
                     ),
@@ -961,52 +1041,6 @@ class _YakinlikSecici extends StatelessWidget {
               ),
             ),
         ],
-      ),
-    );
-  }
-}
-
-class _Hap extends StatelessWidget {
-  const _Hap({
-    required this.kucuk,
-    required this.onTap,
-    required this.ikon,
-    required this.metin,
-    this.sonIkon,
-  });
-
-  final bool kucuk;
-  final VoidCallback onTap;
-  final IconData ikon;
-  final String metin;
-  final IconData? sonIkon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.black54,
-      shape: const StadiumBorder(),
-      child: InkWell(
-        customBorder: const StadiumBorder(),
-        onTap: onTap,
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-              horizontal: kucuk ? 10 : 14, vertical: kucuk ? 6 : 8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(ikon, color: Colors.white, size: kucuk ? 16 : 20),
-              const SizedBox(width: 6),
-              Text(metin,
-                  style: TextStyle(
-                      color: Colors.white, fontSize: kucuk ? 12 : 14)),
-              if (sonIkon != null) ...[
-                const SizedBox(width: 4),
-                Icon(sonIkon, color: Colors.white70, size: kucuk ? 14 : 18),
-              ],
-            ],
-          ),
-        ),
       ),
     );
   }

@@ -66,12 +66,22 @@ class DepoApp extends StatelessWidget {
           OturumKilidi.instance.etkinlik();
           SesServisi.ilkDokunus(); // iPhone: ilk okutmada da ses çıksın
         },
-        child: GorunumAyari.uygula(context, child ?? const SizedBox()),
+        child: GorunumAyari.uygula(
+            context, altCubukPayi(context, child ?? const SizedBox())),
       ),
       home: const BaslangicEkrani(),
     );
   }
 }
+
+/// 1.29.2: Yeni Android sürümleri uygulamayı ekranın en altına kadar çiziyor;
+/// alttaki düğmeler (Kaydet, PDF / Excel…) telefonun geri / ana ekran
+/// tuşlarının arkasında kalmasın diye bütün ekranlara alt pay verilir. Pay
+/// alt menü rengindedir; klavye açıkken pay kendiliğinden kalkar.
+Widget altCubukPayi(BuildContext context, Widget child) => ColoredBox(
+      color: Theme.of(context).colorScheme.surfaceContainer,
+      child: SafeArea(top: false, left: false, right: false, child: child),
+    );
 
 /// Açılış hazırlığını yapar, bitince giriş/ana ekrana geçer.
 class BaslangicEkrani extends StatefulWidget {

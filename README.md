@@ -5,6 +5,13 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.29.2 – Kamera ekranı düzeni, yazdırma önizlemesi, alt pay
+- `HedefliTarayici`: Barkod / Karekod düğmesi (`_Hap`) kalktı; üst satırda sol üstte `sayac` (eski `ustOrta`; Okut'ta "100/kalan"), ortada kaydırma ipucu; çerçevenin hemen üstünde "Yok sayıldı" / pembe şerit; çerçeve boyutu aynı, `_pencere` sığdığı sürece üst satır (+ şerit) ile alttaki seçici arasında ortalar ve alt yazının ("15-25 cm uzakta tutun") sığıp sığmadığını döndürür. Seçici 44 → 34.
+- Yazıdan okuma 2,5 → 3 sn; barkod önceliği: iki kez okunan yazı 0,5 sn bekler, bu arada barkod kabul edilirse (`_sonKabul`) atılır.
+- `main.dart` `altCubukPayi`: bütün ekranlara alt sistem çubuğu payı (SafeArea, alt menü renginde); Android 15'in kenardan kenara çiziminde alt düğmeler tuşların arkasında kalıyordu.
+- Etiket şablon ekranı: üstteki Kaydet kalktı, ölçü kutuları telefonda tam genişlik.
+- `lib/widgets/pdf_onizleme.dart`: `Printing.raster` (200 dpi) → sayfa başına `InteractiveViewer` (1-5x, çift dokunuş 3x), `PageView`; Yazdır (`layoutPdf`) / PDF paylaş (`sharePdf`). Etiket basımı (vazgeçilirse "basıldı mı?" sorulmaz), hizalama test sayfası ve örnek etiketlerde.
+
 ## 1.29.1 – Bütün yazılar büyük harf
 - **Supabase SQL:** `supabase_guncelleme_1_29_1.sql` (eski kayıtlar bir kerelik; yalnız serbest metin sütunları, `updated_at` ilerletilir; tekrar çalıştırmak zararsız).
 - `lib/widgets/buyuk_harf.dart`: `metinBuyuk` (Türkçe: i → İ, ı → I) ve `kodBuyuk` (Latin: seri no, barkod, plaka, kurum kodu) + `TextCapitalization.characters`; e-posta, şifre ve sayı alanları hariç bütün metin alanlarında.

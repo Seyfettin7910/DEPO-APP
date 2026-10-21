@@ -11,6 +11,7 @@ import '../../services/etiket/etiket_pdf.dart';
 import '../../services/etiket/etiket_sablonu.dart';
 import '../../widgets/kod_yardimci.dart';
 import 'etiket_sablon_screen.dart';
+import '../../widgets/pdf_onizleme.dart';
 
 /// Basım kuyruğu: etiketler yalnızca bilgisayardan (web sürümü) basılır.
 /// Baskıdan sonra düzgün çıkanlar "basıldı" olarak işaretlenir; bozuk
@@ -72,11 +73,12 @@ class _EtiketBasimScreenState extends ConsumerState<EtiketBasimScreen> {
       if (indir) {
         await Printing.sharePdf(bytes: pdf, filename: '$ad.pdf');
       } else {
-        await Printing.layoutPdf(
-          onLayout: (_) async => pdf,
-          name: ad,
-          format: EtiketPdf.sayfaFormati(s),
-        );
+        // 1.29.2: önce büyütülebilir önizleme; vazgeçilirse "basıldı mı?"
+        // sorulmaz.
+        if (!mounted) return;
+        final yapildi = await PdfOnizleme.ac(context,
+            bytes: pdf, ad: ad, format: EtiketPdf.sayfaFormati(s));
+        if (!yapildi) return;
       }
       if (!mounted) return;
       await _basildiSor(secilen);

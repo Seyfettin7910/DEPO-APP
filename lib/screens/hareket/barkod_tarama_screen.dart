@@ -531,15 +531,16 @@ class _BarkodTaramaScreenState extends ConsumerState<BarkodTaramaScreen> {
     final renk = kalan <= 0
         ? Colors.red.shade400
         : (kalan <= 10 ? Colors.orange.shade400 : Colors.white);
+    // 1.29.2: sol üstte; sınır solda, okuttukça düşen kalan sağda.
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
       decoration: BoxDecoration(
         color: Colors.black.withOpacity(0.6),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(14),
       ),
-      child: Text('$kalan/${_liste.sinir}',
+      child: Text('${_liste.sinir}/$kalan',
           style: TextStyle(
-              color: renk, fontSize: 16, fontWeight: FontWeight.bold)),
+              color: renk, fontSize: 14, fontWeight: FontWeight.bold)),
     );
   }
 
@@ -549,7 +550,7 @@ class _BarkodTaramaScreenState extends ConsumerState<BarkodTaramaScreen> {
         HedefliTarayici(
           controller: _controller,
           onDetect: _okundu,
-          ustOrta: _sayac(),
+          sayac: _sayac(),
           // Kayıtlı seri no / kurum etiketi / malzeme barkodu hızlı okunur,
           // bilinmeyen kod biraz daha uzun sabit tutulmalı.
           bilinenMi: (kod) async {

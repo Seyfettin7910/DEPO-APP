@@ -1,12 +1,12 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:printing/printing.dart';
 
 import '../../services/etiket/etiket_pdf.dart';
 import '../../services/etiket/etiket_sablonu.dart';
 import '../../widgets/buyuk_harf.dart';
 import '../../services/bolge_adi.dart';
+import '../../widgets/pdf_onizleme.dart';
 
 /// Etiket kağıdı / rulo ölçüleri ve hizalama. Bu bilgisayarda saklanır.
 class EtiketSablonScreen extends StatefulWidget {
@@ -115,26 +115,18 @@ class _EtiketSablonScreenState extends State<EtiketSablonScreen> {
       return;
     }
     final bytes = await pdf(s);
-    await Printing.layoutPdf(
-      onLayout: (_) async => bytes,
-      name: ad,
-      format: EtiketPdf.sayfaFormati(s),
-    );
+    if (!mounted) return;
+    // 1.29.2: önce büyütülebilir önizleme; Yazdır / PDF paylaş oradan.
+    await PdfOnizleme.ac(context,
+        bytes: bytes, ad: ad, format: EtiketPdf.sayfaFormati(s));
   }
 
   @override
   Widget build(BuildContext context) {
     final s = _s;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Etiket kağıdı ve hizalama'),
-        actions: [
-          TextButton(
-            onPressed: s == null ? null : () => _kaydet(),
-            child: const Text('Kaydet'),
-          ),
-        ],
-      ),
+      // 1.29.2: üstteki "Kaydet" kalktı; alttaki büyük düğme yeter.
+      appBar: AppBar(title: const Text('Etiket kağıdı ve hizalama')),
       body: s == null
           ? const Center(child: CircularProgressIndicator())
           : ListView(
@@ -205,7 +197,10 @@ class _EtiketSablonScreenState extends State<EtiketSablonScreen> {
                           {'etiketGenislik', 'etiketYukseklik', 'kaydirX', 'kaydirY'}
                               .contains(e.key))
                         SizedBox(
-                          width: 240,
+                          // Telefonda tam genişlik, geniş ekranda yan yana.
+                          width: MediaQuery.sizeOf(context).width >= 600
+                              ? 240
+                              : double.infinity,
                           child: TextField(
                             controller: _c[e.key],
                             keyboardType: const TextInputType.numberWithOptions(

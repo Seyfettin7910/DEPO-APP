@@ -36,6 +36,44 @@ class NotMaddesi {
 
 const surumNotlari = <SurumNotu>[
   SurumNotu(
+    surum: '1.29.2',
+    tarih: '22.10.2026',
+    bolumler: [
+      NotBolumu('Yeni', [
+        NotMaddesi(
+          'Yazdırma önizlemesi',
+          'Etiketler yazdırılmadan önce büyütülerek kontrol edilir.',
+          'İki parmakla 5 kata kadar büyütün, çift dokunuşla büyütüp geri '
+              'alın. Altta "Yazdır" ve "PDF paylaş". Etiket basımı, hizalama '
+              'test sayfası ve örnek etiketlerde.',
+        ),
+      ]),
+      NotBolumu('Değişen', [
+        NotMaddesi(
+          'Kamera ekranı',
+          'Barkod / Karekod düğmesi kalktı; geçiş yana kaydırarak.',
+          'Üstte hangi yöne geçileceği yazar ("Karekod için yana '
+              'kaydırın"). Sayaç sol üstte: 100/100, 100/99… Altta yalnız '
+              '"15-25 cm uzakta tutun"; 1x · 2x · 3x küçüldü.',
+        ),
+        NotMaddesi(
+          'Yazıdan da oku',
+          '3 sn barkod okunmazsa başlar; barkod okunursa her zaman barkod geçer.',
+        ),
+      ]),
+      NotBolumu('Düzeltilen', [
+        NotMaddesi(
+          'Alttaki düğmeler',
+          'Telefonun geri / ana ekran tuşlarının arkasında kalmıyor.',
+        ),
+        NotMaddesi(
+          'Etiket kağıdı ve hizalama',
+          'Tek "Kaydet" düğmesi; ölçü kutuları tam genişlik.',
+        ),
+      ]),
+    ],
+  ),
+  SurumNotu(
     surum: '1.29.1',
     tarih: '21.10.2026',
     bolumler: [
