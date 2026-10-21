@@ -22,7 +22,7 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 - [ ] **Barkod / Karekod düğmesi kaldırılır.** Geçiş yalnız yana kaydırarak (iki modda da her kod okunur; fark yalnız çerçeve şekli).
 - [ ] **Üst kısım, yukarıdan aşağıya:** sayaç (100/100, varsa) → kaydırma ipucu (düz yazı: barkod modunda "Karekod için yana kaydırın", karekod modunda "Barkod için yana kaydırın") → pembe şerit (yalnız yazıdan okuma devredeyken) → çerçeve. Hiçbiri çerçevenin içine taşmaz.
 - [ ] **Karekod çerçevesi şu anki boyutunun altına İNMEZ.** Yer başka yerden açılır (önerildi, onay bekliyor): sayaç sol üst köşeye, kaydırma ipucu aynı satırda ortada; ikinci satırda pembe şerit; küçülen seçiciden açılan yere tek satırlık alt yazı sığar (karekod modunda da); daha küçük ekranlarda sığmazsa gizlenir. Barkod modunda her şey sığar.
-- [ ] **Alt yazı** kısalır, tek satır: "Kodu çerçeveye alın · 15-25 cm uzakta" (kaydırma ipucu alttan çıkar, üstte); çerçeve ile seçici arasına sığmıyorsa hiç gösterilmez.
+- [ ] **Alt yazı** kısalır, tek satır, yalnız: "15-25 cm uzakta tutun" (çerçevenin dışı zaten karartılı, "çerçeveye alın" gereksiz) (kaydırma ipucu alttan çıkar, üstte); çerçeve ile seçici arasına sığmıyorsa hiç gösterilmez.
 - [ ] **1x · 2x · 3x seçici küçülür** (daire 44 → 34 piksel, yazı 15 → 13).
 
 **2. Alttaki düğmeler gezinme çubuğunun altında kalıyor.** Etiket kağıdı ve hizalama ekranındaki alt "Kaydet" telefonun geri / ana ekran tuşlarının arkasında. Bütün ekranlar taranır (rapor önizleme PDF / Excel, diğer alt düğmeler); alt boşluk tek seferde verilir.
