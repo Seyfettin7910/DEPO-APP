@@ -20,7 +20,7 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 **1. Kamera ekranı düzeni** (bütün kamera ekranları: Okut, toplu giriş / transfer, montaj, sayım…). Sorun: Karekod modunda pembe "Yazı da okunuyor" şeridi sağ üstteki Karekod düğmesinin altında kalıyor; alttaki uzun yazı çerçeveye biniyor, 1x · 2x · 3x seçici de yazıyı örtüyor.
 - [ ] **Barkod / Karekod düğmesi kaldırılır.** Geçiş yalnız yana kaydırarak (iki modda da her kod okunur; fark yalnız çerçeve şekli).
 - [ ] **Üst kısım, yukarıdan aşağıya:** sayaç (100/100, varsa) → kaydırma ipucu (düz yazı: barkod modunda "Karekod için yana kaydırın", karekod modunda "Barkod için yana kaydırın") → pembe şerit (yalnız yazıdan okuma devredeyken) → çerçeve. Hiçbiri çerçevenin içine taşmaz.
-- [ ] **Karekod çerçevesi** üstteki yazılara ve alttaki yazı + seçiciye yer kalacak kadar küçülür (barkod şeridi aynı).
+- [ ] **Karekod çerçevesi şu anki boyutunun altına İNMEZ.** Yer başka yerden açılır (önerildi, onay bekliyor): sayaç sol üst köşeye, kaydırma ipucu aynı satırda ortada; ikinci satırda pembe şerit; karekod modunda alt yazı sığmadığı için gizlenir, küçülen seçici çerçevenin altına sığar. Barkod modunda her şey sığar.
 - [ ] **Alt yazı** kısalır, tek satır: "Kodu çerçeveye alın · 15-25 cm uzakta" (kaydırma ipucu alttan çıkar, üstte); çerçeve ile seçici arasına sığmıyorsa hiç gösterilmez.
 - [ ] **1x · 2x · 3x seçici küçülür** (daire 44 → 34 piksel, yazı 15 → 13).
 
@@ -46,7 +46,7 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
   - Yakında eski ad yoksa adres servisinden (OpenStreetMap / ileride Google) ilçe + mahalle.
   - İnternet yokken satır boş bırakılabilir, bağlantı gelince otomatik dolar (konum da yoksa elle yazmak zorunlu).
   - Şehir / ilçe merkezindeki belediye tesislerinde sorun çıkarmaması için ayrıca düşünülecek.
-- [ ] iPhone denemesine göre: kamera çözünürlüğü, netleme, dönüşte kameranın yeniden açılması.
+- [ ] **iPhone (Safari) kamerası:** netleme ve çözünürlük Safari'nin elinde (dokununca netleme orada çalışmaz); iPhone denemesinde okuma yavaş / zor olursa ya da dönüşte kamera açılmazsa bakılacak. Android'de hepsi yapıldı: yüksek çözünürlük, dokununca + 4 sn'de bir netleme, dönüşte yeniden açılma (1.21.0), hızlı okuma 120 ms + okuma sayısıyla onay (1.24.1), 2x sabit (1.27.2).
 - Not: **test** ve **Mustafa** kullanıcılarının eklediği her şey deneme verisidir (iPhone denemesi dahil).
 
 ## Excel dökümü gelince (ayrı paket)
