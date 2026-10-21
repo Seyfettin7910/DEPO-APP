@@ -15,6 +15,8 @@ import '../../widgets/hedefli_tarayici.dart';
 import '../../widgets/alim_bilgisi_alanlari.dart';
 import '../../widgets/renkler.dart';
 import '../../widgets/malzeme_kalemleri.dart';
+import '../../widgets/buyuk_harf.dart';
+import '../../services/bolge_adi.dart';
 
 /// Seri numaralarıyla depoya giriş: model ve depo seçilir, seri numaraları
 /// kamerayla tek tek okutulur, hepsi tek seferde kaydedilir. Hatalı girişi
@@ -166,7 +168,7 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen>
         kuyruga: v['kuyruga'] as bool? ?? true,
       );
     });
-    _notCtrl.text = v['not'] as String? ?? '';
+    _notCtrl.text = trBuyuk(v['not'] as String? ?? '');
     final nosuz = {for (final s in (v['seriNosuz'] as List? ?? [])) '$s'};
     for (final e in ((v['malzemeler'] as Map?) ?? const {}).entries) {
       final m = (e.value as num?)?.toInt() ?? 0;
@@ -761,9 +763,10 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen>
             child: bilgisayarTarayicisi
                 // Bilgisayarda USB barkod okuyucu klavye gibi yazar.
                 ? TextField(
+                    textCapitalization: TextCapitalization.characters,
+                    inputFormatters: kodBuyuk,
                     controller: _seriCtrl,
                     autofocus: true,
-                    textCapitalization: TextCapitalization.characters,
                     autocorrect: false,
                     enableSuggestions: false,
                     textInputAction: TextInputAction.done,
@@ -913,6 +916,8 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen>
               child: Column(
                 children: [
                   TextField(
+                    textCapitalization: TextCapitalization.characters,
+                    inputFormatters: metinBuyuk,
                     controller: _notCtrl,
                     decoration:
                         const InputDecoration(labelText: 'Not (opsiyonel)'),

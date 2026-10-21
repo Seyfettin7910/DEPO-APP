@@ -10,8 +10,8 @@ String trKucuk(String s) =>
 String trBuyuk(String s) =>
     s.replaceAll('i', 'İ').replaceAll('ı', 'I').toUpperCase();
 
-/// Bölge adını düzeltir: "KULAT" → "Kulat", "Sakarya Mahallesi" / "Sakarya
-/// Mah." → "Sakarya", "Kayalar Köyü" → "Kayalar". Boşsa ''.
+/// Bölge adını düzeltir: "Kulat" → "KULAT", "Sakarya Mahallesi" / "Sakarya
+/// Mah." → "SAKARYA", "Kayalar Köyü" → "KAYALAR". Boşsa ''.
 String bolgeAdiDuzelt(String? ad) {
   var t = (ad ?? '').trim().replaceAll(RegExp(r'\s+'), ' ');
   if (t.isEmpty) return '';
@@ -27,12 +27,8 @@ String bolgeAdiDuzelt(String? ad) {
       break;
     }
   }
-  return t
-      .split(' ')
-      .map((k) => k.isEmpty
-          ? k
-          : trBuyuk(k.substring(0, 1)) + trKucuk(k.substring(1)))
-      .join(' ');
+  // 1.29.1: her yerde büyük harf.
+  return trBuyuk(t);
 }
 
 

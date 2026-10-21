@@ -12,6 +12,7 @@ import '../rapor/sayim_screen.dart';
 import '../../widgets/silme_islemleri.dart';
 import '../../widgets/servis_islemleri.dart';
 import '../../widgets/renkler.dart';
+import '../../widgets/buyuk_harf.dart';
 
 /// Bir deponun detayı: "Stok" sekmesinde ürünlerin güncel adedi,
 /// "Hareketler" sekmesinde giren/çıkan her işlem görünür.
@@ -275,6 +276,8 @@ class _CihazListesiState extends ConsumerState<_CihazListesi> {
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
               child: TextField(
+                textCapitalization: TextCapitalization.characters,
+                inputFormatters: metinBuyuk,
                 decoration: const InputDecoration(
                   hintText: 'Bu depoda seri no / model ara',
                   prefixIcon: Icon(Icons.search),

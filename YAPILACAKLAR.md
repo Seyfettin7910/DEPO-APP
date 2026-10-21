@@ -9,7 +9,9 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 - [ ] 1.27.0: malzeme barkodu (kutu içeriği), 🔗+ malzeme ekle / yeni tanımla, giriş / transfer / montajda birlikte kayıt.
 - [ ] 1.27.1: güncelleme telefonun kendi yükleyicisiyle (Güncelle'ye bir dokunuş).
 - [ ] 1.27.2: kamera 2x sabit, altta 1x · 2x · 3x seçici (otomatik yakınlaştırma kapalı).
-- [ ] **Supabase SQL:** `supabase_guncelleme_1_29_0.sql` (anlık senkron).
+- [x] **Supabase SQL:** `supabase_guncelleme_1_29_0.sql` (anlık senkron) çalıştırıldı (12 tablo).
+- [ ] **Supabase SQL:** `supabase_guncelleme_1_29_1.sql` (eski yazılar büyük harf; telefonlar 1.29.1'e geçince bir kez daha).
+- [ ] 1.29.1: bütün alanlar büyük harf (Türkçe İ / I; seri no, plaka Latin), klavye büyük harfle açılıyor mu, eski kayıtlar çevrildi mi.
 - [ ] 1.29.0: kamera 15 sn'de yavaşlama / 30 sn'de durma + dokununca açılma, fener sönmesi; iki telefonla (biri uçak modunda) senkron denemesi; Android'de S/N yazıdan okuma (gerçek etiketlerle), iPhone'da kamera durup açılınca izin tekrar soruluyor mu.
 
 ## Sonraya

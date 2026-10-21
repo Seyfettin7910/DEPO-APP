@@ -14,6 +14,8 @@ import '../../widgets/hedefli_tarayici.dart';
 import '../../widgets/iade_sebebi.dart';
 import '../../widgets/renkler.dart';
 import '../../widgets/malzeme_kalemleri.dart';
+import '../../widgets/buyuk_harf.dart';
+import '../../services/bolge_adi.dart';
 
 /// Birden çok cihazı seri numarasıyla okutup tek seferde bir depoya veya
 /// araca taşır. [tip] transfer, Araca Yükle ya da iade olabilir;
@@ -159,8 +161,8 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen>
         if (!_bekleyen.contains('$s')) _bekleyen.add('$s');
       }
     });
-    _notCtrl.text = v['not'] as String? ?? '';
-    _arizaCtrl.text = v['ariza'] as String? ?? '';
+    _notCtrl.text = trBuyuk(v['not'] as String? ?? '');
+    _arizaCtrl.text = trBuyuk(v['ariza'] as String? ?? '');
     if (_hedefId == null) return;
     // Liste yeniden denetlenir: bu arada başka yere giden cihaz atlanır.
     final eklenecek = <CihazBilgi>[];
@@ -604,8 +606,9 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen>
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: TextField(
-              controller: _seriCtrl,
               textCapitalization: TextCapitalization.characters,
+              inputFormatters: kodBuyuk,
+              controller: _seriCtrl,
               autocorrect: false,
               enableSuggestions: false,
               textInputAction: TextInputAction.done,
@@ -694,6 +697,8 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen>
                     ),
                     if (_arizali) ...[
                       TextField(
+                        textCapitalization: TextCapitalization.characters,
+                        inputFormatters: metinBuyuk,
                         controller: _arizaCtrl,
                         decoration: const InputDecoration(
                             labelText: 'Arıza sebebi',
@@ -706,6 +711,8 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen>
                     ],
                   ],
                   TextField(
+                    textCapitalization: TextCapitalization.characters,
+                    inputFormatters: metinBuyuk,
                     controller: _notCtrl,
                     decoration:
                         const InputDecoration(labelText: 'Not (opsiyonel)'),

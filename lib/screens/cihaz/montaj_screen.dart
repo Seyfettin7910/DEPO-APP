@@ -17,6 +17,7 @@ import '../../widgets/hedefli_tarayici.dart';
 import '../../widgets/kod_yardimci.dart';
 import '../../widgets/renkler.dart';
 import 'cihaz_detay_screen.dart';
+import '../../widgets/buyuk_harf.dart';
 
 /// Montaj / Kullanıldı: bir noktaya birlikte takılan cihazlar (ör. 3 kamera,
 /// 1 kayıt cihazı, 1 router) arka arkaya okutulur; yer, not, tutanak ve
@@ -91,7 +92,7 @@ class _MontajScreenState extends ConsumerState<MontajScreen>
     // Boşsa ya da önceki otomatik yazılansa değiştirilir.
     if (mevcut.isNotEmpty && mevcut != _yerOtomatik) return;
     _yerYaziliyor = true;
-    _yerCtrl.text = yer;
+    _yerCtrl.text = trBuyuk(yer);
     _yerYaziliyor = false;
     _yerOtomatik = yer;
     _yerKaynagi = kaynak;
@@ -199,11 +200,11 @@ class _MontajScreenState extends ConsumerState<MontajScreen>
   @override
   Future<void> taslagiYukle(Taslak t) async {
     final v = t.veri;
-    _yerCtrl.text = v['yer'] as String? ?? '';
-    _notCtrl.text = v['not'] as String? ?? '';
-    _ilCtrl.text = v['il'] as String? ?? '';
-    _ilceCtrl.text = v['ilce'] as String? ?? '';
-    _mahalleCtrl.text = v['mahalle'] as String? ?? '';
+    _yerCtrl.text = trBuyuk(v['yer'] as String? ?? '');
+    _notCtrl.text = trBuyuk(v['not'] as String? ?? '');
+    _ilCtrl.text = trBuyuk(v['il'] as String? ?? '');
+    _ilceCtrl.text = trBuyuk(v['ilce'] as String? ?? '');
+    _mahalleCtrl.text = trBuyuk(v['mahalle'] as String? ?? '');
     setState(() {
       _tutanak = v['tutanak'] as String?;
       _konumKaydet = v['konum'] as bool? ?? true;
@@ -882,8 +883,9 @@ class _MontajScreenState extends ConsumerState<MontajScreen>
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                 child: TextField(
-                  controller: _seriCtrl,
                   textCapitalization: TextCapitalization.characters,
+                  inputFormatters: kodBuyuk,
+                  controller: _seriCtrl,
                   autocorrect: false,
                   enableSuggestions: false,
                   textInputAction: TextInputAction.done,
@@ -942,6 +944,8 @@ class _MontajScreenState extends ConsumerState<MontajScreen>
                 child: Column(
                   children: [
                     TextField(
+                      textCapitalization: TextCapitalization.characters,
+                      inputFormatters: metinBuyuk,
                       controller: _yerCtrl,
                       decoration: InputDecoration(
                         labelText: 'Nerede kullanıldı?',
@@ -978,6 +982,8 @@ class _MontajScreenState extends ConsumerState<MontajScreen>
                         ),
                       ),
                     TextField(
+                      textCapitalization: TextCapitalization.characters,
+                      inputFormatters: metinBuyuk,
                       controller: _notCtrl,
                       decoration: const InputDecoration(
                           labelText: 'Not (isteğe bağlı)',
@@ -1141,8 +1147,9 @@ class _MontajScreenState extends ConsumerState<MontajScreen>
                       child: Column(
                         children: [
                           TextField(
+                            textCapitalization: TextCapitalization.characters,
+                            inputFormatters: metinBuyuk,
                             controller: _mahalleCtrl,
-                            textCapitalization: TextCapitalization.words,
                             decoration: const InputDecoration(
                                 labelText: 'Mahalle / köy'),
                           ),
@@ -1150,8 +1157,9 @@ class _MontajScreenState extends ConsumerState<MontajScreen>
                             children: [
                               Expanded(
                                 child: TextField(
+                                  textCapitalization: TextCapitalization.characters,
+                                  inputFormatters: metinBuyuk,
                                   controller: _ilceCtrl,
-                                  textCapitalization: TextCapitalization.words,
                                   decoration:
                                       const InputDecoration(labelText: 'İlçe'),
                                 ),
@@ -1159,8 +1167,9 @@ class _MontajScreenState extends ConsumerState<MontajScreen>
                               const SizedBox(width: 12),
                               Expanded(
                                 child: TextField(
+                                  textCapitalization: TextCapitalization.characters,
+                                  inputFormatters: metinBuyuk,
                                   controller: _ilCtrl,
-                                  textCapitalization: TextCapitalization.words,
                                   decoration:
                                       const InputDecoration(labelText: 'İl'),
                                 ),

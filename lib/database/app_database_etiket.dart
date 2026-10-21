@@ -193,7 +193,7 @@ extension EtiketVeritabani on AppDatabase {
         columns: ['id'], where: 'kod = ?', whereArgs: [kod], limit: 1);
     if (e.isNotEmpty) return true;
     final c = await ex.query('cihazlar',
-        columns: ['id'], where: 'seri_no = ?', whereArgs: [kod], limit: 1);
+        columns: ['id'], where: 'seri_no = ? COLLATE NOCASE', whereArgs: [kod], limit: 1);
     return c.isNotEmpty;
   }
 

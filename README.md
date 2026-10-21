@@ -5,6 +5,12 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.29.1 – Bütün yazılar büyük harf
+- **Supabase SQL:** `supabase_guncelleme_1_29_1.sql` (eski kayıtlar bir kerelik; yalnız serbest metin sütunları, `updated_at` ilerletilir; tekrar çalıştırmak zararsız).
+- `lib/widgets/buyuk_harf.dart`: `metinBuyuk` (Türkçe: i → İ, ı → I) ve `kodBuyuk` (Latin: seri no, barkod, plaka, kurum kodu) + `TextCapitalization.characters`; e-posta, şifre ve sayı alanları hariç bütün metin alanlarında.
+- Otomatik dolanlar: adres (il / ilçe / mahalle) kaynağında, `kullanimYeriTamamla`, montajda yer adı, taslaktan geri yüklenenler `trBuyuk`. Bölge raporu adları (`bolgeAdiDuzelt`) artık BÜYÜK HARF; filtre `trKucuk` ile.
+- Seri no ile aramalar `COLLATE NOCASE` (elle büyük harf yazılan, eskiden küçük harfle kayıtlı seriyi de bulur).
+
 ## 1.29.0 – Pil tasarrufu, anlık senkron, S/N'yi yazıdan okuma
 - **Supabase SQL:** `supabase_guncelleme_1_29_0.sql` (12 tablo `supabase_realtime` yayınına). Çalıştırılana kadar uygulama yedek kontrolle (5 dk) çalışır.
 - Kamera (`HedefliTarayici`): 15 sn kod görülmezse okuma aralığı 120 → 333 ms (`MetinOkuma.hizAyarla`), kod / dokunuş gelince normale; 30 sn olmazsa `controller.stop()` (fener de söner), "Kamera durdu · başlatmak için dokunun".

@@ -5,6 +5,8 @@ import 'package:printing/printing.dart';
 
 import '../../services/etiket/etiket_pdf.dart';
 import '../../services/etiket/etiket_sablonu.dart';
+import '../../widgets/buyuk_harf.dart';
+import '../../services/bolge_adi.dart';
 
 /// Etiket kağıdı / rulo ölçüleri ve hizalama. Bu bilgisayarda saklanır.
 class EtiketSablonScreen extends StatefulWidget {
@@ -63,7 +65,7 @@ class _EtiketSablonScreenState extends State<EtiketSablonScreen> {
     for (final k in _alanlar.keys) {
       (_c[k] ??= TextEditingController()).text = _yaz(j[k] as num);
     }
-    _kurumCtrl.text = s.kurumAdi;
+    _kurumCtrl.text = trBuyuk(s.kurumAdi);
     setState(() => _s = s);
   }
 
@@ -181,6 +183,8 @@ class _EtiketSablonScreenState extends State<EtiketSablonScreen> {
                       setState(() => _s = _oku().kopya(cizgiBarkod: v)),
                 ),
                 TextField(
+                  textCapitalization: TextCapitalization.characters,
+                  inputFormatters: metinBuyuk,
                   controller: _kurumCtrl,
                   decoration: const InputDecoration(
                     labelText: 'Etiket üst yazısı (isteğe bağlı)',

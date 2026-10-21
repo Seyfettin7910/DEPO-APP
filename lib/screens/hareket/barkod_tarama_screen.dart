@@ -26,6 +26,7 @@ import '../../widgets/renkler.dart';
 import '../../widgets/sync_durum_dugmesi.dart';
 import '../../widgets/koli_karekodu.dart';
 import '../../widgets/malzeme_kalemleri.dart';
+import '../../widgets/buyuk_harf.dart';
 
 /// Okut: seri numarası okutulunca cihazın kartı açılır.
 ///
@@ -578,8 +579,9 @@ class _BarkodTaramaScreenState extends ConsumerState<BarkodTaramaScreen> {
 
   /// Bilgisayarda (USB barkod okuyucu) ve gerektiğinde elle yazma alanı.
   Widget _yazmaAlani({required String etiket}) => TextField(
-        controller: _yazCtrl,
         textCapitalization: TextCapitalization.characters,
+        inputFormatters: kodBuyuk,
+        controller: _yazCtrl,
         autocorrect: false,
         enableSuggestions: false,
         textInputAction: TextInputAction.done,

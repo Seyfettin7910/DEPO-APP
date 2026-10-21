@@ -8,6 +8,7 @@ import '../providers/app_providers.dart';
 import '../screens/etiket/etiket_dogrula_screen.dart';
 import '../screens/etiket/etiketler_screen.dart';
 import 'etiket_secimi.dart';
+import 'buyuk_harf.dart';
 
 /// Cihaz kartında kurum etiketi: kod, durum, işlemler ve etiket geçmişi.
 class EtiketKarti extends ConsumerWidget {
@@ -66,6 +67,8 @@ class EtiketKarti extends ConsumerWidget {
                 've basım kuyruğuna girer. Eski etiket okutulursa uyarı verilir.'),
             const SizedBox(height: 8),
             TextField(
+              textCapitalization: TextCapitalization.characters,
+              inputFormatters: metinBuyuk,
               controller: ctrl,
               decoration: const InputDecoration(
                   labelText: 'Sebep (ör. yıprandı, okunmuyor)'),

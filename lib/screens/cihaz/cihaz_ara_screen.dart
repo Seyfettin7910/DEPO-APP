@@ -11,6 +11,7 @@ import 'cihaz_detay_screen.dart';
 import '../../widgets/silme_islemleri.dart';
 import '../urun/urun_form_dialog.dart';
 import '../../widgets/sync_durum_dugmesi.dart';
+import '../../widgets/buyuk_harf.dart';
 
 /// Seri numarası (veya model, depo, araç/yer) yazarak ya da okutarak arama.
 /// Sonuçta cihazın hangi modele ait olduğu ve şu an hangi depoda / hangi
@@ -79,6 +80,8 @@ class _CihazAraScreenState extends ConsumerState<CihazAraScreen> {
           Padding(
             padding: const EdgeInsets.all(12),
             child: TextField(
+              textCapitalization: TextCapitalization.characters,
+              inputFormatters: metinBuyuk,
               controller: _ctrl,
               textInputAction: TextInputAction.search,
               decoration: InputDecoration(

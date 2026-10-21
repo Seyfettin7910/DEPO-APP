@@ -9,6 +9,8 @@ import '../../services/taslak_servisi.dart';
 import '../../widgets/barkod_okuyucu_sayfasi.dart';
 import '../../widgets/depo_secici.dart';
 import '../../widgets/kod_yardimci.dart';
+import '../../widgets/buyuk_harf.dart';
+import '../../services/bolge_adi.dart';
 
 /// Seri numarası olmayan, miktarla takip edilen malzemeler (kablo, adaptör…)
 /// için giriş, Araca Yükle, transfer, iade ve Montaj / Kullanıldı.
@@ -108,8 +110,8 @@ class _MalzemeIslemScreenState extends ConsumerState<MalzemeIslemScreen>
         if (n > 0) _satirlar['${e.key}'] = n;
       }
     });
-    _yerCtrl.text = v['yer'] as String? ?? '';
-    _notCtrl.text = v['not'] as String? ?? '';
+    _yerCtrl.text = trBuyuk(v['yer'] as String? ?? '');
+    _notCtrl.text = trBuyuk(v['not'] as String? ?? '');
   }
 
   // ---------------------------------------------------------------
@@ -419,6 +421,8 @@ class _MalzemeIslemScreenState extends ConsumerState<MalzemeIslemScreen>
                     ),
                   if (_islem == MalzemeIslemi.kullanim)
                     TextField(
+                      textCapitalization: TextCapitalization.characters,
+                      inputFormatters: metinBuyuk,
                       controller: _yerCtrl,
                       decoration: const InputDecoration(
                         labelText: 'Nerede kullanıldı?',
@@ -435,6 +439,8 @@ class _MalzemeIslemScreenState extends ConsumerState<MalzemeIslemScreen>
                       children: [
                         Expanded(
                           child: TextField(
+                            textCapitalization: TextCapitalization.characters,
+                            inputFormatters: kodBuyuk,
                             controller: _barkodCtrl,
                             decoration: const InputDecoration(
                               labelText: 'Fabrika barkodu (okuyucuyla okutun)',
@@ -517,6 +523,8 @@ class _MalzemeIslemScreenState extends ConsumerState<MalzemeIslemScreen>
                 child: Column(
                   children: [
                     TextField(
+                      textCapitalization: TextCapitalization.characters,
+                      inputFormatters: metinBuyuk,
                       controller: _notCtrl,
                       decoration:
                           const InputDecoration(labelText: 'Not (opsiyonel)'),

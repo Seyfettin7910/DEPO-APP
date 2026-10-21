@@ -10,6 +10,7 @@ import '../../services/rapor/rapor_olusturucu.dart';
 import 'rapor_onizleme_screen.dart';
 import '../../widgets/renkler.dart';
 import '../../widgets/sync_durum_dugmesi.dart';
+import '../../widgets/buyuk_harf.dart';
 
 class KullanimRaporScreen extends ConsumerStatefulWidget {
   const KullanimRaporScreen({super.key});
@@ -172,6 +173,8 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
         builder: (ctx) => AlertDialog(
           title: const Text('Bölge raporu'),
           content: TextField(
+            textCapitalization: TextCapitalization.characters,
+            inputFormatters: metinBuyuk,
             controller: ctrl,
             autofocus: true,
             decoration: const InputDecoration(
@@ -284,6 +287,8 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
               child: Column(
                 children: [
                   TextField(
+                    textCapitalization: TextCapitalization.characters,
+                    inputFormatters: metinBuyuk,
                     autofocus: true,
                     decoration: const InputDecoration(
                       prefixIcon: Icon(Icons.search),

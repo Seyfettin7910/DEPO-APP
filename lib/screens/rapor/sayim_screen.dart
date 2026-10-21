@@ -13,6 +13,7 @@ import '../../widgets/hedefli_tarayici.dart';
 import '../../widgets/kod_yardimci.dart';
 import 'rapor_onizleme_screen.dart';
 import '../../widgets/renkler.dart';
+import '../../widgets/buyuk_harf.dart';
 
 /// Sayım modu: bir depo veya araç seçilir, oradaki cihazlar tek tek
 /// okutulur. Sistemdeki kayıtla karşılaştırılır:
@@ -423,9 +424,10 @@ class _SayimScreenState extends ConsumerState<SayimScreen>
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
               child: TextField(
+                textCapitalization: TextCapitalization.characters,
+                inputFormatters: kodBuyuk,
                 controller: _seriCtrl,
                 focusNode: _seriOdak,
-                textCapitalization: TextCapitalization.characters,
                 autocorrect: false,
                 enableSuggestions: false,
                 decoration: InputDecoration(

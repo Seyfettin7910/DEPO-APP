@@ -10,6 +10,7 @@ import 'depo_stok_screen.dart';
 import '../../widgets/kritik_stok_seridi.dart';
 import '../../widgets/etiket_karti.dart';
 import '../../widgets/kod_yardimci.dart';
+import '../../widgets/buyuk_harf.dart';
 
 /// Depolar ve araçlar iki ayrı sekmede. Araçlar da depo gibi çalışır:
 /// içinde cihaz / malzeme tutar, transfer hedefi olur.
@@ -202,14 +203,16 @@ class DepoListScreen extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
+                textCapitalization: TextCapitalization.characters,
+                inputFormatters: arac ? kodBuyuk : metinBuyuk,
                 controller: adCtrl,
                 autofocus: true,
-                textCapitalization:
-                    arac ? TextCapitalization.characters : TextCapitalization.words,
                 decoration: InputDecoration(
                     labelText: arac ? 'Araç plakası' : 'Depo adı'),
               ),
               TextField(
+                textCapitalization: TextCapitalization.characters,
+                inputFormatters: metinBuyuk,
                 controller: konumCtrl,
                 decoration: InputDecoration(
                   labelText: arac

@@ -5,6 +5,7 @@ import '../../database/app_database.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/kod_yardimci.dart';
 import 'etiket_sablon_screen.dart';
+import '../../widgets/buyuk_harf.dart';
 
 /// Kurum kodları ve kurum genelindeki etiket ayarları (doğrulama, engel).
 class EtiketAyarlariScreen extends ConsumerWidget {
@@ -27,9 +28,10 @@ class EtiketAyarlariScreen extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
+                  textCapitalization: TextCapitalization.characters,
+                  inputFormatters: kodBuyuk,
                   controller: kodCtrl,
                   autofocus: true,
-                  textCapitalization: TextCapitalization.characters,
                   autocorrect: false,
                   enableSuggestions: false,
                   decoration: InputDecoration(
@@ -39,6 +41,8 @@ class EtiketAyarlariScreen extends ConsumerWidget {
                   ),
                 ),
                 TextField(
+                  textCapitalization: TextCapitalization.characters,
+                  inputFormatters: metinBuyuk,
                   controller: adCtrl,
                   decoration: const InputDecoration(
                       labelText: 'Açıklama (ör. Bilgi İşlem Müdürlüğü)'),

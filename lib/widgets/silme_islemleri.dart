@@ -5,6 +5,7 @@ import '../database/app_database.dart';
 import '../database/models.dart';
 import '../providers/app_providers.dart';
 import '../services/ses_servisi.dart';
+import 'buyuk_harf.dart';
 
 const cihazSilmeSebepleri = [
   'Yanlış kayıt / hatalı okutma',
@@ -62,6 +63,8 @@ Future<(String, String?)?> silmeNedeniSor(
               ],
             ),
             TextField(
+              textCapitalization: TextCapitalization.characters,
+              inputFormatters: metinBuyuk,
               controller: notCtrl,
               decoration: InputDecoration(
                 labelText:

@@ -6,6 +6,7 @@ import '../../providers/app_providers.dart';
 import '../../services/ses_servisi.dart';
 import '../../widgets/barkod_okuyucu_sayfasi.dart';
 import '../../widgets/depo_secici.dart';
+import '../../widgets/buyuk_harf.dart';
 
 /// Yeni ürün (model) ekler; [mevcut] verilirse o ürünü düzenler.
 ///
@@ -51,12 +52,16 @@ Future<String?> urunFormDialog(BuildContext context, WidgetRef ref,
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
+                textCapitalization: TextCapitalization.characters,
+                inputFormatters: metinBuyuk,
                 controller: adCtrl,
                 decoration:
                     const InputDecoration(labelText: 'Ürün / model adı'),
                 autofocus: mevcut == null,
               ),
               TextField(
+                textCapitalization: TextCapitalization.characters,
+                inputFormatters: metinBuyuk,
                 controller: kategoriCtrl,
                 decoration: const InputDecoration(
                     labelText: 'Kategori / tür (ör. Kayıt Cihazları)'),
@@ -118,6 +123,8 @@ Future<String?> urunFormDialog(BuildContext context, WidgetRef ref,
                   ),
                 ),
                 TextField(
+                  textCapitalization: TextCapitalization.characters,
+                  inputFormatters: kodBuyuk,
                   controller: barkodCtrl,
                   decoration: InputDecoration(
                     labelText: 'Fabrika barkodu (isteğe bağlı)',
@@ -131,7 +138,7 @@ Future<String?> urunFormDialog(BuildContext context, WidgetRef ref,
                             builder: (_) => const BarkodOkuyucuSayfasi(urunBarkodu: true),
                           ),
                         );
-                        if (kod != null) barkodCtrl.text = kod.trim();
+                        if (kod != null) barkodCtrl.text = kod.trim().toUpperCase();
                       },
                     ),
                   ),
@@ -139,8 +146,9 @@ Future<String?> urunFormDialog(BuildContext context, WidgetRef ref,
               ],
               if (mevcut == null && !miktarli) ...[
                 TextField(
-                  controller: seriCtrl,
                   textCapitalization: TextCapitalization.characters,
+                  inputFormatters: kodBuyuk,
+                  controller: seriCtrl,
                   autocorrect: false,
                   enableSuggestions: false,
                   onChanged: (_) => setState(() {}),

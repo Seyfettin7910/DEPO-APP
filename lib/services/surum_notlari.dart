@@ -36,6 +36,21 @@ class NotMaddesi {
 
 const surumNotlari = <SurumNotu>[
   SurumNotu(
+    surum: '1.29.1',
+    tarih: '21.10.2026',
+    bolumler: [
+      NotBolumu('Değişen', [
+        NotMaddesi(
+          'Büyük harf',
+          'Yazılan ve kendiliğinden dolan bütün yazılar BÜYÜK HARF.',
+          'Ad, açıklama, not, "Nerede kullanıldı?", il / ilçe / mahalle, '
+              'firma, plaka, seri no… Klavye büyük harfle açılır. Eski '
+              'kayıtlar da büyük harfe çevrildi. E-posta ve şifre değişmez.',
+        ),
+      ]),
+    ],
+  ),
+  SurumNotu(
     surum: '1.29.0',
     tarih: '21.10.2026',
     bolumler: [

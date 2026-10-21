@@ -3,22 +3,23 @@ import 'package:depo_app/services/rapor/rapor_olusturucu.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('büyük / küçük harf farkı birleşir', () {
-    expect(bolgeAdiDuzelt('KULAT'), 'Kulat');
-    expect(bolgeAdiDuzelt('Kulat'), 'Kulat');
-    expect(bolgeAdiDuzelt('  kulat '), 'Kulat');
+  test('büyük / küçük harf farkı birleşir (hepsi büyük harf)', () {
+    expect(bolgeAdiDuzelt('KULAT'), 'KULAT');
+    expect(bolgeAdiDuzelt('Kulat'), 'KULAT');
+    expect(bolgeAdiDuzelt('  kulat '), 'KULAT');
+    expect(bolgeAdiDuzelt('İsmetpaşa'), 'İSMETPAŞA');
   });
 
   test('Mahallesi / Mah. / Köyü ekleri atılır', () {
-    expect(bolgeAdiDuzelt('1. Sakarya Mahallesi'), '1. Sakarya');
-    expect(bolgeAdiDuzelt('Sakarya Mah.'), 'Sakarya');
-    expect(bolgeAdiDuzelt('Kayalar Köyü'), 'Kayalar');
-    expect(bolgeAdiDuzelt('ÖMERKÖY MAHALLESİ'), 'Ömerköy');
+    expect(bolgeAdiDuzelt('1. Sakarya Mahallesi'), '1. SAKARYA');
+    expect(bolgeAdiDuzelt('Sakarya Mah.'), 'SAKARYA');
+    expect(bolgeAdiDuzelt('Kayalar Köyü'), 'KAYALAR');
+    expect(bolgeAdiDuzelt('ÖMERKÖY MAHALLESİ'), 'ÖMERKÖY');
   });
 
   test('Türkçe harfler', () {
-    expect(bolgeAdiDuzelt('İSMETPAŞA'), 'İsmetpaşa');
-    expect(bolgeAdiDuzelt('ılıca'), 'Ilıca');
+    expect(bolgeAdiDuzelt('İSMETPAŞA'), 'İSMETPAŞA');
+    expect(bolgeAdiDuzelt('ılıca'), 'ILICA');
   });
 
   test('boş', () {

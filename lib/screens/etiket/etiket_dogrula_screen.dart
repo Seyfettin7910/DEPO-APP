@@ -8,6 +8,7 @@ import '../../services/etiket/etiket_kodu.dart';
 import '../../services/ses_servisi.dart';
 import '../../widgets/hedefli_tarayici.dart';
 import '../../widgets/kod_yardimci.dart';
+import '../../widgets/buyuk_harf.dart';
 
 class _Sonuc {
   _Sonuc(this.kod, this.seri, this.eslesti, this.mesaj);
@@ -279,6 +280,8 @@ class _EtiketDogrulaScreenState extends ConsumerState<EtiketDogrulaScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
               child: TextField(
+                textCapitalization: TextCapitalization.characters,
+                inputFormatters: kodBuyuk,
                 controller: _ctrl,
                 focusNode: _odak,
                 autofocus: true,

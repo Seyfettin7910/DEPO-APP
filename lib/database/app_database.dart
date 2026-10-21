@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 import '../services/etiket/etiket_kodu.dart';
 import 'etiket_modelleri.dart';
 import 'models.dart';
+import '../services/bolge_adi.dart' show trBuyuk;
 
 export 'etiket_modelleri.dart';
 
@@ -1111,7 +1112,7 @@ class AppDatabase {
   Future<Cihaz?> seriNoIleCihazBul(String seriNo) async {
     final db = await _database;
     final rows = await db.query('cihazlar',
-        where: 'seri_no = ? AND deleted = 0',
+        where: 'seri_no = ? COLLATE NOCASE AND deleted = 0',
         whereArgs: [_normSeri(seriNo)],
         limit: 1);
     if (rows.isEmpty) return null;
@@ -1272,7 +1273,7 @@ class AppDatabase {
     required DateTime zaman,
   }) async {
     final rows = await txn.query('cihazlar',
-        where: 'seri_no = ?', whereArgs: [seri], limit: 1);
+        where: 'seri_no = ? COLLATE NOCASE', whereArgs: [seri], limit: 1);
     String cihazId;
 
     if (rows.isEmpty) {
@@ -1978,6 +1979,7 @@ class AppDatabase {
   /// Bir montaj kaydında boş kalan kullanım yerini doldurur (internetsiz
   /// kaydedilmişse sonradan); cihazın kartındaki yer de boşsa yazılır.
   Future<void> kullanimYeriTamamla(String kayitId, String yer) async {
+    yer = trBuyuk(yer); // 1.29.1: otomatik dolan her şey büyük harf
     final db = await _database;
     final simdi = DateTime.now().millisecondsSinceEpoch;
     await db.transaction((txn) async {
@@ -2150,7 +2152,7 @@ class AppDatabase {
   Future<CihazBilgi?> seriNoIleCihazBilgi(String seriNo) async {
     final db = await _database;
     final rows = await db.rawQuery(
-        '$_cihazBilgiSelect WHERE c.seri_no = ? AND c.deleted = 0 LIMIT 1',
+        '$_cihazBilgiSelect WHERE c.seri_no = ? COLLATE NOCASE AND c.deleted = 0 LIMIT 1',
         [_normSeri(seriNo)]);
     if (rows.isNotEmpty) return CihazBilgi.fromRow(rows.first);
     final okuma = EtiketKodu.coz(seriNo);

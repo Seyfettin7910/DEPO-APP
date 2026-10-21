@@ -64,7 +64,8 @@ class AdresServisi {
       String? ilk(List<String> anahtarlar) {
         for (final k in anahtarlar) {
           final v = a[k];
-          if (v is String && v.trim().isNotEmpty) return v.trim();
+          // 1.29.1: otomatik dolan her şey büyük harf.
+          if (v is String && v.trim().isNotEmpty) return trBuyuk(v.trim());
         }
         return null;
       }

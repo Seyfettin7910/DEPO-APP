@@ -18,6 +18,7 @@ import '../../widgets/silme_islemleri.dart';
 import '../../widgets/servis_islemleri.dart';
 import '../../widgets/etiket_karti.dart';
 import '../../widgets/yarim_isler.dart';
+import '../../widgets/buyuk_harf.dart';
 
 /// Cihazın şu anki konumunu tek satırda anlatır.
 String cihazKonumMetni(CihazBilgi b) {
@@ -522,6 +523,8 @@ class CihazDetayScreen extends ConsumerWidget {
                   }),
                 ),
               TextField(
+                textCapitalization: TextCapitalization.characters,
+                inputFormatters: metinBuyuk,
                 controller: notCtrl,
                 decoration: const InputDecoration(labelText: 'Not (opsiyonel)'),
               ),
@@ -695,6 +698,8 @@ class CihazDetayScreen extends ConsumerWidget {
             Text('${bilgi.urunAdi}\nSN: ${bilgi.cihaz.seriNo}\n'
                 '${bilgi.depoAdi ?? '-'} deposundan çıkış yapılacak.'),
             TextField(
+              textCapitalization: TextCapitalization.characters,
+              inputFormatters: metinBuyuk,
               controller: notCtrl,
               decoration:
                   const InputDecoration(labelText: 'Not (örn. kime verildi)'),
@@ -814,6 +819,8 @@ class CihazDetayScreen extends ConsumerWidget {
                   }),
                 ),
                 TextField(
+                  textCapitalization: TextCapitalization.characters,
+                  inputFormatters: metinBuyuk,
                   controller: notCtrl,
                   decoration: InputDecoration(
                     labelText: sebep == 'Diğer'

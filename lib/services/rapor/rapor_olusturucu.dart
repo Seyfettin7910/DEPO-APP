@@ -687,12 +687,12 @@ class RaporOlusturucu {
   // ------------------------------------------------------------------
   static Future<Rapor> bolge(AppDatabase db, {String? filtre}) async {
     var rows = await db.bolgeRaporu();
-    final f = (filtre ?? '').trim().toLowerCase();
+    final f = trKucuk((filtre ?? '').trim());
     if (f.isNotEmpty) {
       rows = rows
           .where((r) => [r['il'], r['ilce'], r['mahalle'], r['kullanim_yeri']]
               .whereType<String>()
-              .any((v) => v.toLowerCase().contains(f)))
+              .any((v) => trKucuk(v).contains(f)))
           .toList();
     }
 

@@ -12,6 +12,7 @@ import 'barkod_okuyucu_sayfasi.dart';
 import 'depo_secici.dart';
 import 'iade_sebebi.dart';
 import 'kod_yardimci.dart';
+import 'buyuk_harf.dart';
 
 final _tarihSaat = DateFormat('dd.MM.yyyy HH:mm');
 
@@ -197,6 +198,8 @@ Future<void> arizaliIsaretleAkisi(
               }),
             ),
             TextField(
+              textCapitalization: TextCapitalization.characters,
+              inputFormatters: metinBuyuk,
               controller: notCtrl,
               decoration: const InputDecoration(
                 labelText: 'Arıza açıklaması',
@@ -361,9 +364,10 @@ Future<void> servisGonderAkisi(
                 taslakYaz();
               },
               fieldViewBuilder: (context, ctrl, odak, gonder) => TextField(
+                textCapitalization: TextCapitalization.characters,
+                inputFormatters: metinBuyuk,
                 controller: ctrl,
                 focusNode: odak,
-                textCapitalization: TextCapitalization.words,
                 decoration: InputDecoration(
                   labelText: yer == 'garanti'
                       ? 'Gönderilen firma (zorunlu)'
@@ -386,6 +390,8 @@ Future<void> servisGonderAkisi(
               degisti: (t) => setState(() => tarih = t),
             ),
             TextField(
+              textCapitalization: TextCapitalization.characters,
+              inputFormatters: metinBuyuk,
               controller: notCtrl,
               decoration: const InputDecoration(
                 labelText: 'Not (opsiyonel)',
@@ -560,10 +566,11 @@ Future<void> servisSonucuAkisi(BuildContext context, WidgetRef ref,
                   // Telefonda hatalı girişi önlemek için yalnızca kamerayla
                   // okutulur; bilgisayarda USB barkod okuyucu yazabilir.
                   return TextField(
+                    textCapitalization: TextCapitalization.characters,
+                    inputFormatters: kodBuyuk,
                     controller: yeniSeriCtrl,
                     readOnly: !bilgisayarTarayicisi,
                     onTap: bilgisayarTarayicisi ? null : kameraAc,
-                    textCapitalization: TextCapitalization.characters,
                     autocorrect: false,
                     enableSuggestions: false,
                     decoration: InputDecoration(
@@ -632,6 +639,8 @@ Future<void> servisSonucuAkisi(BuildContext context, WidgetRef ref,
                 ),
             ],
             TextField(
+              textCapitalization: TextCapitalization.characters,
+              inputFormatters: metinBuyuk,
               controller: aciklamaCtrl,
               decoration: const InputDecoration(
                 labelText: 'Açıklama (opsiyonel)',
@@ -771,6 +780,8 @@ Future<bool> hurdayaAyirAkisi(
               ],
             ),
             TextField(
+              textCapitalization: TextCapitalization.characters,
+              inputFormatters: metinBuyuk,
               controller: notCtrl,
               decoration: InputDecoration(
                 labelText: sebep == 'Diğer'

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../database/models.dart';
+import 'buyuk_harf.dart';
 
 final _gun = DateFormat('dd.MM.yyyy');
 
@@ -79,9 +80,10 @@ class _AlimBilgisiAlanlariState extends State<AlimBilgisiAlanlari> {
       },
       onSelected: degisti,
       fieldViewBuilder: (context, ctrl, odak, gonder) => TextField(
+        textCapitalization: TextCapitalization.characters,
+        inputFormatters: metinBuyuk,
         controller: ctrl,
         focusNode: odak,
-        textCapitalization: TextCapitalization.words,
         decoration: InputDecoration(labelText: etiket, prefixIcon: Icon(ikon)),
         onChanged: degisti,
       ),
