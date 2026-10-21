@@ -2,24 +2,43 @@
 
 Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlarına taşınır.
 
-## Yayınlananların telefonda denenmesi (21.10.2026 sabahı)
+## Yayınlananların telefonda denenmesi
 - [x] **Supabase SQL:** `supabase_guncelleme_1_27_0.sql` çalıştırıldı.
+- [x] **Supabase SQL:** `supabase_guncelleme_1_29_0.sql` (anlık senkron) çalıştırıldı (12 tablo).
+- [ ] **Supabase SQL:** `supabase_guncelleme_1_29_1.sql` (eski yazılar büyük harf). Bütün telefonlar 1.29.1'e geçip hepsinde "bekleyen yok" görününce bir kez çalıştırılacak.
 - [ ] 1.26.0: Okut arka arkaya okutma (2 kayıtsız), hızlı işlemler, koli, 100/100, toplu montaj + Kaydet anındaki konum, Sonraki nokta, transfer "Arızalı", varsayılan giriş deposu, karışık model, depo ekranında Sayım.
 - [ ] 1.26.1: iPhone Safari (Ana Ekrana Ekle rehberi, Safari dışı uyarı, ses, görsel onay), giriş kayıtlarında tarayıcı.
 - [ ] 1.27.0: malzeme barkodu (kutu içeriği), 🔗+ malzeme ekle / yeni tanımla, giriş / transfer / montajda birlikte kayıt.
 - [ ] 1.27.1: güncelleme telefonun kendi yükleyicisiyle (Güncelle'ye bir dokunuş).
 - [ ] 1.27.2: kamera 2x sabit, altta 1x · 2x · 3x seçici (otomatik yakınlaştırma kapalı).
-- [x] **Supabase SQL:** `supabase_guncelleme_1_29_0.sql` (anlık senkron) çalıştırıldı (12 tablo).
-- [ ] **Supabase SQL:** `supabase_guncelleme_1_29_1.sql` (eski yazılar büyük harf; telefonlar 1.29.1'e geçince bir kez daha).
-- [ ] 1.29.1: bütün alanlar büyük harf (Türkçe İ / I; seri no, plaka Latin), klavye büyük harfle açılıyor mu, eski kayıtlar çevrildi mi.
-- [ ] 1.29.0: kamera 15 sn'de yavaşlama / 30 sn'de durma + dokununca açılma, fener sönmesi; iki telefonla (biri uçak modunda) senkron denemesi; Android'de S/N yazıdan okuma (gerçek etiketlerle), iPhone'da kamera durup açılınca izin tekrar soruluyor mu.
+- [ ] 1.27.3: raporlarda PDF / Excel düğmeleri, bölge raporu adları.
+- [ ] 1.28.0: "Nerede kullanıldı?" konumdan (15 m içindeki eski ad, yoksa İLÇE MAHALLE), internetsiz montajda sonradan dolma.
+- [ ] 1.29.0: kamera 15 sn'de yavaşlama / 30 sn'de durma + dokununca açılma, fener sönmesi; iki telefonla (biri uçak modunda) senkron denemesi; Android'de S/N yazıdan okuma (gerçek etiketlerle); iPhone'da kamera durup açılınca izin tekrar soruluyor mu.
+- [ ] 1.29.1: bütün alanlar büyük harf (Türkçe İ / I; seri no, barkod, plaka Latin), klavye büyük harfle açılıyor mu, SQL sonrası eski kayıtlar çevrildi mi.
 
-## Sıradaki: 1.29.2 – Kamera ekranı düzeni ("yap" bekliyor)
-Bütün kamera ekranlarında (Okut, toplu giriş / transfer, montaj, sayım…). Sorun: Karekod modunda pembe "Yazı da okunuyor" şeridi sağ üstteki Karekod düğmesinin altında kalıyor; alttaki uzun yazı çerçeveye biniyor, 1x · 2x · 3x seçici de yazıyı örtüyor.
+## Sıradaki: 1.29.2 – Ekran düzeltmeleri (21.10.2026 akşamı toplandı, "yap" bekliyor)
+**1. Kamera ekranı düzeni** (bütün kamera ekranları: Okut, toplu giriş / transfer, montaj, sayım…). Sorun: Karekod modunda pembe "Yazı da okunuyor" şeridi sağ üstteki Karekod düğmesinin altında kalıyor; alttaki uzun yazı çerçeveye biniyor, 1x · 2x · 3x seçici de yazıyı örtüyor.
 - [ ] **Barkod / Karekod düğmesi kaldırılır.** Geçiş yalnız yana kaydırarak (iki modda da her kod okunur; fark yalnız çerçeve şekli).
 - [ ] **Üst kısım, yukarıdan aşağıya:** sayaç (100/100, varsa) → kaydırma ipucu (düz yazı: barkod modunda "Karekod için yana kaydırın", karekod modunda "Barkod için yana kaydırın") → pembe şerit (yalnız yazıdan okuma devredeyken) → çerçeve. Hiçbiri çerçevenin içine taşmaz.
 - [ ] **Karekod çerçevesi** üstteki yazılara ve alttaki yazı + seçiciye yer kalacak kadar küçülür (barkod şeridi aynı).
-- [ ] **Alt yazı** kısalır, tek satır: "Kodu çerçeveye alın · 15-25 cm uzakta"; çerçeve ile seçici arasına sığmıyorsa hiç gösterilmez.
+- [ ] **Alt yazı** kısalır, tek satır: "Kodu çerçeveye alın · 15-25 cm uzakta" (kaydırma ipucu alttan çıkar, üstte); çerçeve ile seçici arasına sığmıyorsa hiç gösterilmez.
+- [ ] **1x · 2x · 3x seçici küçülür** (daire 44 → 34 piksel, yazı 15 → 13).
+
+**2. Alttaki düğmeler gezinme çubuğunun altında kalıyor.** Etiket kağıdı ve hizalama ekranındaki alt "Kaydet" telefonun geri / ana ekran tuşlarının arkasında. Bütün ekranlar taranır (rapor önizleme PDF / Excel, diğer alt düğmeler); alt boşluk tek seferde verilir.
+- [ ] Alt düğmelere sistem çubuğu payı.
+
+**3. Etiket kağıdı ve hizalama ekranı**
+- [ ] İki "Kaydet" var (sağ üst + alt): üstteki kalkar, alttaki büyük düğme kalır.
+- [ ] Sayı kutuları ekranın yarısında bitiyor: telefonda tam genişlik.
+
+**4. Yazdırmadan önce kendi önizleme ekranımız** (Android'in yazdırma ekranına büyütme eklenemiyor).
+- [ ] Sayfa tam ekran; iki parmakla 5 kata kadar büyütme, büyükken kaydırma, çift dokunuşla büyüt / geri al.
+- [ ] Altta **Yazdır** (Android yazdırma ekranını açar) ve **PDF paylaş**.
+- [ ] Etiket yazdırma, hizalama test sayfası ve örnek etiketlerde.
+
+## Açık sorular
+- [ ] **Büyük harf – yabancı marka adları:** Türkçe kuralla küçük yazılmış "Hikvision" → "HİKVİSİON" olur. Rahatsız ederse ürün / model adı da Latin kurala (i → I) alınır.
+- [ ] **iPhone'da kamera durdurma:** 30 sn sonra durup açılırken Safari izin tekrar sorarsa iPhone'da durdurma yerine yalnız yavaşlatma.
 
 ## Sonraya
 - [ ] **"Nerede kullanıldı?"nın konumdan otomatik dolması – Google'dan çekme ERTELENDİ** (Google hesabı 1.500 TL ön ödeme istiyor; Geocoding anahtarı / günlük kota 250 hazır bekliyor). Kararlar:
