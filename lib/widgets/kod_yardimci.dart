@@ -64,11 +64,12 @@ List<String> seriNolariAyir(String kod) {
 /// - Yüksek çözünürlük: koli karekodları yoğun (çok satır) olduğundan düşük
 ///   çözünürlükte ancak çok yakından okunur; o mesafede de kamera netleyemez.
 ///   Yüksek çözünürlükle telefon 15-25 cm uzakta tutulabilir.
-/// - Otomatik yakınlaştırma (Android): kod küçük görünüyorsa kamera kendisi
-///   yaklaştırır.
+/// - Otomatik yakınlaştırma KAPALI (1.27.2): ani yakınlaşıp uzaklaşması (ve
+///   telefonun zoom kamerasına geçmesi) okumayı bozuyordu. Kamera 2x sabit
+///   açılır; alttaki 1x · 2x · 3x seçiciyle değiştirilir (HedefliTarayici).
 MobileScannerController tarayiciOlustur() => MobileScannerController(
       cameraResolution: const Size(1920, 1080),
-      autoZoom: true,
+      autoZoom: false,
       detectionSpeed: DetectionSpeed.normal,
       // Küçük / sık çizgili barkodlar için saniyede daha çok deneme
       detectionTimeoutMs: 120,

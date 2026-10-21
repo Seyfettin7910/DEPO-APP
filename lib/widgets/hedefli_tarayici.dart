@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/etiket/etiket_kodu.dart';
 import '../services/ses_servisi.dart';
+import '../services/tarayici.dart';
 import 'kod_yardimci.dart';
 
 /// Hedef çerçevenin şekli: ince-uzun (çizgi barkod) veya kare (karekod).
@@ -217,9 +218,56 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
     }
   }
 
-  Future<void> _zoomAyarla(double z) async {
+  // Yakınlık seçici (1x · 2x · 3x): kamera 2x açılır. Android'de
+  // yakınlaştırma 0-1 arası "doğrusal" değerle verilir; 2x / 3x'in karşılığı
+  // telefonun en büyük yakınlığına göre biraz değişir (yaklaşık).
+  static const _dogrusal = {1: 0.0, 2: 0.56, 3: 0.75};
+  int _kademe = 2;
+
+  /// Web: tarayıcı kamera yakınlaştırmasını destekliyorsa (min, max) oran.
+  (double, double)? _webAralik;
+  int _webDeneme = 0;
+
+  bool get _seciciVar => !kIsWeb || _webAralik != null;
+
+  Future<void> _kademeSec(int k) async {
+    setState(() => _kademe = k);
+    await _kademeUygula();
+  }
+
+  Future<void> _kademeUygula() async {
+    if (!mounted) return;
+    if (kIsWeb) {
+      final a = _webAralik;
+      if (a != null) {
+        await webZoomAyarla(_kademe.toDouble().clamp(a.$1, a.$2));
+      }
+      return;
+    }
+    await _zoomAyarla(_dogrusal[_kademe]!, zorla: true);
+  }
+
+  /// Kamera açılınca (ve arka plandan dönünce) seçili yakınlık uygulanır.
+  void _acilistaYakinlik() {
+    Future.delayed(const Duration(milliseconds: 450), () async {
+      if (!mounted || !widget.controller.value.isRunning) return;
+      if (kIsWeb) {
+        // Video hazır olunca tarayıcıya sorulur (birkaç deneme).
+        final a = webZoomAraligi();
+        if (a == null) {
+          if (++_webDeneme < 6) _acilistaYakinlik();
+          return;
+        }
+        setState(() => _webAralik = a);
+      }
+      await _kademeUygula();
+    });
+  }
+
+  Future<void> _zoomAyarla(double z, {bool zorla = false}) async {
+    if (kIsWeb) return;
     final yeni = z.clamp(0.0, 1.0);
-    if ((yeni - _zoom).abs() < 0.01) return;
+    if (!zorla && (yeni - _zoom).abs() < 0.01) return;
     _zoom = yeni;
     if (mounted) setState(() {});
     try {
@@ -400,6 +448,8 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
       _hazir = DateTime.now().add(_acilisBeklemesi);
       _okunan = null;
       _aday = null;
+      _webDeneme = 0;
+      _acilistaYakinlik();
     }
     _calisiyordu = calisiyor;
   }
@@ -557,25 +607,31 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
               sonIkon: Icons.swap_horiz,
             ),
           ),
-          if (!kIsWeb)
+          // Yakınlık seçici: görüntünün altında ortada (1x · 2x · 3x)
+          if (_seciciVar)
             Positioned(
-              top: kucuk ? 6 : 12,
-              left: kucuk ? 6 : 12,
-              child: _Hap(
-                kucuk: kucuk,
-                // Kademeler: yok → 1 → 2 → 3 → yok
-                onTap: () => _zoomAyarla(_zoom >= 0.3 ? 0 : _zoom + 0.12),
-                ikon: Icons.zoom_in,
-                metin: _zoom < 0.01
-                    ? 'Yakınlaştır'
-                    : 'Yakın ${math.max(1, (_zoom / 0.12).round())}',
+              left: 0,
+              right: 0,
+              bottom: kucuk ? 6 : 10,
+              child: Center(
+                child: _YakinlikSecici(
+                  secili: kIsWeb
+                      ? _kademe
+                      : _dogrusal.entries
+                          .where((e) => (e.value - _zoom).abs() < 0.03)
+                          .map((e) => e.key)
+                          .firstOrNull,
+                  kucuk: kucuk,
+                  onSec: _kademeSec,
+                ),
               ),
             ),
           if (!kucuk)
             Positioned(
               left: 16,
               right: 16,
-              top: math.min(pencere.bottom + 12, alan.height - 44),
+              top: math.min(
+                  pencere.bottom + 12, alan.height - (_seciciVar ? 92 : 44)),
               child: Text(
                 kIsWeb
                     ? 'Yalnızca çerçevenin içindeki kod okunur'
@@ -591,6 +647,62 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
         ],
       );
     });
+  }
+}
+
+/// 1x · 2x · 3x yakınlık seçici (telefonun kendi kamerasındaki gibi).
+class _YakinlikSecici extends StatelessWidget {
+  const _YakinlikSecici({
+    required this.secili,
+    required this.kucuk,
+    required this.onSec,
+  });
+
+  final int? secili;
+  final bool kucuk;
+  final ValueChanged<int> onSec;
+
+  @override
+  Widget build(BuildContext context) {
+    final boyut = kucuk ? 36.0 : 44.0;
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.black54,
+        borderRadius: BorderRadius.circular(boyut),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final k in const [1, 2, 3])
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 3),
+              child: Material(
+                color: secili == k ? Colors.white : Colors.transparent,
+                shape: const CircleBorder(),
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: () => onSec(k),
+                  child: SizedBox(
+                    width: boyut,
+                    height: boyut,
+                    child: Center(
+                      child: Text(
+                        '${k}x',
+                        style: TextStyle(
+                          color: secili == k ? Colors.black : Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: kucuk ? 13 : 15,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 }
 

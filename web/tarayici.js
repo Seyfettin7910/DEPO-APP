@@ -47,3 +47,44 @@ function depoKaliciSakla() {
   } catch (e) {}
   return Promise.resolve(false);
 }
+
+// Kamera yakınlaştırma (web): tarayıcı destekliyorsa video izinin "zoom"u.
+function depoVideoIzi() {
+  var videolar = Array.prototype.slice.call(document.querySelectorAll('video'));
+  // Flutter platform görünümleri gölge DOM içinde olabilir.
+  document.querySelectorAll('*').forEach(function (e) {
+    if (e.shadowRoot) {
+      videolar = videolar.concat(Array.prototype.slice.call(
+        e.shadowRoot.querySelectorAll('video')));
+    }
+  });
+  for (var i = videolar.length - 1; i >= 0; i--) {
+    var s = videolar[i].srcObject;
+    if (s && s.getVideoTracks) {
+      var izler = s.getVideoTracks();
+      if (izler.length && izler[0].readyState === 'live') return izler[0];
+    }
+  }
+  return null;
+}
+
+// Destekleniyorsa "min,max" (ör. "1,10"), değilse "".
+function depoZoomAraligi() {
+  try {
+    var iz = depoVideoIzi();
+    if (!iz || !iz.getCapabilities) return '';
+    var k = iz.getCapabilities();
+    if (!k || !k.zoom) return '';
+    return k.zoom.min + ',' + k.zoom.max;
+  } catch (e) { return ''; }
+}
+
+function depoZoomAyarla(oran) {
+  try {
+    var iz = depoVideoIzi();
+    if (!iz) return Promise.resolve(false);
+    return iz.applyConstraints({ advanced: [{ zoom: oran }] })
+      .then(function () { return true; })
+      .catch(function () { return false; });
+  } catch (e) { return Promise.resolve(false); }
+}

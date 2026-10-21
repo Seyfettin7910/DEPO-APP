@@ -5,6 +5,9 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.27.2 – Kamera 2x sabit, 1x · 2x · 3x seçici
+- `autoZoom` kapatıldı (ani yakınlaşma / zoom kamerasına geçiş okumayı bozuyordu). `HedefliTarayici` kamera her açıldığında (ve arka plandan dönüşte) seçili yakınlığı uygular; varsayılan 2x. Android'de doğrusal değerler yaklaşık: 1x=0, 2x≈0.56, 3x≈0.75. Web'de `tarayici.js` (`depoZoomAraligi` / `depoZoomAyarla`, MediaStreamTrack `zoom`) destekleniyorsa seçici görünür. Eski sol üst "Yakınlaştır" düğmesi kaldırıldı.
+
 ## 1.27.1 – Güncelleme telefonun kendi yükleyicisiyle
 - Sessiz kurulum (PackageInstaller oturumu, USER_ACTION_NOT_REQUIRED) kaldırıldı: Xiaomi / HyperOS'ta izinlere takılıyordu. İndirilen APK `ApkSaglayici` (content://<paket>.apk/…) ile `ACTION_VIEW` olarak telefonun yükleyicisine verilir; "bilinmeyen kaynak" iznini yükleyici kendisi sorar. Yükleyiciden kurulmadan dönülürse pencerede "Tekrar dene". `UPDATE_PACKAGES_WITHOUT_USER_ACTION` izni kaldırıldı.
 

@@ -36,6 +36,21 @@ class NotMaddesi {
 
 const surumNotlari = <SurumNotu>[
   SurumNotu(
+    surum: '1.27.2',
+    tarih: '21.10.2026',
+    bolumler: [
+      NotBolumu('Değişen', [
+        NotMaddesi(
+          'Kamera yakınlığı',
+          'Kamera 2x açılır; görüntünün altındaki 1x · 2x · 3x ile değişir.',
+          'Otomatik yakınlaştırma kapatıldı: aniden yaklaşıp uzaklaşması '
+              'okumayı bozuyordu. İki parmakla büyütme de çalışır. iPhone\'da '
+              'seçici, tarayıcı destekliyorsa görünür.',
+        ),
+      ]),
+    ],
+  ),
+  SurumNotu(
     surum: '1.27.1',
     tarih: '21.10.2026',
     bolumler: [
