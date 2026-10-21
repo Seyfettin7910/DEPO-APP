@@ -69,6 +69,23 @@ class SyncService {
     'etiket_hareketleri': '1.22.0',
   };
 
+  /// Sonradan eklenen sütunlar ve SQL sürümü. Sunucuda henüz yoksa o sütun
+  /// gönderilmez (diğer bilgiler gider), SQL çalıştırılınca kendiliğinden
+  /// gönderilmeye başlar.
+  static const _yeniKolonlar = {
+    'urunler': {'kutu_icerigi': '1.27.0'},
+  };
+  static final _eksikKolonlar = <String, Set<String>>{};
+
+  /// PostgREST "Could not find the 'x' column of 'tablo'" hatasındaki sütun.
+  static String? _eksikKolon(Object e, String tablo) {
+    if (e is! PostgrestException) return null;
+    final m = RegExp(r"Could not find the '([^']+)' column").firstMatch(e.message);
+    final k = m?.group(1);
+    if (k != null && (_yeniKolonlar[tablo]?.containsKey(k) ?? false)) return k;
+    return null;
+  }
+
   static bool _tabloYok(Object e) =>
       e is PostgrestException &&
       (e.code == '42P01' ||
@@ -214,8 +231,12 @@ class SyncService {
   // -------------------------------------------------------------------
   Future<void> _gonder(List<String> sorunlar) async {
     for (final tablo in _tablolar) {
-      final kolonlar = AppDatabase.senkronKolonlari[tablo]!;
       while (true) {
+        final eksik = _eksikKolonlar[tablo] ?? const <String>{};
+        final kolonlar = [
+          for (final k in AppDatabase.senkronKolonlari[tablo]!)
+            if (!eksik.contains(k)) k
+        ];
         final satirlar = await db.kirliSatirlar(tablo, limit: 200);
         if (satirlar.isEmpty) break;
 
@@ -230,6 +251,15 @@ class SyncService {
                 tablo, r['id'] as String, (r['updated_at'] as num).toInt());
           }
         } catch (e) {
+          final kolon = _eksikKolon(e, tablo);
+          if (kolon != null) {
+            // Sütun sunucuda yok: onsuz tekrar gönder.
+            (_eksikKolonlar[tablo] ??= {}).add(kolon);
+            final m = 'Sunucuda "$tablo.$kolon" sütunu yok: Supabase güncelleme '
+                'SQL\'ini (${_yeniKolonlar[tablo]![kolon]}) çalıştırın';
+            if (!sorunlar.contains(m)) sorunlar.add(m);
+            continue;
+          }
           if (_yeniTablolar.containsKey(tablo) && _tabloYok(e)) {
             final m = _sqlMesaji(tablo);
             if (!sorunlar.contains(m)) sorunlar.add(m);

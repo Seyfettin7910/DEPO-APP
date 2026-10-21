@@ -71,16 +71,41 @@ class OkutListesi {
   /// İşlem yokken okutulan 1. kayıtsız seri no (2.si gelince liste başlar).
   String? ilkKayitsiz;
 
+  /// Malzemeler (kablo, adaptör…): ürün id → miktar. 100 sınırına sayılmaz.
+  final Map<String, int> malzemeler = {};
+
+  /// Malzeme barkodu okutuldu ya da listeden eklendi: miktar eklenir
+  /// (aynı barkod iki kez → 2 kutu). Yalnız hızlı işlem seçiliyken.
+  bool malzemeEkle(String urunId, int miktar) {
+    if (islem == null || miktar <= 0) return false;
+    malzemeler[urunId] = (malzemeler[urunId] ?? 0) + miktar;
+    return true;
+  }
+
+  void malzemeAyarla(String urunId, int miktar) {
+    if (miktar <= 0) {
+      malzemeler.remove(urunId);
+    } else {
+      malzemeler[urunId] = miktar;
+    }
+  }
+
+  /// İşlem düğmesindeki sayı: cihazlar + malzeme kalemleri.
+  int get kalemSayisi => seriler.length + malzemeler.length;
+
   /// Ekranda "kalan/sınır" olarak gösterilir (100/100, 99/100…).
   int get kalan => sinir - seriler.length;
-  bool get bos => seriler.isEmpty;
+  bool get bos => seriler.isEmpty && malzemeler.isEmpty;
   bool get aktif => islem != null;
   bool get girisListesi => islem == OkutIslemi.giris;
 
   /// Hızlı işleme dokunuldu. Bekleyen 1. kayıtsız, Depoya girişte listeye
   /// alınır.
   void islemSec(OkutIslemi i) {
-    if (islem != i) seriler.clear();
+    if (islem != i) {
+      seriler.clear();
+      malzemeler.clear();
+    }
     islem = i;
     final ilk = ilkKayitsiz;
     ilkKayitsiz = null;
@@ -93,6 +118,7 @@ class OkutListesi {
   void temizle() {
     islem = null;
     seriler.clear();
+    malzemeler.clear();
     ilkKayitsiz = null;
   }
 
@@ -150,6 +176,7 @@ class OkutListesi {
   Map<String, Object?> toJson() => {
         'islem': islem?.name,
         'seriler': List.of(seriler),
+        'malzemeler': Map.of(malzemeler),
       };
 
   void fromJson(Map<String, Object?> j) {
@@ -160,6 +187,13 @@ class OkutListesi {
       if (seriler.length >= sinir) break;
       if (!seriler.contains('$s')) seriler.add('$s');
     }
-    if (islem == null) seriler.clear();
+    for (final e in ((j['malzemeler'] as Map?) ?? const {}).entries) {
+      final m = (e.value as num?)?.toInt() ?? 0;
+      if (m > 0) malzemeler['${e.key}'] = m;
+    }
+    if (islem == null) {
+      seriler.clear();
+      malzemeler.clear();
+    }
   }
 }

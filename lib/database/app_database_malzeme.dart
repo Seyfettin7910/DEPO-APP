@@ -132,6 +132,13 @@ extension MalzemeVeritabani on AppDatabase {
     required String kullaniciId,
     String? not_,
     String? kullanimYeri,
+    // Montajda (cihazsız malzeme kullanımı) konum ve bölge
+    double? enlem,
+    double? boylam,
+    double? konumHassasiyet,
+    String? il,
+    String? ilce,
+    String? mahalle,
   }) async {
     final db = await _database;
     await db.transaction((txn) => _malzemeHareketiTxn(
@@ -143,6 +150,12 @@ extension MalzemeVeritabani on AppDatabase {
           kullaniciId: kullaniciId,
           not_: not_,
           kullanimYeri: kullanimYeri,
+          enlem: enlem,
+          boylam: boylam,
+          konumHassasiyet: konumHassasiyet,
+          il: il,
+          ilce: ilce,
+          mahalle: mahalle,
         ));
     _notify();
   }

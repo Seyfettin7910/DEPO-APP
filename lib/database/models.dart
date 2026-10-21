@@ -119,6 +119,9 @@ class Urun {
   final String? kategori;
   final int minStokSeviyesi;
   final bool seriTakipli; // true: her cihaz seri no ile takip edilir
+
+  /// Malzemede bir kutu / topun içeriği (ör. 305 metre); null = 1.
+  final int? kutuIcerigi;
   final DateTime updatedAt;
 
   /// Seri numarasız, miktarla (adet, metre, paket…) takip edilen malzeme.
@@ -126,6 +129,17 @@ class Urun {
 
   /// "50 metre" gibi.
   String miktarMetni(int miktar) => '$miktar $birim';
+
+  /// Bir okutmada eklenen miktar (kutu / top içeriği; yoksa 1).
+  int get okutmaMiktari =>
+      (kutuIcerigi == null || kutuIcerigi! < 1) ? 1 : kutuIcerigi!;
+
+  /// "610 metre (2 kutu)" gibi; kutu içeriği yoksa yalnız miktar.
+  String kutuluMetin(int miktar) {
+    final k = okutmaMiktari;
+    if (k <= 1 || miktar % k != 0) return miktarMetni(miktar);
+    return '${miktarMetni(miktar)} (${miktar ~/ k} kutu)';
+  }
   final bool dirty;
   final bool deleted;
 
@@ -137,6 +151,7 @@ class Urun {
     this.kategori,
     this.minStokSeviyesi = 0,
     this.seriTakipli = false,
+    this.kutuIcerigi,
     required this.updatedAt,
     this.dirty = true,
     this.deleted = false,
@@ -150,6 +165,7 @@ class Urun {
         kategori: m['kategori'] as String?,
         minStokSeviyesi: (m['min_stok_seviyesi'] as int?) ?? 0,
         seriTakipli: _intToBool((m['seri_takipli'] as int?) ?? 0),
+        kutuIcerigi: (m['kutu_icerigi'] as num?)?.toInt(),
         updatedAt: _epochToDate(m['updated_at'] as int),
         dirty: _intToBool(m['dirty'] as int),
         deleted: _intToBool(m['deleted'] as int),
@@ -163,6 +179,7 @@ class Urun {
         'kategori': kategori,
         'min_stok_seviyesi': minStokSeviyesi,
         'seri_takipli': _boolToInt(seriTakipli),
+        'kutu_icerigi': kutuIcerigi,
         'updated_at': _dateToEpoch(updatedAt),
         'dirty': _boolToInt(dirty),
         'deleted': _boolToInt(deleted),

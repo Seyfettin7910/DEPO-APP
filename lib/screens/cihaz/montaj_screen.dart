@@ -26,8 +26,12 @@ class MontajScreen extends ConsumerStatefulWidget {
   const MontajScreen({
     super.key,
     this.onceSeriNolari = const [],
+    this.onceMalzemeler = const {},
     this.taslaktan = false,
   });
+
+  /// Okut'tan gelen kullanılan malzemeler (ürün id → miktar).
+  final Map<String, int> onceMalzemeler;
 
   /// Listeye hazır gelecek cihazlar (cihaz kartından ya da Okut'tan).
   final List<String> onceSeriNolari;
@@ -65,6 +69,10 @@ class _MontajScreenState extends ConsumerState<MontajScreen>
   String? _sonKod;
   DateTime _sonZaman = DateTime.fromMillisecondsSinceEpoch(0);
 
+  /// Okut'tan gelen malzemeler: malzeme yeri belli olunca stoğa göre
+  /// "kullanılan"a yazılır.
+  final _bekleyenMalzemeler = <String, int>{};
+
   bool _adresIstendi = false;
   String? _adresDurumu;
 
@@ -74,11 +82,16 @@ class _MontajScreenState extends ConsumerState<MontajScreen>
   @override
   void initState() {
     super.initState();
+    _bekleyenMalzemeler.addAll(widget.onceMalzemeler);
     _konum.addListener(_konumDegisti);
     unawaited(_konum.baslat());
     if (widget.onceSeriNolari.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback(
           (_) => _cokluEkle(widget.onceSeriNolari, sessiz: true));
+    } else if (widget.onceMalzemeler.isNotEmpty) {
+      // Yalnız malzeme: malzemenin düşeceği yer seçilir (araç önce).
+      WidgetsBinding.instance
+          .addPostFrameCallback((_) => _malzemeDeposunuBelirle());
     } else if (!widget.taslaktan) {
       // Boş açıldıysa okutmaya hemen başlanabilsin.
       _kamera = tarayiciOlustur();
@@ -354,6 +367,15 @@ class _MontajScreenState extends ConsumerState<MontajScreen>
   /// Birden çok yer varsa seçilir; yoksa araç olan önceliklidir.
   Future<void> _malzemeDeposunuBelirle() async {
     final yerler = {for (final b in _liste) b.cihaz.depoId}.whereType<String>();
+    if (yerler.isEmpty &&
+        (_bekleyenMalzemeler.isNotEmpty || _malzemeDepoId != null)) {
+      // Cihazsız (yalnız malzeme) montaj: seçili yer korunur; yoksa ilk araç.
+      if (_malzemeDepoId != null) return;
+      final depolar = ref.read(depolarStreamProvider).valueOrNull ?? <Depo>[];
+      final ilk = depolar.where((d) => d.arac).firstOrNull ?? depolar.firstOrNull;
+      if (ilk != null) await _malzemeDeposuSec(ilk.id);
+      return;
+    }
     if (yerler.isEmpty) {
       setState(() {
         _malzemeDepoId = null;
@@ -378,7 +400,22 @@ class _MontajScreenState extends ConsumerState<MontajScreen>
       _malzemeler = m;
       if (sifirla) _kullanilan.clear();
       _kullanilan.removeWhere((id, _) => !m.any((x) => x.urun.id == id));
+      // Okut'tan gelenler: bu yerdeki stok kadar yazılır.
+      for (final e in _bekleyenMalzemeler.entries) {
+        final stok = m.where((x) => x.urun.id == e.key).firstOrNull;
+        if (stok != null) _kullanilan[e.key] = e.value.clamp(0, stok.miktar);
+      }
     });
+    if (_bekleyenMalzemeler.isNotEmpty) {
+      final yok = [
+        for (final id in _bekleyenMalzemeler.keys)
+          if (!m.any((x) => x.urun.id == id)) id
+      ];
+      _bekleyenMalzemeler.clear();
+      if (yok.isNotEmpty) {
+        _mesaj('${yok.length} malzeme bu yerde yok, eklenmedi', hata: true);
+      }
+    }
   }
 
   Future<int?> _sayiSor(MalzemeStok m, int mevcut) async {
@@ -416,7 +453,8 @@ class _MontajScreenState extends ConsumerState<MontajScreen>
   // ------------------------------------------------------------------ kaydet
 
   Future<void> _kaydet() async {
-    if (_liste.isEmpty) {
+    final malzemeVar = _kullanilan.values.any((m) => m > 0);
+    if (_liste.isEmpty && !malzemeVar) {
       _mesaj('Önce cihazları okutun', hata: true);
       return;
     }
@@ -474,6 +512,23 @@ class _MontajScreenState extends ConsumerState<MontajScreen>
       final db = ref.read(appDatabaseProvider);
       final adet = _liste.length;
       final malzemeli = _kullanilan.values.any((m) => m > 0);
+      if (_liste.isEmpty) {
+        // Cihazsız montaj: yalnız malzeme kullanımı.
+        await db.malzemeHareketiKaydet(
+          islem: MalzemeIslemi.kullanim,
+          kaynakDepoId: _malzemeDepoId,
+          miktarlar: Map.of(_kullanilan),
+          kullaniciId: ref.read(aktifKullaniciIdProvider) ?? 'demo-kullanici',
+          kullanimYeri: _yerCtrl.text.trim(),
+          not_: bosIseNull(_notCtrl),
+          enlem: k?.enlem,
+          boylam: k?.boylam,
+          konumHassasiyet: k?.hassasiyet,
+          il: bosIseNull(_ilCtrl),
+          ilce: bosIseNull(_ilceCtrl),
+          mahalle: bosIseNull(_mahalleCtrl),
+        );
+      } else {
       await db.cihazlariTopluHareketKaydet(
         cihazIdleri: [for (final b in _liste) b.cihaz.id],
         tip: HareketTipi.kullanim,
@@ -490,6 +545,7 @@ class _MontajScreenState extends ConsumerState<MontajScreen>
         malzemeler: Map.of(_kullanilan),
         malzemeDepoId: _malzemeDepoId,
       );
+      }
       // İnternet varsa eksik bölge (il / ilçe / mahalle) hemen tamamlanır.
       unawaited(AdresTamamlayici.calistir(db));
       SesServisi.basari();
@@ -500,7 +556,7 @@ class _MontajScreenState extends ConsumerState<MontajScreen>
           : 'Konum: ${KonumServisi.koordinat(k.enlem!, k.boylam!)}'
               '${k.hassasiyet == null ? '' : ' (±${k.hassasiyet!.round()} m)'}';
       if (_kameraAcik) _kameraDegistir();
-      setState(() => _kaydedildi = '$adet cihaz montajı kaydedildi'
+      setState(() => _kaydedildi = '${adet == 0 ? 'Malzeme kullanımı' : '$adet cihaz montajı'} kaydedildi'
           '${malzemeli ? ' (malzemelerle)' : ''}\n'
           '${_yerCtrl.text.trim()} · ${tutanakAdi(_tutanak)}\n$konumMetni');
     } catch (e) {
@@ -874,6 +930,26 @@ class _MontajScreenState extends ConsumerState<MontajScreen>
                     subtitle: Text(
                         'İsteğe bağlı · ${depoAdi(_malzemeDepoId!)} stoğundan'),
                     children: [
+                      if (yerler.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: DropdownButtonFormField<String>(
+                            value: depolar.any((d) => d.id == _malzemeDepoId)
+                                ? _malzemeDepoId
+                                : null,
+                            isExpanded: true,
+                            decoration: const InputDecoration(
+                                labelText: 'Malzemeler nereden düşsün?'),
+                            items: [
+                              for (final d in depolar)
+                                DropdownMenuItem(
+                                    value: d.id, child: Text(d.ad)),
+                            ],
+                            onChanged: (v) {
+                              if (v != null) _malzemeDeposuSec(v);
+                            },
+                          ),
+                        ),
                       if (yerler.length > 1)
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -1018,7 +1094,9 @@ class _MontajScreenState extends ConsumerState<MontajScreen>
                   ? 'Konum bekleniyor… ($_bekleSn sn)'
                   : (_kaydediliyor
                       ? 'Kaydediliyor…'
-                      : 'Montajı kaydet (${_liste.length} cihaz)')),
+                      : (_liste.isEmpty
+                          ? 'Malzeme kullanımını kaydet'
+                          : 'Montajı kaydet (${_liste.length} cihaz)'))),
               onPressed: _kaydediliyor ? null : _kaydet,
             ),
           ),

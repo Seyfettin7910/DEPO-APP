@@ -33,6 +33,7 @@ CREATE TABLE urunler (
   kategori TEXT,
   min_stok_seviyesi INTEGER NOT NULL DEFAULT 0,
   seri_takipli INTEGER NOT NULL DEFAULT 0,
+  kutu_icerigi INTEGER,
   updated_at INTEGER NOT NULL,
   dirty INTEGER NOT NULL DEFAULT 1,
   deleted INTEGER NOT NULL DEFAULT 0
@@ -395,7 +396,7 @@ class AppDatabase {
         : p.join(await getDatabasesPath(), 'depo_app.sqlite');
     _db = await openDatabase(
       path,
-      version: 12,
+      version: 13,
       onCreate: (db, version) async {
         for (final stmt in _createTablesSql.split(';')) {
           final trimmed = stmt.trim();
@@ -478,6 +479,10 @@ class AppDatabase {
               'ALTER TABLE kullanim_kayitlari ADD COLUMN tutanak_tarihi INTEGER');
           await db.execute(
               'ALTER TABLE kullanim_kayitlari ADD COLUMN tutanak_kullanici_id TEXT');
+        }
+        if (oldVersion < 13) {
+          // 1.27.0: malzemenin bir kutu / topunda kaç birim var (305 m gibi)
+          await db.execute('ALTER TABLE urunler ADD COLUMN kutu_icerigi INTEGER');
         }
         if (oldVersion < 4) {
           // 1.4.0: araçlar seyyar depo olarak depolar tablosunda tutulur.
@@ -668,6 +673,8 @@ class AppDatabase {
     int minStokSeviyesi = 0,
     // false: seri numarasız, miktarla takip edilen malzeme (kablo, adaptör…)
     bool seriTakipli = true,
+    // Malzemenin bir kutusunda / topunda kaç birim var (ör. 305 metre).
+    int? kutuIcerigi,
   }) async {
     final db = await _database;
     final urun = Urun(
@@ -678,6 +685,7 @@ class AppDatabase {
       kategori: kategori,
       minStokSeviyesi: minStokSeviyesi,
       seriTakipli: seriTakipli,
+      kutuIcerigi: seriTakipli ? null : kutuIcerigi,
       updatedAt: DateTime.now(),
     );
     await db.insert('urunler', urun.toMap());
@@ -692,11 +700,13 @@ class AppDatabase {
     required String birim,
     String? kategori,
     required int minStokSeviyesi,
+    int? kutuIcerigi,
   }) async {
     final db = await _database;
     final n = await db.update(
       'urunler',
       {
+        'kutu_icerigi': kutuIcerigi,
         'ad': ad,
         'barkod': barkod,
         'birim': birim,
@@ -2568,7 +2578,7 @@ class AppDatabase {
     'depolar': ['id', 'ad', 'konum', 'tur', 'updated_at', 'deleted'],
     'urunler': [
       'id', 'ad', 'barkod', 'birim', 'kategori', 'min_stok_seviyesi',
-      'seri_takipli', 'updated_at', 'deleted'
+      'seri_takipli', 'kutu_icerigi', 'updated_at', 'deleted'
     ],
     'araclar': ['id', 'plaka', 'ad', 'aciklama', 'updated_at', 'deleted'],
     'kullanicilar': ['id', 'ad', 'email', 'rol', 'updated_at', 'deleted'],
@@ -2663,7 +2673,12 @@ class AppDatabase {
       for (final r in satirlar) {
         final id = r['id'] as String;
         final uzakGuncelleme = (r['updated_at'] as num).toInt();
-        final map = <String, Object?>{for (final k in kolonlar) k: r[k]};
+        // Sunucuda henüz olmayan (SQL'i çalıştırılmamış) sütun yereldeki
+        // değeri silmesin.
+        final map = <String, Object?>{
+          for (final k in kolonlar)
+            if (r.containsKey(k)) k: r[k]
+        };
         map['dirty'] = 0;
         if (tablo == 'depolar' && map['tur'] == null) map['tur'] = 'sabit';
 

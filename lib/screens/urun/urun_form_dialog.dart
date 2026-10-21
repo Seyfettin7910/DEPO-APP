@@ -16,15 +16,21 @@ import '../../widgets/depo_secici.dart';
 /// Yeni üründe seri numarası (kamerayla okutulabilir) ve depo seçilirse,
 /// ürün kaydedilirken o cihaz da seçilen depoya girilir. Aynı model adı
 /// zaten varsa yeni model açılmaz, seri no mevcut modele eklenir.
-Future<void> urunFormDialog(BuildContext context, WidgetRef ref,
-    {Urun? mevcut}) {
+///
+/// [malzeme]: Okut'tan "+ Yeni malzeme tanımla" (Miktarla seçili, [barkod]
+/// hazır). Kaydedilen ürünün id'si döner (vazgeçilirse null).
+Future<String?> urunFormDialog(BuildContext context, WidgetRef ref,
+    {Urun? mevcut, bool malzeme = false, String? barkod}) {
   final adCtrl = TextEditingController(text: mevcut?.ad ?? '');
   final seriCtrl = TextEditingController();
   final kategoriCtrl = TextEditingController(text: mevcut?.kategori ?? '');
   final minStokCtrl =
       TextEditingController(text: '${mevcut?.minStokSeviyesi ?? 0}');
-  final barkodCtrl = TextEditingController(text: mevcut?.barkod ?? '');
-  var miktarli = mevcut?.miktarli ?? false;
+  final barkodCtrl =
+      TextEditingController(text: mevcut?.barkod ?? barkod ?? '');
+  final kutuCtrl = TextEditingController(
+      text: mevcut?.kutuIcerigi == null ? '' : '${mevcut!.kutuIcerigi}');
+  var miktarli = mevcut?.miktarli ?? malzeme;
   var birim = mevcut != null && malzemeBirimleri.contains(mevcut.birim)
       ? mevcut.birim
       : 'adet';
@@ -35,7 +41,7 @@ Future<void> urunFormDialog(BuildContext context, WidgetRef ref,
   }
   String? hata;
 
-  return showDialog<void>(
+  return showDialog<String>(
     context: context,
     builder: (dialogContext) => StatefulBuilder(
       builder: (ctx, setState) => AlertDialog(
@@ -56,7 +62,7 @@ Future<void> urunFormDialog(BuildContext context, WidgetRef ref,
                     labelText: 'Kategori / tür (ör. Kayıt Cihazları)'),
               ),
               const SizedBox(height: 12),
-              if (mevcut == null)
+              if (mevcut == null && !malzeme)
                 SegmentedButton<bool>(
                   segments: const [
                     ButtonSegment(
@@ -100,6 +106,16 @@ Future<void> urunFormDialog(BuildContext context, WidgetRef ref,
                       DropdownMenuItem(value: b, child: Text(b)),
                   ],
                   onChanged: (v) => setState(() => birim = v ?? birim),
+                ),
+                TextField(
+                  controller: kutuCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Bir kutu / top içeriği ($birim, isteğe bağlı)',
+                    hintText: 'Örn: 305',
+                    helperText: 'Barkodu her okutuşta bu kadar eklenir '
+                        '(boşsa 1)',
+                  ),
                 ),
                 TextField(
                   controller: barkodCtrl,
@@ -201,6 +217,9 @@ Future<void> urunFormDialog(BuildContext context, WidgetRef ref,
               final seri = miktarli ? '' : seriCtrl.text.trim().toUpperCase();
               final barkod =
                   barkodCtrl.text.trim().isEmpty ? null : barkodCtrl.text.trim();
+              final kutu = int.tryParse(kutuCtrl.text.trim());
+              final kutuIcerigi =
+                  miktarli && kutu != null && kutu > 1 ? kutu : null;
 
               try {
                 if (barkod != null && barkod != mevcut?.barkod) {
@@ -219,8 +238,11 @@ Future<void> urunFormDialog(BuildContext context, WidgetRef ref,
                     birim: miktarli ? birim : mevcut.birim,
                     kategori: kategori,
                     minStokSeviyesi: minStok,
+                    kutuIcerigi: miktarli ? kutuIcerigi : mevcut.kutuIcerigi,
                   );
-                  if (dialogContext.mounted) Navigator.pop(dialogContext);
+                  if (dialogContext.mounted) {
+                    Navigator.pop(dialogContext, mevcut.id);
+                  }
                   return;
                 }
 
@@ -274,6 +296,7 @@ Future<void> urunFormDialog(BuildContext context, WidgetRef ref,
                       seriTakipli: !miktarli,
                       birim: miktarli ? birim : 'adet',
                       barkod: miktarli ? barkod : null,
+                      kutuIcerigi: kutuIcerigi,
                     );
 
                 if (seri.isNotEmpty) {
@@ -286,7 +309,7 @@ Future<void> urunFormDialog(BuildContext context, WidgetRef ref,
                   );
                   SesServisi.basari();
                 }
-                if (dialogContext.mounted) Navigator.pop(dialogContext);
+                if (dialogContext.mounted) Navigator.pop(dialogContext, urunId);
               } catch (e) {
                 SesServisi.hata();
                 setState(() => hata =

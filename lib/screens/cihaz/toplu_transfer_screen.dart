@@ -13,6 +13,7 @@ import 'cihaz_detay_screen.dart';
 import '../../widgets/hedefli_tarayici.dart';
 import '../../widgets/iade_sebebi.dart';
 import '../../widgets/renkler.dart';
+import '../../widgets/malzeme_kalemleri.dart';
 
 /// Birden çok cihazı seri numarasıyla okutup tek seferde bir depoya veya
 /// araca taşır. [tip] transfer, Araca Yükle ya da iade olabilir;
@@ -30,8 +31,12 @@ class TopluTransferScreen extends ConsumerStatefulWidget {
     this.tip = HareketTipi.transfer,
     this.onceHedefDepoId,
     this.onceSeriNolari = const [],
+    this.onceMalzemeler = const {},
     this.taslaktan = false,
   });
+
+  /// Okut'tan gelen malzemeler (ürün id → miktar).
+  final Map<String, int> onceMalzemeler;
 
   /// Yarım kalan listeye devam etmek için açıldı (soru sorulmaz).
   final bool taslaktan;
@@ -77,10 +82,15 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen>
   /// Hedef seçilmeden gelen seri numaraları (hedef seçilince eklenir).
   final _bekleyen = <String>[];
 
+  /// Malzemeler (kablo…): ürün id → miktar; [_malzemeKaynakId]'den düşer.
+  final _malzemeler = <String, int>{};
+  String? _malzemeKaynakId;
+
   @override
   void initState() {
     super.initState();
     _hedefId = widget.onceHedefDepoId;
+    _malzemeler.addAll(widget.onceMalzemeler);
     for (final k in widget.onceSeriNolari) {
       for (final s in seriNolariAyir(k)) {
         if (!_bekleyen.contains(s)) _bekleyen.add(s);
@@ -106,7 +116,9 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen>
 
   @override
   Taslak? taslakOlustur() {
-    if (_liste.isEmpty && _bekleyen.isEmpty) return null;
+    if (_liste.isEmpty && _bekleyen.isEmpty && _malzemeler.isEmpty) {
+      return null;
+    }
     final hedef = (ref.read(depolarStreamProvider).valueOrNull ?? <Depo>[])
         .where((d) => d.id == _hedefId)
         .firstOrNull;
@@ -122,6 +134,8 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen>
         'arizaKarari': _arizaKarari,
         'not': _notCtrl.text,
         'arizali': _arizali,
+        'malzemeler': Map.of(_malzemeler),
+        'malzemeKaynak': _malzemeKaynakId,
         'ariza': _arizaCtrl.text,
       },
     );
@@ -136,6 +150,11 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen>
       _sebep = v['sebep'] as String?;
       _arizaKarari = v['arizaKarari'] as String?;
       _arizali = v['arizali'] as bool? ?? false;
+      _malzemeKaynakId = v['malzemeKaynak'] as String?;
+      for (final e in ((v['malzemeler'] as Map?) ?? const {}).entries) {
+        final m = (e.value as num?)?.toInt() ?? 0;
+        if (m > 0) _malzemeler['${e.key}'] = m;
+      }
       for (final s in (v['bekleyen'] as List? ?? [])) {
         if (!_bekleyen.contains('$s')) _bekleyen.add('$s');
       }
@@ -199,6 +218,17 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen>
         backgroundColor: hata ? Colors.red.shade700 : null,
         duration: const Duration(seconds: 2),
       ));
+  }
+
+  /// Malzemelerin düşüleceği yer: seçilmişse o; değilse listedeki
+  /// cihazların bulunduğu (hedef olmayan) ilk yer.
+  String? _malzemeKaynagi() {
+    if (_malzemeKaynakId != null) return _malzemeKaynakId;
+    for (final b in _liste) {
+      final d = b.cihaz.depoId;
+      if (d != null && d != _hedefId) return d;
+    }
+    return null;
   }
 
   /// Seri no listeye eklenebilir mi? Eklenebilirse cihaz bilgisi, değilse
@@ -357,9 +387,20 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen>
       _mesaj('Hedef depo / araç seçin', hata: true);
       return;
     }
-    if (_liste.isEmpty) {
+    if (_liste.isEmpty && _malzemeler.isEmpty) {
       _mesaj('Önce seri numarası ekleyin', hata: true);
       return;
+    }
+    final malzemeKaynak = _malzemeKaynagi();
+    if (_malzemeler.isNotEmpty) {
+      if (malzemeKaynak == null) {
+        _mesaj('Malzemelerin nereden alınacağını seçin', hata: true);
+        return;
+      }
+      if (malzemeKaynak == _hedefId) {
+        _mesaj('Malzemelerin kaynağı ile hedef aynı olamaz', hata: true);
+        return;
+      }
     }
     final depolar = ref.read(depolarStreamProvider).valueOrNull ?? <Depo>[];
     final arizaIadesi = _arizali && _arizaSecenegi(depolar);
@@ -389,6 +430,8 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen>
     try {
       final adet = _liste.length;
       final not_ = _notCtrl.text.trim();
+      final malzemeAdet = _malzemeler.length;
+      if (_liste.isNotEmpty) {
       await ref.read(appDatabaseProvider).cihazlariTopluHareketKaydet(
             cihazIdleri: [for (final b in _liste) b.cihaz.id],
             tip: arizaIadesi ? HareketTipi.iade : widget.tip,
@@ -402,15 +445,35 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen>
                 ? _arizaKarari
                 : (_iade && _sebep == 'Arıza' ? _arizaKarari : null),
           );
+        if (mounted) setState(_liste.clear);
+      }
+      if (_malzemeler.isNotEmpty) {
+        await ref.read(appDatabaseProvider).malzemeHareketiKaydet(
+              islem: _kullanim
+                  ? MalzemeIslemi.yukle
+                  : (_iade ? MalzemeIslemi.iade : MalzemeIslemi.transfer),
+              kaynakDepoId: malzemeKaynak,
+              hedefDepoId: _hedefId,
+              miktarlar: Map.of(_malzemeler),
+              kullaniciId:
+                  ref.read(aktifKullaniciIdProvider) ?? 'demo-kullanici',
+              not_: not_.isEmpty ? null : not_,
+            );
+        if (mounted) setState(_malzemeler.clear);
+      }
       SesServisi.basari();
       await taslakTamamlandi();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(_kullanim
+          content: Text([
+        if (adet > 0)
+          _kullanim
               ? '$adet cihaz araca yüklendi'
               : (_iade || arizaIadesi
                   ? '$adet cihaz ${arizaIadesi ? 'arızalı olarak ' : ''}iade edildi'
-                  : '$adet cihaz transfer edildi'))));
+                  : '$adet cihaz transfer edildi'),
+        if (malzemeAdet > 0) '$malzemeAdet malzeme taşındı',
+      ].join(' · '))));
       Navigator.pop(context, true);
     } catch (e) {
       SesServisi.hata();
@@ -474,6 +537,45 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen>
               child: Text(
                   'Koliden ${_bekleyen.length} seri no hazır. Hedef depo / '
                   'aracı seçince listeye eklenecek.'),
+            ),
+          if (_malzemeler.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: DropdownButtonFormField<String>(
+                value: tumu.any((d) => d.id == _malzemeKaynagi())
+                    ? _malzemeKaynagi()
+                    : null,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                    labelText: 'Malzemeler nereden alınacak?'),
+                items: depoDropdownOgeleri(
+                    [for (final d in tumu) if (d.id != _hedefId) d]),
+                onChanged: (v) => setState(() => _malzemeKaynakId = v),
+              ),
+            ),
+          if (_malzemeler.isNotEmpty)
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                  maxHeight: MediaQuery.sizeOf(context).height * 0.18),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: MalzemeKalemleri(
+                  miktarlar: _malzemeler,
+                  urunler: {
+                    for (final u
+                        in ref.watch(urunlerStreamProvider).valueOrNull ??
+                            <Urun>[])
+                      u.id: u
+                  },
+                  onDegisti: (id, n) => setState(() {
+                    if (n <= 0) {
+                      _malzemeler.remove(id);
+                    } else {
+                      _malzemeler[id] = n;
+                    }
+                  }),
+                ),
+              ),
             ),
           if (_kameraAcik && _kamera != null)
             SizedBox(
@@ -621,10 +723,10 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen>
                       label: Text(_kaydediliyor
                           ? 'Kaydediliyor...'
                           : (_kullanim
-                              ? 'Araca Yükle (${_liste.length})'
+                              ? 'Araca Yükle (${_liste.length + _malzemeler.length})'
                               : (_iade
                                   ? 'İade al (${_liste.length})'
-                                  : 'Transfer et (${_liste.length})'))),
+                                  : 'Transfer et (${_liste.length + _malzemeler.length})'))),
                     ),
                   ),
                 ],

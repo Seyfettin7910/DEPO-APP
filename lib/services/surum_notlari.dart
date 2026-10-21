@@ -36,6 +36,41 @@ class NotMaddesi {
 
 const surumNotlari = <SurumNotu>[
   SurumNotu(
+    surum: '1.27.0',
+    tarih: '21.10.2026',
+    bolumler: [
+      NotBolumu('Yeni', [
+        NotMaddesi(
+          'Malzeme barkodu',
+          'Okut\'ta hızlı işlem seçiliyken kablo / adaptör barkodu okutunca '
+              'listeye eklenir.',
+          'Her okutma bir kutu / top sayılır (ör. 305 m); aynı barkod iki kez '
+              '= 2 kutu. Montajda "Kaç metre?" sorulur. Miktara dokunarak '
+              'değiştirilebilir.',
+        ),
+        NotMaddesi(
+          'Kutu / top içeriği',
+          'Ürün tanımında "Bir kutu / top içeriği" (ör. 305 metre).',
+          'Ürünler → malzemeye dokunun → kutu içeriğini yazın. Boşsa her '
+              'okutma 1 sayılır (patch kablo gibi).',
+        ),
+        NotMaddesi(
+          'Malzeme ekle',
+          'Okut listesinde 🔗+ ile barkodsuz malzeme listeden seçilir.',
+          'Listede yoksa "+ Yeni malzeme tanımla" ile Okut\'tan çıkmadan '
+              'tanımlanır (ad, birim, kutu içeriği, barkod).',
+        ),
+        NotMaddesi(
+          'Birlikte kayıt',
+          'Depoya giriş, transfer, Araca Yükle ve montajda cihazlar ve '
+              'malzemeler tek seferde kaydedilir.',
+          'Transferde malzemelerin nereden alınacağı seçilir. Montajda '
+              'yalnız malzeme de kaydedilebilir (cihazsız kullanım).',
+        ),
+      ]),
+    ],
+  ),
+  SurumNotu(
     surum: '1.26.1',
     tarih: '21.10.2026',
     bolumler: [

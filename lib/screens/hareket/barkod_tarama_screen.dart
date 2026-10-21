@@ -25,6 +25,7 @@ import '../../widgets/kritik_stok_seridi.dart';
 import '../../widgets/renkler.dart';
 import '../../widgets/sync_durum_dugmesi.dart';
 import '../../widgets/koli_karekodu.dart';
+import '../../widgets/malzeme_kalemleri.dart';
 
 /// Okut: seri numarası okutulunca cihazın kartı açılır.
 ///
@@ -174,12 +175,18 @@ class _BarkodTaramaScreenState extends ConsumerState<BarkodTaramaScreen> {
     final i = _liste.islem;
     if (i == null || _liste.bos) return;
     final seriler = List.of(_liste.seriler);
+    final malzemeler = Map.of(_liste.malzemeler);
     final Widget ekran = switch (i) {
-      OkutIslemi.giris => TopluGirisScreen(onceSeriNolari: seriler),
-      OkutIslemi.transfer => TopluTransferScreen(onceSeriNolari: seriler),
+      OkutIslemi.giris => TopluGirisScreen(
+          onceSeriNolari: seriler, onceMalzemeler: malzemeler),
+      OkutIslemi.transfer => TopluTransferScreen(
+          onceSeriNolari: seriler, onceMalzemeler: malzemeler),
       OkutIslemi.yukle => TopluTransferScreen(
-          tip: HareketTipi.kullanim, onceSeriNolari: seriler),
-      OkutIslemi.montaj => MontajScreen(onceSeriNolari: seriler),
+          tip: HareketTipi.kullanim,
+          onceSeriNolari: seriler,
+          onceMalzemeler: malzemeler),
+      OkutIslemi.montaj => MontajScreen(
+          onceSeriNolari: seriler, onceMalzemeler: malzemeler),
     };
     final kaydedildi = await _ac<bool>(ekran);
     if (kaydedildi == true && mounted) {
@@ -289,9 +296,7 @@ class _BarkodTaramaScreenState extends ConsumerState<BarkodTaramaScreen> {
         if (!mounted) return;
         if (urun != null && !urun.deleted && urun.miktarli) {
           if (_liste.aktif) {
-            SesServisi.hata();
-            _bilgi('Malzeme barkodu (${urun.ad}) · liste dışı',
-                renk: Colors.orange.shade800);
+            await _malzemeOkut(urun);
             return;
           }
           await _malzemeMenusu(urun);
@@ -349,6 +354,45 @@ class _BarkodTaramaScreenState extends ConsumerState<BarkodTaramaScreen> {
     await _ac(MalzemeIslemScreen(
         islem: MalzemeIslemi.values.firstWhere((m) => m.name == secim),
         onceUrunId: urun.id));
+  }
+
+  /// Malzeme barkodu (hızlı işlem seçiliyken): kutu içeriği kadar eklenir;
+  /// Montajda (kısmen kullanılır) metre / miktar sorulur.
+  Future<void> _malzemeOkut(Urun urun) async {
+    var miktar = urun.okutmaMiktari;
+    if (_liste.islem == OkutIslemi.montaj &&
+        (miktar > 1 || urun.birim != 'adet')) {
+      SesServisi.basari();
+      final n = await malzemeMiktariSor(context, urun,
+          aciklama: 'Kaç ${urun.birim} kullanıldı?');
+      if (n == null || n <= 0 || !mounted) return;
+      miktar = n;
+    } else {
+      SesServisi.basari();
+    }
+    _liste.malzemeEkle(urun.id, miktar);
+    _degisti();
+    _bilgi('${urun.ad} · ${urun.kutuluMetin(_liste.malzemeler[urun.id] ?? 0)}');
+  }
+
+  /// "+ Malzeme": listeden seç ya da yeni tanımla, miktarı gir.
+  Future<void> _malzemeEkle() async {
+    final id = await malzemeSec(context, ref);
+    if (id == null || !mounted) return;
+    // Yeni tanımlanan ürünün listeye düşmesi için kısa bekleme.
+    Urun? u;
+    for (var i = 0; i < 10 && u == null; i++) {
+      u = (ref.read(urunlerStreamProvider).valueOrNull ?? <Urun>[])
+          .where((x) => x.id == id)
+          .firstOrNull;
+      if (u == null) await Future.delayed(const Duration(milliseconds: 150));
+    }
+    if (u == null || !mounted) return;
+    final n = await malzemeMiktariSor(context, u,
+        mevcut: _liste.islem == OkutIslemi.montaj ? null : u.okutmaMiktari);
+    if (n == null || n <= 0 || !mounted) return;
+    _liste.malzemeEkle(u.id, n);
+    _degisti();
   }
 
   void _sonucuIsle(OkutSonucu sonuc, String kod, CihazBilgi? bilgi) {
@@ -584,6 +628,11 @@ class _BarkodTaramaScreenState extends ConsumerState<BarkodTaramaScreen> {
                     ),
                   ),
                   IconButton(
+                    tooltip: 'Malzeme ekle (kablo, adaptör…)',
+                    icon: const Icon(Icons.add_link, color: Renkler.urun),
+                    onPressed: _malzemeEkle,
+                  ),
+                  IconButton(
                     tooltip: 'Fener',
                     icon: const Icon(Icons.flashlight_on_outlined,
                         color: Renkler.zil),
@@ -605,14 +654,34 @@ class _BarkodTaramaScreenState extends ConsumerState<BarkodTaramaScreen> {
                 padding: const EdgeInsets.only(top: 6),
                 child: _yazmaAlani(etiket: 'Seri no (USB okuyucu / elle)'),
               ),
+            if (_liste.malzemeler.isNotEmpty)
+              ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: yukseklik * 0.14),
+                child: SingleChildScrollView(
+                  child: MalzemeKalemleri(
+                    miktarlar: _liste.malzemeler,
+                    urunler: {
+                      for (final u in ref.watch(urunlerStreamProvider)
+                              .valueOrNull ??
+                          <Urun>[])
+                        u.id: u
+                    },
+                    onDegisti: (id, n) {
+                      _liste.malzemeAyarla(id, n);
+                      _degisti();
+                    },
+                  ),
+                ),
+              ),
             ConstrainedBox(
               constraints: BoxConstraints(maxHeight: yukseklik * 0.24),
-              child: _liste.bos
+              child: _liste.seriler.isEmpty
                   ? Padding(
                       padding: const EdgeInsets.all(14),
                       child: Text(
                         'Okuttukça burada alt alta listelenir. Koli karekodu '
-                        'okutulursa içindekilerin hepsi eklenir.',
+                        'okutulursa içindekilerin hepsi eklenir. Kablo / '
+                        'adaptör için barkodu okutun ya da 🔗+ ile ekleyin.',
                         textAlign: TextAlign.center,
                         style: tema.textTheme.bodySmall,
                       ),
@@ -662,7 +731,7 @@ class _BarkodTaramaScreenState extends ConsumerState<BarkodTaramaScreen> {
                     const TextStyle(fontSize: 17, fontWeight: FontWeight.w500),
               ),
               icon: Icon(i.ikon),
-              label: Text(i.dugme(_liste.seriler.length)),
+              label: Text(i.dugme(_liste.kalemSayisi)),
               onPressed: _liste.bos ? null : _isle,
             ),
           ],

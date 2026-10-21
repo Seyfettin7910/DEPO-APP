@@ -14,6 +14,7 @@ import '../../widgets/kod_yardimci.dart';
 import '../../widgets/hedefli_tarayici.dart';
 import '../../widgets/alim_bilgisi_alanlari.dart';
 import '../../widgets/renkler.dart';
+import '../../widgets/malzeme_kalemleri.dart';
 
 /// Seri numaralarıyla depoya giriş: model ve depo seçilir, seri numaraları
 /// kamerayla tek tek okutulur, hepsi tek seferde kaydedilir. Hatalı girişi
@@ -30,8 +31,12 @@ class TopluGirisScreen extends ConsumerStatefulWidget {
     this.onceSeciliUrunId,
     this.onceSeciliDepoId,
     this.onceSeriNolari = const [],
+    this.onceMalzemeler = const {},
     this.taslaktan = false,
   });
+
+  /// Okut'tan gelen malzemeler (ürün id → miktar); aynı depoya girilir.
+  final Map<String, int> onceMalzemeler;
 
   /// Yarım kalan girişe devam etmek için açıldı (soru sorulmaz).
   final bool taslaktan;
@@ -45,6 +50,9 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen>
   final _seriCtrl = TextEditingController();
   final _notCtrl = TextEditingController();
   final _seriler = <String>[];
+
+  /// Seri nosuz malzemeler (kablo…): ürün id → miktar.
+  final _malzemeler = <String, int>{};
 
   /// Karışık modellerde seri noya özel model (yoksa üstteki model geçerli).
   final _seriModel = <String, String>{};
@@ -78,6 +86,7 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen>
     _urunId = widget.onceSeciliUrunId;
     _depoId = widget.onceSeciliDepoId;
     if (_depoId == null) _varsayilanDepoyuYukle();
+    _malzemeler.addAll(widget.onceMalzemeler);
     for (final k in widget.onceSeriNolari) {
       for (final s in seriNolariAyir(k)) {
         if (!_seriler.contains(s)) _seriler.add(s);
@@ -109,20 +118,22 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen>
 
   @override
   Taslak? taslakOlustur() {
-    if (_seriler.isEmpty) return null;
+    if (_seriler.isEmpty && _malzemeler.isEmpty) return null;
     final urun = (ref.read(urunlerStreamProvider).valueOrNull ?? <Urun>[])
         .where((u) => u.id == _urunId)
         .firstOrNull;
     return Taslak(
       tur: taslakTuru,
       baslik: 'Depoya giriş${urun == null ? '' : ' · ${urun.ad}'}',
-      ozet: '${_seriler.length} seri no',
+      ozet: '${_seriler.length} seri no'
+          '${_malzemeler.isEmpty ? '' : ' · ${_malzemeler.length} malzeme'}',
       veri: {
         'urunId': _urunId,
         'depoId': _depoId,
         'seriler': List.of(_seriler),
         'seriNosuz': _seriNosuz.toList(),
         'seriModel': Map.of(_seriModel),
+        'malzemeler': Map.of(_malzemeler),
         'not': _notCtrl.text,
         'alim': {
           'tarih': _ms(_alim.alimTarihi),
@@ -157,6 +168,10 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen>
     });
     _notCtrl.text = v['not'] as String? ?? '';
     final nosuz = {for (final s in (v['seriNosuz'] as List? ?? [])) '$s'};
+    for (final e in ((v['malzemeler'] as Map?) ?? const {}).entries) {
+      final m = (e.value as num?)?.toInt() ?? 0;
+      if (m > 0) _malzemeler['${e.key}'] = m;
+    }
     final modeller = {
       for (final e in ((v['seriModel'] as Map?) ?? const {}).entries)
         '${e.key}': '${e.value}'
@@ -453,17 +468,22 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen>
   }
 
   Future<void> _kaydet() async {
-    if (_urunId == null || _depoId == null) {
-      _mesaj('Ürün ve depo seçin', hata: true);
+    if (_depoId == null) {
+      _mesaj('Depo seçin', hata: true);
       return;
     }
-    if (_seriler.isEmpty) {
+    if (_seriler.isEmpty && _malzemeler.isEmpty) {
       _mesaj('Önce seri numarası ekleyin', hata: true);
+      return;
+    }
+    if (_seriler.any((s) => _seriModel[s] == null) && _urunId == null) {
+      _mesaj('Ürün (model) seçin', hata: true);
       return;
     }
     setState(() => _kaydediliyor = true);
     try {
       final adet = _seriler.length;
+      final malzemeAdet = _malzemeler.length;
       final etiketli = _etiket.kurumKoduId != null;
       // Karışık modeller: her model kendi grubunda kaydedilir.
       final gruplar = <String, List<String>>{};
@@ -498,11 +518,24 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen>
           });
         }
       }
+      if (_malzemeler.isNotEmpty) {
+        await ref.read(appDatabaseProvider).malzemeHareketiKaydet(
+              islem: MalzemeIslemi.giris,
+              hedefDepoId: _depoId,
+              miktarlar: Map.of(_malzemeler),
+              kullaniciId:
+                  ref.read(aktifKullaniciIdProvider) ?? 'demo-kullanici',
+              not_: _notCtrl.text.trim().isEmpty ? null : _notCtrl.text.trim(),
+            );
+        if (mounted) setState(_malzemeler.clear);
+      }
       SesServisi.basari();
       await taslakTamamlandi();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('$adet cihaz depoya alındı'
+          content: Text('${adet == 0 ? '' : '$adet cihaz'}'
+              '${adet > 0 && malzemeAdet > 0 ? ' ve ' : ''}'
+              '${malzemeAdet == 0 ? '' : '$malzemeAdet malzeme'} depoya alındı'
               '${!etiketli ? '' : _etiket.kuyruga ? ' · etiketler basım kuyruğuna alındı' : ' · kurum kodları üretildi'}')));
       Navigator.pop(context, true);
     } catch (e) {
@@ -796,6 +829,31 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen>
               ],
             ),
           ),
+          if (_malzemeler.isNotEmpty)
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                  maxHeight: MediaQuery.sizeOf(context).height * 0.2),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: MalzemeKalemleri(
+                  baslik: 'MALZEMELER (aynı depoya girilir)',
+                  miktarlar: _malzemeler,
+                  urunler: {
+                    for (final u
+                        in ref.watch(urunlerStreamProvider).valueOrNull ??
+                            <Urun>[])
+                      u.id: u
+                  },
+                  onDegisti: (id, n) => setState(() {
+                    if (n <= 0) {
+                      _malzemeler.remove(id);
+                    } else {
+                      _malzemeler[id] = n;
+                    }
+                  }),
+                ),
+              ),
+            ),
           Expanded(
             child: _seriler.isEmpty
                 ? const Center(
@@ -867,7 +925,7 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen>
                       icon: const Icon(Icons.save),
                       label: Text(_kaydediliyor
                           ? 'Kaydediliyor...'
-                          : 'Depoya al (${_seriler.length})'),
+                          : 'Depoya al (${_seriler.length + _malzemeler.length})'),
                     ),
                   ),
                 ],

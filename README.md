@@ -5,6 +5,12 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.27.0 – Malzemeler Okut'ta (barkod, kutu içeriği)
+- **Supabase SQL:** `supabase_guncelleme_1_27_0.sql` (urunler.kutu_icerigi). Çalıştırılana kadar senkron bu sütunu atlar (`_yeniKolonlar` / `_eksikKolonlar`), uzaktan gelen satırda olmayan sütun yereldekini silmez.
+- Yerel veritabanı v13: `urunler.kutu_icerigi`; `Urun.okutmaMiktari`, `kutuluMetin`.
+- Okut listesinde malzemeler (`OkutListesi.malzemeler`, 100 sınırına sayılmaz): barkod okutunca kutu içeriği kadar (montajda miktar sorulur), 🔗+ ile listeden seç / yeni tanımla (`urunFormDialog(malzeme: true)` id döner).
+- Toplu giriş / transfer / montaj ekranları `onceMalzemeler` alır; cihazlarla birlikte `malzemeHareketiKaydet` (transferde kaynak seçilir; montajda cihazsız malzeme kullanımı konumlu).
+
 ## 1.26.1 – iPhone (Safari) ve tarayıcılar
 - Hedef tarayıcılar: iPhone → Safari; Windows → Edge / Chrome / Firefox; Android → uygulama.
 - `web/tarayici.js` + `lib/services/tarayici*.dart`: tarayıcı adı, iOS, ana ekranda mı, `navigator.storage.persist()` (açılışta).

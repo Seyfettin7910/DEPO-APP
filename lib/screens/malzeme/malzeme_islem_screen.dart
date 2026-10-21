@@ -213,7 +213,9 @@ class _MalzemeIslemScreenState extends ConsumerState<MalzemeIslemScreen>
             'kullanılamaz', hata: true);
         return;
       }
-      _ekle(urun);
+      // Barkod bir kutu / top: içeriği kadar eklenir (montajda 1, düzeltilir).
+      _ekle(urun,
+          adet: _islem == MalzemeIslemi.kullanim ? 1 : urun.okutmaMiktari);
       return;
     }
     if (malzemeler.isEmpty) {
@@ -250,6 +252,7 @@ class _MalzemeIslemScreenState extends ConsumerState<MalzemeIslemScreen>
       birim: secilen.birim,
       kategori: secilen.kategori,
       minStokSeviyesi: secilen.minStokSeviyesi,
+      kutuIcerigi: secilen.kutuIcerigi,
     );
     if (!mounted) return;
     _mesaj('Barkod ${secilen.ad} için kaydedildi');

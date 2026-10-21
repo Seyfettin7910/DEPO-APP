@@ -191,4 +191,43 @@ void main() {
     expect(y.islem, OkutIslemi.yukle);
     expect(y.seriler, ['A1', 'A2']);
   });
+
+  group('Malzemeler', () {
+    test('işlem seçilmeden malzeme eklenmez', () {
+      final l = OkutListesi();
+      expect(l.malzemeEkle('kablo', 305), isFalse);
+      expect(l.malzemeler, isEmpty);
+    });
+
+    test('aynı barkod iki kez → 2 kutu; 100 sınırına sayılmaz', () {
+      final l = OkutListesi()..islemSec(OkutIslemi.yukle);
+      l.malzemeEkle('kablo', 305);
+      l.malzemeEkle('kablo', 305);
+      l.malzemeEkle('patch', 1);
+      expect(l.malzemeler, {'kablo': 610, 'patch': 1});
+      expect(l.kalan, 100);
+      expect(l.kalemSayisi, 2);
+      expect(l.bos, isFalse);
+    });
+
+    test('miktar 0 → kalem silinir; temizle hepsini siler', () {
+      final l = OkutListesi()..islemSec(OkutIslemi.giris);
+      l.malzemeEkle('kablo', 305);
+      l.malzemeAyarla('kablo', 0);
+      expect(l.malzemeler, isEmpty);
+      l.malzemeEkle('kablo', 305);
+      l.temizle();
+      expect(l.malzemeler, isEmpty);
+      expect(l.aktif, isFalse);
+    });
+
+    test('başka işleme geçince malzemeler de boşalır; kaydet / yükle', () {
+      final l = OkutListesi()..islemSec(OkutIslemi.transfer);
+      l.malzemeEkle('kablo', 305);
+      final y = OkutListesi()..fromJson(l.toJson());
+      expect(y.malzemeler, {'kablo': 305});
+      l.islemSec(OkutIslemi.montaj);
+      expect(l.malzemeler, isEmpty);
+    });
+  });
 }
