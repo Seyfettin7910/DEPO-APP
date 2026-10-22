@@ -35,6 +35,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // Açılış ekranı: telefonda (uygulama veya iPhone/Android tarayıcısı)
   // seri no okutma; bilgisayar tarayıcısında Depolar.
   int _index = _bilgisayarTarayicisi ? 0 : 2;
+  bool _arkaPlandaydi = false;
 
   static bool get _bilgisayarTarayicisi =>
       kIsWeb &&
@@ -121,6 +122,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && mounted) {
       unawaited(onPlandaIsaretle(true));
+      // 1.30.3: sistem penceresi (izin, yazdırma, paylaşım…) kapanınca da
+      // "resumed" gelir; senkron yalnız gerçekten arka plandan dönünce.
+      final arkaPlandan = _arkaPlandaydi;
+      _arkaPlandaydi = false;
+      if (!arkaPlandan) return;
       // Arka plan görevi oturumu yenilemiş olabilir; sonra tam senkron
       // (uygulama kapalıyken kaçan değişiklikler).
       unawaited(() async {
@@ -131,7 +137,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       }());
       unawaited(GuncellemeServisi.kontrolEt());
     } else if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.detached) {
+        state == AppLifecycleState.detached ||
+        state == AppLifecycleState.hidden) {
+      _arkaPlandaydi = true;
       unawaited(onPlandaIsaretle(false));
     }
   }

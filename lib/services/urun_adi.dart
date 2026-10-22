@@ -19,3 +19,22 @@ String urunAdiAnahtari(String ad) {
   }
   return b.toString();
 }
+
+/// 1.30.3: Türkçe alfabe sırasıyla karşılaştırma (kategori listesi):
+/// A B C Ç D E F G Ğ H I İ J … Ö … Ş … Ü …; büyük / küçük harf farkı yok.
+const _alfabe = 'AaBbCcÇçDdEeFfGgĞğHhIıİiJjKkLlMmNnOoÖöPpQqRrSsŞşTtUuÜüVvWwXxYyZz';
+
+int trKarsilastir(String a, String b) {
+  int sira(String ch) {
+    final i = _alfabe.indexOf(ch);
+    // Boşluk, rakam ve diğer işaretler harflerden önce gelir.
+    return i < 0 ? ch.codeUnitAt(0) - 100000 : i ~/ 2;
+  }
+
+  final n = a.length < b.length ? a.length : b.length;
+  for (var i = 0; i < n; i++) {
+    final f = sira(a[i]) - sira(b[i]);
+    if (f != 0) return f;
+  }
+  return a.length - b.length;
+}

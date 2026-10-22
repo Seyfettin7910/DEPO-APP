@@ -45,7 +45,7 @@ class IadeSebebiSecici extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.only(top: 12, bottom: 4),
-          child: Text(zorunlu ? 'Geri alma sebebi' : 'Sebep (opsiyonel)',
+          child: Text(zorunlu ? 'Geri alma sebebi' : 'Sebep (isteğe bağlı)',
               style: Theme.of(context).textTheme.labelLarge),
         ),
         Wrap(

@@ -526,7 +526,7 @@ class CihazDetayScreen extends ConsumerWidget {
                 textCapitalization: TextCapitalization.characters,
                 inputFormatters: metinBuyuk,
                 controller: notCtrl,
-                decoration: const InputDecoration(labelText: 'Not (opsiyonel)'),
+                decoration: const InputDecoration(labelText: 'Not (isteğe bağlı)'),
               ),
               if (hata != null)
                 Padding(
@@ -826,8 +826,8 @@ class CihazDetayScreen extends ConsumerWidget {
                     labelText: sebep == 'Diğer'
                         ? 'Açıklama (zorunlu)'
                         : (sebep == 'Arıza'
-                            ? 'Arıza açıklaması (opsiyonel)'
-                            : 'Not (opsiyonel)'),
+                            ? 'Arıza açıklaması (isteğe bağlı)'
+                            : 'Not (isteğe bağlı)'),
                     hintText: sebep == 'Arıza'
                         ? 'Örn: görüntü gelmiyor, açılmıyor'
                         : 'Örn: yerine yenisi takıldı',

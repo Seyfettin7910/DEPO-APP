@@ -68,7 +68,7 @@ Future<(String, String?)?> silmeNedeniSor(
               controller: notCtrl,
               decoration: InputDecoration(
                 labelText:
-                    sebep == 'Diğer' ? 'Açıklama (zorunlu)' : 'Açıklama (opsiyonel)',
+                    sebep == 'Diğer' ? 'Açıklama (zorunlu)' : 'Açıklama (isteğe bağlı)',
               ),
             ),
             const SizedBox(height: 8),

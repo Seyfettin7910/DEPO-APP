@@ -5,6 +5,16 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.30.3 – Stok Kodu, girişte etiket, kategori listesi, Kullanıcılar, sağ tık, daha az senkron
+- **Stok Kodu** (266'lı kurum içi EAN-13; ekranda "kurum kodu" artık yalnız BLD cihaz etiketleri için): `malzemeyeKurumKoduVer(fabrikaninYerine:)`, `stokKoduSayilari`, `malzemelereStokKoduVer` (barkodsuzlara ya da fabrika barkodlarının yerine; stok kodu olanlara dokunulmaz). Ürün formu: barkod boş malzeme kaydedilirken stok kodu üretilir. Okut / malzeme ekranı: tanımsız fabrika barkodu "kutudaki stok kodu etiketini okutun" (artık malzemeye yazılmaz); ipucu 2 satır.
+- `EtiketPdf.cokluMalzemeEtiketleri`, `girisSonrasiEtiketSor` (malzeme girişi ve depoya girişte malzeme varsa; önerilen adet ⌈miktar / kutu içeriği⌉).
+- Kategori: `DropdownButtonFormField` (ürünlerdeki kategoriler, `trKarsilastir` ile Türkçe alfabe sırası; "Kategorisiz" başta) + "+ Yeni" (benzer ad uyarısı `urunAdiAnahtari`).
+- `lib/screens/kullanicilar_screen.dart`: yerel `kullanicilar` + sunucudan `giris_kayitlari` son başarılı giriş (tarih, platform, sürüm); görünen ad `kullaniciAdiDegistir` (dirty, senkronlanır). Rol / ekleme / sıfırlama yok.
+- `lib/widgets/sag_tik.dart`: `SagTik` (bilgisayar tarayıcısında sağ tık; fare satırdayken tarayıcı menüsü kapalı) ve `MenuDugmesi` (⋮). Ürünler, cihaz arama (cihaz + model), depo stok (cihaz, hareket kopyala).
+- `lib/widgets/konum_seridi.dart`: Montaj'ın konum şeridi ortak widget; malzeme Montaj / Kullanıldı'da `KonumIzleyici` + `kaydetAnindakiKonum` (konumsuz kaydet / tekrar dene), yakın eski ad / "İLÇE MAHALLE", il / ilçe / mahalle `malzemeHareketiKaydet`'e; kalem yoksa Kaydet kapalı.
+- Senkron: tam tur bittikten sonra 30 sn içinde kendiliğinden gelen tam tur istekleri bekleyen kayıt yoksa atlanır (`elle: true` hariç); oturum olaylarından yalnız `signedIn` / `initialSession`; bağlantıda yalnız çevrimdışı → çevrimiçi; Realtime'da yerelde aynı `updated_at` ve gönderilmiş satırın yankısı yok sayılır (`yereldeAyni`); ekrana dönüşte senkron yalnız gerçekten arka plandan gelince (izin / yazdırma penceresi değil). Durum düğmesi: "Gönderiliyor…" yalnız bekleyen varken, yoksa küçük halka.
+- Bildirimler ekranındaki ayar dişlisi kalktı; "opsiyonel" → "isteğe bağlı".
+
 ## 1.30.2 – Kurum içi malzeme barkodu (266 önekli EAN-13)
 - `lib/services/kurum_barkodu.dart`: GS1'in kurum içi aralığından **266** önek (Balıkesir alan kodu) + 9 rastgele hane + EAN-13 kontrol hanesi; `ean13Gecerli`, `kurumBarkoduMu` (testleri `test/kurum_barkodu_test.dart`). `benzersizKurumBarkodu`, `malzemeyeKurumKoduVer`, `barkodsuzMalzemelereKodVer` (yalnız seri takipsiz, barkodu boş, silinmemiş malzemeler).
 - Ürün formunda (malzeme, barkod boşsa) "Barkodu yok: kurum kodu üret"; Ürünler basılı tutma menüsünde "Kurum kodu üret" / "Barkod etiketi bas"; ⋮ → "Barkodsuz malzemelere kurum kodu üret" (onaylı).

@@ -14,6 +14,7 @@ import '../widgets/sync_durum_dugmesi.dart';
 import '../widgets/iphone_rehberi.dart';
 import '../widgets/yarim_isler.dart';
 import 'bildirim/bildirim_ayarlari_screen.dart';
+import 'kullanicilar_screen.dart';
 import 'etiket/etiket_ayarlari_screen.dart';
 import 'yenilikler_screen.dart';
 
@@ -96,8 +97,21 @@ class AyarlarScreen extends ConsumerWidget {
               renk: Renkler.okut,
               zemin: Renkler.okutZemin,
               baslik: 'Şimdi senkronize et',
-              alt: d.calisiyor ? 'Gönderiliyor…' : d.hata,
-              onTap: () => ref.read(syncServiceProvider).syncNow(),
+              alt: d.calisiyor
+                  ? (d.bekleyen > 0 ? 'Gönderiliyor…' : 'Denetleniyor…')
+                  : d.hata,
+              onTap: () => ref.read(syncServiceProvider).syncNow(elle: true),
+            ),
+          ]),
+          const _Baslik('KİŞİLER'),
+          _Kutu(children: [
+            _Satir(
+              ikon: Icons.people_outline,
+              renk: Renkler.depo,
+              zemin: Renkler.depoZemin,
+              baslik: 'Kullanıcılar',
+              alt: 'Kimler kullanıyor, son giriş, sürüm',
+              onTap: () => ac(const KullanicilarScreen()),
             ),
           ]),
           const _Baslik('TERCİHLER'),

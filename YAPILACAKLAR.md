@@ -24,42 +24,7 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 - [ ] 1.30.0: ürün birleştirme (Ürünler → basılı tut → "Başka ürünle birleştir"; ad düzeltmede "Birleştir"); özet sayıları doğru mu, cihazlar / hareketler / malzeme stoğu kalan üründe mi; internetsiz telefonda eski ürünle kayıt → internet gelince kalan ürüne geçiyor mu. Roller gelince yalnız yönetici.
 - [ ] 1.30.1: Okut'ta kayıtsız seri → "Depoya ekle" → "+ Yeni" ile model tanımla, seçili geliyor mu, seriler duruyor mu.
 - [ ] 1.30.2: barkodsuz malzemeye kurum kodu (tek tek / hepsine), barkod etiketi basma + önizleme, Okut'ta etiketi okutunca kutu içeriği ekleniyor mu, tanımsız 266'lı kodda uyarı.
-
-## Sıradaki ara sürüm (1.30.3; Final paketinden ÖNCE, Seyfettin'in kararı; birkaç konu daha eklenecek)
-#### Malzeme stok kodu (266'lı EAN-13; 1.30.2'de geldi)
-- [ ] **Adı "Stok Kodu"** (Seyfettin'in kararı): 266'lı kodun her yerdeki adı "kurum kodu" yerine **Stok Kodu** (ürün formu, menüler, Okut uyarısı, etiket, yenilikler). "Kurum kodu / kurum etiketi" yalnız cihazlardaki BLD-BIM-… karekodu için kalır. ("Seri no" denmedi: seri no tek cihaza özel, stok kodu malzemenin türüne.)
-- **Kural (Seyfettin'in kararı):** her malzemenin tek kimliği stok kodu; hangi firmadan / hangi barkodla gelirse gelsin depoya girerken kutuya bizim etiketimiz yapıştırılır, fabrika barkodu kullanılmaz → birden çok barkod alanı gerekmez.
-- [ ] Toplu: "Bütün malzemelere stok kodu ver (fabrika barkodlarının yerine)"; yeni malzemede barkod boşsa kaydederken stok kodu kendiliğinden; Okut'ta malzemenin fabrika barkodu okutulursa "Fabrika barkodu okunmaz, kutudaki stok kodu etiketini okutun"; malzeme girişi kaydedilince "Kaç kutu geldi? Etiket basılsın mı?".
-
-#### Bilgisayar (web)
-- [ ] **Sağ tık menüsü + satırlarda görünür ⋮** yalnız bilgisayar tarayıcısında (Edge / Chrome / Firefox); telefon uygulaması ve iPhone Safari'de bugünkü gibi uzun basma (⋮ gizli). Uzun basmayla menü açılan bütün listelerde (ürünler, depolar, cihazlar…).
-
-#### Bildirimler
-- [ ] **Zil yalnız bildirimleri göstersin:** bildirim listesindeki dişli (sağ üst) ve liste boşken çıkan "ayarlar" düğmesi kalkar; bildirim ayarları yalnız Ayarlar → Bildirim ayarları'nda.
-
-#### Senkron gereksiz tetikleniyor (incelendi)
-Bulunan sebepler: uygulamaya her dönüşte 3 tam senkron (öne gelme + oturum yenileme olayı + anlık bağlantının yeniden kurulması; yazdırma / paylaşma / izin pencereleri de "dönüş" sayılıyor); saatlik oturum yenilemesinde tam senkron; Wi-Fi ⇄ mobil veri geçişinde tam senkron; kendi gönderdiğimiz kaydın sunucudan "yankısı"; yalnız kontrol ederken bile "Gönderiliyor…" yazması.
-- [ ] **Birleştirme:** tam senkron bitince 30 sn içinde gelen yeni tam senkron istekleri atlanır (gönderilmemiş kayıt varsa ve "Şimdi senkronize et"e elle basılırsa atlanmaz).
-- [ ] **Oturum olayı:** yalnız gerçek girişte senkron; saatlik yenilemede değil.
-- [ ] **İnternet:** yalnız "yoktu → geldi" geçişinde tam senkron; Wi-Fi ⇄ mobil geçişinde değil.
-- [ ] **Yankı:** sunucudan gelen değişiklik bilgisi telefondaki kayıtla aynıysa (kendi gönderdiğimiz) yok sayılır.
-- [ ] **Görünüm:** "Gönderiliyor…" yalnız gönderilecek kayıt varken; yalnız kontrolde düğmede küçük dönen simge.
-- Kayıt kaçmasına karşı korumalar (5 dk yedek kontrol, damga yöntemi, 1 dk pay) aynen kalır.
-
-#### Ürün formu: kategori açılır liste
-- [ ] **Kategori açılır liste** (ürünlerde kullanılan kategoriler, alfabetik; en üstte "Kategorisiz") + yanında **"+ Yeni"** (depoya girişteki "Ürün / model" satırı gibi): küçük pencerede yeni ad (büyük harf), kaydedince seçili gelir. Yeni ad var olana benziyorsa uyarı ("KAYIT CİHAZLARI zaten var…", benzer ürün kontrolü gibi). Yeni tablo yok, kategoriler ürünlerden. (Sonraya not: kategori yeniden adlandırma / birleştirme.)
-
-#### Ayarlar → Kullanıcılar (yalnız görüntüleme; roller DEVREYE GİRMEZ)
-- [ ] Liste: ad, e-posta, son giriş (tarih-saat, Android / iPhone / web), **uygulama sürümü** (büyük harf SQL'inin ikinci çalıştırması için "herkes 1.29.1'de mi" buradan). **Görünen ad düzenlenebilir** (e-postanın @ öncesi yerine "SEYFETTİN AYDIN"). Ekleme / şifre sıfırlama / pasif yapma / roller YOK (Final paketinde, sunucu fonksiyonu gerekir). Sınır: yalnız en az bir kez giriş yapmış kullanıcılar görünür. Herkes görür (deneme döneminde e-postalar uydurma, Seyfettin'in notu).
-
-#### Malzeme Montaj / Kullanıldı ekranı
-- [ ] Alttaki açıklama: "fabrika barkodunu okutun" yerine "stok kodu etiketini okutun ya da 'Malzeme seç' ile listeden seçin".
-- [ ] **Konum:** cihaz montajındaki gibi Kaydet anında konum alınır (konum şeridi), "Nerede kullanıldı?" 15 m içindeki eski addan ya da "İLÇE MAHALLE" olarak kendiliğinden dolar; internetsizde boş bırakılabilir, sonra dolar.
-- [ ] **"Kaydet (0 kalem)"** kalem yokken pasif.
-- [ ] Yer örneği büyük harf: "ÖRN: ZABITA MÜDÜRLÜĞÜ, PARK CAD. 12"; "Not (isteğe bağlı)" (aşağıdaki yazım birliğiyle).
-
-#### Yazım birliği
-- [ ] **"opsiyonel" → "isteğe bağlı"** bütün ekranlarda (ör. Malzeme Montaj / Kullanıldı → "Not (isteğe bağlı)"); Yenilikler yazım kuralındaki gibi tek dil.
+- [ ] 1.30.3: **Stok Kodu** (Ürünler → ⋮ → "Malzemelere stok kodu ver": yalnız barkodsuzlara / bütün malzemelere; yeni malzemede barkod boşsa kendiliğinden; Okut'ta fabrika barkodunda "kutudaki stok kodu etiketini okutun"); malzeme girişi sonrası "Etiket basılsın mı?" (önerilen adetler, tek önizleme); kategori açılır liste + "+ Yeni" (benzer ad uyarısı); Ayarlar → Kullanıcılar (son giriş, sürüm, görünen ad düzeltme; ikinci SQL için "herkes 1.29.1+ mı" buradan); bilgisayarda sağ tık / ⋮ (Ürünler, Ara, depo stok); bildirimlerde dişli yok; Malzeme Montaj / Kullanıldı (konum şeridi, Kaydet anında konum, yer kendiliğinden, 0 kalemde Kaydet kapalı); senkron düğmesi daha az "Gönderiliyor…", yazdırma / izin penceresinden dönünce senkron yok; "isteğe bağlı" yazıları.
 
 ## Final paketi (toplanıyor; tek güncellemede yapılacak, "yap" bekliyor)
 İhtiyaçlar ekran ekran toplanıyor: Okut · Depolar · Ürünler · Ara ve cihaz kartı · Raporlar · Ayarlar ve bildirimler · Bilgisayar (web) ve iPhone · Sistem.
@@ -146,6 +111,8 @@ Bulunan sebepler: uygulamaya her dönüşte 3 tam senkron (öne gelme + oturum y
   - Şehir / ilçe merkezindeki belediye tesislerinde sorun çıkarmaması için ayrıca düşünülecek.
 - [ ] **iPhone optimizasyonu (bekleyebilir):** iPhone şu an web sürümünü (Safari) kullanıyor, iOS uygulaması henüz derlenmedi. 30 sn sonra kamera durup açılırken Safari izin tekrar sorarsa iPhone'da durdurma yerine yalnız yavaşlatma.
 - [ ] **iPhone (Safari) kamerası (bekleyebilir):** netleme ve çözünürlük Safari'nin elinde (dokununca netleme orada çalışmaz); iPhone denemesinde okuma yavaş / zor olursa ya da dönüşte kamera açılmazsa bakılacak. Android'de hepsi yapıldı: yüksek çözünürlük, dokununca + 4 sn'de bir netleme, dönüşte yeniden açılma (1.21.0), hızlı okuma 120 ms + okuma sayısıyla onay (1.24.1), 2x sabit (1.27.2).
+- [ ] **Kategori yeniden adlandırma / birleştirme** (1.30.3'te kategori açılır listeye geçti; kategoriler ürünlerden, ayrı tablo yok).
+- [ ] **Görünen ad düzeltme yetkisi:** 1.30.3'te Ayarlar → Kullanıcılar'da herkes herkesin adını düzeltebiliyor (deneme dönemi); roller gelince yalnız yönetici ve kişinin kendisi.
 - Not: **test** ve **Mustafa** kullanıcılarının eklediği her şey deneme verisidir (iPhone denemesi dahil).
 - Not: Şu an kullanan telefonlar: Seyfettin'in ve kardeşinin telefonu; başka kullanıcı yok. Arkadaşlar ara ara deneme yapıyor.
 

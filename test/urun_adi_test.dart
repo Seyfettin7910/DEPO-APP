@@ -19,4 +19,9 @@ void main() {
     expect(urunAdiAnahtari('HIKVISION 7104 NVR') ==
         urunAdiAnahtari('HIKVISION 7108 NVR'), isFalse);
   });
+  test('Türkçe alfabe sırası', () {
+    final l = ['ŞEBEKE', 'ÇANAK', 'İNTERNET', 'KAMERA', 'CİHAZ', 'IŞIK', 'ZİL'];
+    l.sort(trKarsilastir);
+    expect(l, ['CİHAZ', 'ÇANAK', 'IŞIK', 'İNTERNET', 'KAMERA', 'ŞEBEKE', 'ZİL']);
+  });
 }

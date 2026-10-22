@@ -16,6 +16,7 @@ import '../../services/taslak_servisi.dart';
 import '../../widgets/hedefli_tarayici.dart';
 import '../../widgets/kod_yardimci.dart';
 import '../../widgets/renkler.dart';
+import '../../widgets/konum_seridi.dart';
 import 'cihaz_detay_screen.dart';
 import '../../widgets/buyuk_harf.dart';
 
@@ -750,76 +751,11 @@ class _MontajScreenState extends ConsumerState<MontajScreen>
     );
   }
 
-  Widget _konumSeridi() {
-    final p = _konum.gosterilen;
-    final IconData ikon;
-    final Color renk;
-    final Color zemin;
-    final String baslik;
-    final String alt;
-    if (_konum.hata != null) {
-      ikon = Icons.location_off;
-      renk = Renkler.cikis;
-      zemin = Renkler.cikisZemin;
-      baslik = 'Konum yok';
-      alt = _konum.hata!;
-    } else if (p == null) {
-      ikon = Icons.location_searching;
-      renk = Renkler.ayar;
-      zemin = Renkler.ayarZemin;
-      baslik = 'Konum aranıyor…';
-      alt = 'Kaydet\'e basınca o andaki konum kaydedilir';
-    } else if (!_konum.gpsVar || p.accuracy > KonumIzleyici.iyiHassasiyet) {
-      ikon = Icons.gps_not_fixed;
-      renk = Renkler.urun;
-      zemin = Renkler.urunZemin;
-      baslik = _konum.gpsVar
-          ? 'Konum zayıf · ±${p.accuracy.round()} m'
-          : 'Yaklaşık konum · ±${p.accuracy.round()} m';
-      alt = _konum.gpsVar
-          ? 'Açık alanda iyileşir'
-          : 'GPS ısınıyor, birkaç saniye sürer';
-    } else {
-      ikon = Icons.gps_fixed;
-      renk = Renkler.okut;
-      zemin = Renkler.okutZemin;
-      baslik = 'Konum hazır · ±${p.accuracy.round()} m';
-      alt = 'Kaydet\'e basınca bu andaki konum kaydedilir';
-    }
-    return Container(
-      margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-      padding: const EdgeInsets.fromLTRB(12, 6, 4, 6),
-      decoration: BoxDecoration(
-        color: _konumKaydet ? zemin : Renkler.ayarZemin,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Icon(_konumKaydet ? ikon : Icons.location_disabled,
-              color: _konumKaydet ? renk : Renkler.ayar),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(_konumKaydet ? baslik : 'Konum kaydedilmeyecek',
-                    style: TextStyle(
-                        color: _konumKaydet ? renk : Renkler.ayar,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15)),
-                if (_konumKaydet)
-                  Text(alt, style: const TextStyle(fontSize: 12.5)),
-              ],
-            ),
-          ),
-          Switch(
-            value: _konumKaydet,
-            onChanged: (v) => setState(() => _konumKaydet = v),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget _konumSeridi() => KonumSeridi(
+        izleyici: _konum,
+        kaydet: _konumKaydet,
+        onChanged: (v) => setState(() => _konumKaydet = v),
+      );
 
   Widget _baslik(String metin) => Padding(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),

@@ -178,7 +178,7 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
             controller: ctrl,
             autofocus: true,
             decoration: const InputDecoration(
-              labelText: 'İl, ilçe veya mahalle / köy (opsiyonel)',
+              labelText: 'İl, ilçe veya mahalle / köy (isteğe bağlı)',
               hintText: 'Boş bırakırsanız tümü',
             ),
             onSubmitted: (_) => Navigator.pop(ctx, true),

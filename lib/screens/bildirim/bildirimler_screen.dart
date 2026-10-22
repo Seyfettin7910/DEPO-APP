@@ -5,7 +5,6 @@ import 'package:intl/intl.dart';
 import '../../providers/app_providers.dart';
 import '../../services/bildirim/bildirim_ayarlari.dart';
 import '../../services/bildirim/bildirim_motoru.dart';
-import 'bildirim_ayarlari_screen.dart';
 
 IconData bildirimIkonu(BildirimTuru? t) => switch (t) {
       BildirimTuru.kritikStok => Icons.warning_amber,
@@ -101,12 +100,7 @@ class _BildirimlerScreenState extends ConsumerState<BildirimlerScreen> {
               tooltip: 'Listeyi temizle',
               onPressed: _temizle,
             ),
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            tooltip: 'Bildirim ayarları',
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => const BildirimAyarlariScreen())),
-          ),
+          // 1.30.3: bildirim ayarları yalnız Ayarlar → Bildirimler'de.
         ],
       ),
       body: liste.isEmpty
@@ -119,14 +113,6 @@ class _BildirimlerScreenState extends ConsumerState<BildirimlerScreen> {
                     const Icon(Icons.notifications_none, size: 56),
                     const SizedBox(height: 8),
                     const Text('Henüz bildirim yok', textAlign: TextAlign.center),
-                    const SizedBox(height: 12),
-                    OutlinedButton.icon(
-                      onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                              builder: (_) => const BildirimAyarlariScreen())),
-                      icon: const Icon(Icons.settings_outlined),
-                      label: const Text('Hangi bildirimler gelsin?'),
-                    ),
                   ],
                 ),
               ),

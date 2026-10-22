@@ -8,6 +8,8 @@ import '../../widgets/silme_islemleri.dart';
 import '../../widgets/sync_durum_dugmesi.dart';
 import '../../widgets/urun_birlestir.dart';
 import '../../widgets/malzeme_etiketi.dart';
+import '../../widgets/sag_tik.dart';
+import '../../services/kurum_barkodu.dart';
 
 /// Ürünler (modeller), kategoriye göre gruplu; her başlıkta kategori toplamı,
 /// her satırda o modelin tüm depolardaki toplam adedi görünür.
@@ -26,7 +28,7 @@ class UrunListScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Ürünler'), actions: [
-        // 1.30.2: barkodu olmayan malzemelere toplu kurum kodu.
+        // 1.30.2 / 1.30.3: malzemelere toplu stok kodu.
         PopupMenuButton<String>(
           onSelected: (v) {
             if (v == 'kod') barkodsuzlaraKodVer(context, ref);
@@ -34,7 +36,7 @@ class UrunListScreen extends ConsumerWidget {
           itemBuilder: (_) => const [
             PopupMenuItem(
                 value: 'kod',
-                child: Text('Barkodsuz malzemelere kurum kodu üret')),
+                child: Text('Malzemelere stok kodu ver (266…)')),
           ],
         ),
         ...ustDugmeler(),
@@ -121,18 +123,21 @@ class UrunListScreen extends ConsumerWidget {
                       .fold<int>(0, (t, u) => t + (toplamlar[u.id] ?? 0)),
                 ),
                 for (final urun in gruplar[kategori]!)
-                  ListTile(
+                  _UrunSatiri(urun: urun, child: (menu) => ListTile(
                     leading: Icon(urun.miktarli
                         ? Icons.cable_outlined
                         : Icons.qr_code_2),
                     title: Text(urun.ad),
                     subtitle: urun.miktarli
                         ? Text('Malzeme · miktarla (${urun.birim})'
-                            '${urun.barkod == null ? '' : ' · barkod ${urun.barkod}'}')
+                            '${(urun.barkod ?? '').isEmpty ? '' : kurumBarkoduMu(urun.barkod!) ? ' · stok kodu ${urun.barkod}' : ' · fabrika barkodu ${urun.barkod}'}')
                         : (urun.barkod == null
                             ? null
                             : Text('Model barkodu: ${urun.barkod}')),
-                    trailing: Column(
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
@@ -150,38 +155,13 @@ class UrunListScreen extends ConsumerWidget {
                         const Text('depoda', style: TextStyle(fontSize: 11)),
                       ],
                     ),
+                        MenuDugmesi(onPressed: menu),
+                      ],
+                    ),
                     // Kısa dokunuşta bir şey açılmaz; düzenleme ve silme
-                    // basılı tutunca çıkan menüden yapılır.
-                    onLongPress: () async {
-                      final secim = await secenekMenusu(context,
-                          baslik: urun.ad,
-                          secenekler: [
-                            ('duzenle', Icons.edit_outlined, 'Düzenle'),
-                            if (urun.miktarli &&
-                                (urun.barkod ?? '').trim().isEmpty)
-                              ('kod', Icons.qr_code_2, 'Kurum kodu üret (266…)'),
-                            if (urun.miktarli &&
-                                (urun.barkod ?? '').trim().isNotEmpty)
-                              ('etiket', Icons.print_outlined,
-                                  'Barkod etiketi bas'),
-                            ('birlestir', Icons.merge_type,
-                                'Başka ürünle birleştir'),
-                            ('sil', Icons.delete_outline, 'Ürünü sil'),
-                          ]);
-                      if (!context.mounted) return;
-                      if (secim == 'kod') {
-                        await malzemeyeKodVer(context, ref, urun);
-                      } else if (secim == 'etiket') {
-                        await malzemeEtiketiBas(context, urun);
-                      } else if (secim == 'duzenle') {
-                        urunFormDialog(context, ref, mevcut: urun);
-                      } else if (secim == 'birlestir') {
-                        await urunBirlestirAkisi(context, ref, urun);
-                      } else if (secim == 'sil') {
-                        await urunSilAkisi(context, ref, urun);
-                      }
-                    },
-                  ),
+                    // basılı tutunca (bilgisayarda sağ tık / ⋮) çıkan menüden.
+                    onLongPress: menu,
+                  )),
               ],
             ],
           );
@@ -232,5 +212,47 @@ class _KategoriBasligi extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// Ürün satırı: menü (basılı tut / sağ tık / ⋮) tek yerde.
+class _UrunSatiri extends ConsumerWidget {
+  const _UrunSatiri({required this.urun, required this.child});
+  final Urun urun;
+  final Widget Function(VoidCallback menu) child;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    Future<void> menu() async {
+      final secim = await secenekMenusu(context,
+          baslik: urun.ad,
+          secenekler: [
+            ('duzenle', Icons.edit_outlined, 'Düzenle'),
+            if (urun.miktarli &&
+                !kurumBarkoduMu((urun.barkod ?? '').trim()))
+              ('kod', Icons.qr_code_2, 'Stok kodu ver (266…)'),
+            if (urun.miktarli &&
+                (urun.barkod ?? '').trim().isNotEmpty)
+              ('etiket', Icons.print_outlined,
+                  'Barkod etiketi bas'),
+            ('birlestir', Icons.merge_type,
+                'Başka ürünle birleştir'),
+            ('sil', Icons.delete_outline, 'Ürünü sil'),
+          ]);
+      if (!context.mounted) return;
+      if (secim == 'kod') {
+        await malzemeyeKodVer(context, ref, urun);
+      } else if (secim == 'etiket') {
+        await malzemeEtiketiBas(context, urun);
+      } else if (secim == 'duzenle') {
+        urunFormDialog(context, ref, mevcut: urun);
+      } else if (secim == 'birlestir') {
+        await urunBirlestirAkisi(context, ref, urun);
+      } else if (secim == 'sil') {
+        await urunSilAkisi(context, ref, urun);
+      }
+    }
+
+    return SagTik(onMenu: menu, child: child(menu));
   }
 }

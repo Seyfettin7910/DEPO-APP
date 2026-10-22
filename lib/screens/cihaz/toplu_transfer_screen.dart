@@ -53,7 +53,7 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen>
   final _seriCtrl = TextEditingController();
   final _notCtrl = TextEditingController();
   final _liste = <CihazBilgi>[];
-  String? _sebep; // toplu iadede opsiyonel geri alma sebebi
+  String? _sebep; // toplu iadede isteğe bağlı geri alma sebebi
   String? _arizaKarari; // iadede "Arıza" seçildiyse: tamir | degisim
 
   /// Transferde (araçtan depoya): "Arızalı" işaretlenirse arıza iadesi olur;
@@ -715,7 +715,7 @@ class _TopluTransferScreenState extends ConsumerState<TopluTransferScreen>
                     inputFormatters: metinBuyuk,
                     controller: _notCtrl,
                     decoration:
-                        const InputDecoration(labelText: 'Not (opsiyonel)'),
+                        const InputDecoration(labelText: 'Not (isteğe bağlı)'),
                   ),
                   const SizedBox(height: 12),
                   SizedBox(

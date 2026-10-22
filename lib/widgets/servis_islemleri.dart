@@ -371,7 +371,7 @@ Future<void> servisGonderAkisi(
                 decoration: InputDecoration(
                   labelText: yer == 'garanti'
                       ? 'Gönderilen firma (zorunlu)'
-                      : 'Onarımı yapan birim / kişi (opsiyonel)',
+                      : 'Onarımı yapan birim / kişi (isteğe bağlı)',
                   prefixIcon: const Icon(Icons.store_outlined),
                 ),
                 onChanged: (v) {
@@ -394,7 +394,7 @@ Future<void> servisGonderAkisi(
               inputFormatters: metinBuyuk,
               controller: notCtrl,
               decoration: const InputDecoration(
-                labelText: 'Not (opsiyonel)',
+                labelText: 'Not (isteğe bağlı)',
                 hintText: 'Örn: kargo takip no, servis fiş no',
               ),
             ),
@@ -643,7 +643,7 @@ Future<void> servisSonucuAkisi(BuildContext context, WidgetRef ref,
               inputFormatters: metinBuyuk,
               controller: aciklamaCtrl,
               decoration: const InputDecoration(
-                labelText: 'Açıklama (opsiyonel)',
+                labelText: 'Açıklama (isteğe bağlı)',
                 hintText: 'Örn: anakart değişti, servis raporu no',
               ),
             ),
@@ -786,7 +786,7 @@ Future<bool> hurdayaAyirAkisi(
               decoration: InputDecoration(
                 labelText: sebep == 'Diğer'
                     ? 'Açıklama (zorunlu)'
-                    : 'Açıklama (opsiyonel)',
+                    : 'Açıklama (isteğe bağlı)',
                 hintText: 'Örn: hurda tutanağı no',
               ),
             ),

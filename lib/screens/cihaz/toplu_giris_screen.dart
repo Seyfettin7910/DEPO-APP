@@ -18,6 +18,7 @@ import '../../widgets/malzeme_kalemleri.dart';
 import '../../widgets/buyuk_harf.dart';
 import '../../services/bolge_adi.dart';
 import '../urun/urun_form_dialog.dart';
+import '../../widgets/malzeme_etiketi.dart';
 
 /// Seri numaralarıyla depoya giriş: model ve depo seçilir, seri numaraları
 /// kamerayla tek tek okutulur, hepsi tek seferde kaydedilir. Hatalı girişi
@@ -521,6 +522,7 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen>
           });
         }
       }
+      final girenMalzemeler = Map.of(_malzemeler);
       if (_malzemeler.isNotEmpty) {
         await ref.read(appDatabaseProvider).malzemeHareketiKaydet(
               islem: MalzemeIslemi.giris,
@@ -535,6 +537,17 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen>
       SesServisi.basari();
       await taslakTamamlandi();
       if (!mounted) return;
+      // 1.30.3: malzeme girdiyse "Kaç kutu geldi? Etiket basılsın mı?"
+      if (girenMalzemeler.isNotEmpty) {
+        final urunler =
+            ref.read(urunlerStreamProvider).valueOrNull ?? <Urun>[];
+        final harita = {for (final u in urunler) u.id: u};
+        await girisSonrasiEtiketSor(context, [
+          for (final e in girenMalzemeler.entries)
+            if (harita[e.key] != null) (harita[e.key]!, e.value),
+        ]);
+        if (!mounted) return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('${adet == 0 ? '' : '$adet cihaz'}'
               '${adet > 0 && malzemeAdet > 0 ? ' ve ' : ''}'
@@ -719,7 +732,7 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen>
                   title: const Text('Alım / garanti bilgileri'),
                   subtitle: Text(
                     _alim.bos
-                        ? 'Opsiyonel: alım tarihi, firma, ihale, garanti'
+                        ? 'İsteğe bağlı: alım tarihi, firma, ihale, garanti'
                         : alimOzeti(_alim),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -947,7 +960,7 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen>
                     inputFormatters: metinBuyuk,
                     controller: _notCtrl,
                     decoration:
-                        const InputDecoration(labelText: 'Not (opsiyonel)'),
+                        const InputDecoration(labelText: 'Not (isteğe bağlı)'),
                   ),
                   const SizedBox(height: 12),
                   SizedBox(

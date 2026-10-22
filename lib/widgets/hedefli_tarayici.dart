@@ -536,9 +536,10 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
   }
 
   /// 1.30.2: 266'lı kurum kodu tanımlı değilse bunu açıkça söyler.
+  // 1.30.3: malzemeler stok koduyla (266…) okunur; fabrika barkodu değil.
   String _urunBarkoduSebebi(String v) => kurumBarkoduMu(v)
-      ? 'kurum kodu, hiçbir malzemeye tanımlı değil'
-      : 'ürün barkodu';
+      ? 'stok kodu, hiçbir malzemeye tanımlı değil'
+      : 'fabrika barkodu · kutudaki stok kodu etiketini okutun';
 
   /// Kurum etiketi ya da koli karekodu: yerelde tanınır, kısa beklenir.
   bool _taninan(String v) =>
@@ -877,7 +878,7 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
                     ),
                     child: Text(
                       _ipucu!,
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.center,
                       style: const TextStyle(

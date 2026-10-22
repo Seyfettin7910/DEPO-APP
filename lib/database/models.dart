@@ -380,7 +380,7 @@ class KullanimKaydi {
   final String? aracId;
   final String? kullanimYeri;
   final String? not_;
-  // Kullanım / montaj anındaki GPS konumu (opsiyonel)
+  // Kullanım / montaj anındaki GPS konumu (isteğe bağlı)
   final double? enlem;
   final double? boylam;
   final double? konumHassasiyet; // metre
@@ -465,7 +465,7 @@ class Cihaz {
   final CihazDurumu durum;
   final String? aracId;
   final String? kullanimYeri;
-  // Alım / garanti bilgileri (opsiyonel)
+  // Alım / garanti bilgileri (isteğe bağlı)
   final DateTime? alimTarihi;
   final String? firma;
   final String? ihale;

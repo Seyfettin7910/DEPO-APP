@@ -11,6 +11,7 @@ import '../../widgets/buyuk_harf.dart';
 import '../../services/urun_adi.dart';
 import '../../widgets/benzer_urun.dart';
 import '../../widgets/urun_birlestir.dart';
+import '../../services/kurum_barkodu.dart';
 
 /// Yeni ürün (model) ekler; [mevcut] verilirse o ürünü düzenler.
 ///
@@ -35,7 +36,16 @@ Future<String?> urunFormDialog(BuildContext context, WidgetRef ref,
     bool sadeceModel = false}) {
   final adCtrl = TextEditingController(text: mevcut?.ad ?? '');
   final seriCtrl = TextEditingController();
-  final kategoriCtrl = TextEditingController(text: mevcut?.kategori ?? '');
+  // 1.30.3: kategori açılır listeden (ürünlerdeki kategoriler, alfabetik)
+  // ya da "+ Yeni" ile.
+  String? kategori =
+      (mevcut?.kategori ?? '').trim().isEmpty ? null : mevcut!.kategori!.trim();
+  final kategoriler = <String>{
+    for (final u in ref.read(urunlerStreamProvider).valueOrNull ?? <Urun>[])
+      if ((u.kategori ?? '').trim().isNotEmpty) u.kategori!.trim(),
+    if (kategori != null) kategori,
+  }.toList()
+    ..sort(trKarsilastir);
   final minStokCtrl =
       TextEditingController(text: '${mevcut?.minStokSeviyesi ?? 0}');
   final barkodCtrl =
@@ -74,12 +84,44 @@ Future<String?> urunFormDialog(BuildContext context, WidgetRef ref,
                     const InputDecoration(labelText: 'Ürün / model adı'),
                 autofocus: mevcut == null,
               ),
-              TextField(
-                textCapitalization: TextCapitalization.characters,
-                inputFormatters: metinBuyuk,
-                controller: kategoriCtrl,
-                decoration: const InputDecoration(
-                    labelText: 'Kategori / tür (ör. Kayıt Cihazları)'),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<String?>(
+                      value: kategori,
+                      isExpanded: true,
+                      decoration:
+                          const InputDecoration(labelText: 'Kategori / tür'),
+                      items: [
+                        const DropdownMenuItem<String?>(
+                            value: null, child: Text('Kategorisiz')),
+                        for (final k in kategoriler)
+                          DropdownMenuItem<String?>(
+                              value: k,
+                              child: Text(k, overflow: TextOverflow.ellipsis)),
+                      ],
+                      onChanged: (v) => setState(() => kategori = v),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  TextButton.icon(
+                    icon: const Icon(Icons.add),
+                    label: const Text('Yeni'),
+                    onPressed: () async {
+                      final k = await _yeniKategori(ctx, kategoriler);
+                      if (k == null) return;
+                      setState(() {
+                        if (!kategoriler.contains(k)) {
+                          kategoriler
+                            ..add(k)
+                            ..sort(trKarsilastir);
+                        }
+                        kategori = k;
+                      });
+                    },
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
               if (mevcut == null && !malzeme && !sadeceModel)
@@ -143,8 +185,10 @@ Future<String?> urunFormDialog(BuildContext context, WidgetRef ref,
                   controller: barkodCtrl,
                   onChanged: (_) => setState(() {}),
                   decoration: InputDecoration(
-                    labelText: 'Fabrika barkodu (isteğe bağlı)',
-                    helperText: 'Kaydedilirse girişte okutularak seçilir',
+                    labelText: 'Barkod (boşsa stok kodu üretilir)',
+                    helperText: kurumBarkoduMu(barkodCtrl.text.trim())
+                        ? 'Stok kodu (266…): kutulara bu etiket basılır'
+                        : 'Girişte okutularak seçilir',
                     suffixIcon: IconButton(
                       icon: const Icon(Icons.qr_code_scanner),
                       tooltip: 'Kamera ile oku',
@@ -162,13 +206,16 @@ Future<String?> urunFormDialog(BuildContext context, WidgetRef ref,
                     ),
                   ),
                 ),
-                // 1.30.2: fabrika barkodu yoksa 266'lı kurum içi EAN-13.
-                if (barkodCtrl.text.trim().isEmpty)
+                // 1.30.2 / 1.30.3: 266'lı stok kodu (kurum içi EAN-13);
+                // fabrika barkodu girildiyse onun yerine de verilebilir.
+                if (!kurumBarkoduMu(barkodCtrl.text.trim()))
                   Align(
                     alignment: Alignment.centerLeft,
                     child: TextButton.icon(
                       icon: const Icon(Icons.qr_code_2),
-                      label: const Text('Barkodu yok: kurum kodu üret (266…)'),
+                      label: Text(barkodCtrl.text.trim().isEmpty
+                          ? 'Stok kodunu şimdi üret (266…)'
+                          : 'Fabrika barkodu yerine stok kodu (266…)'),
                       onPressed: () async {
                         try {
                           final k = await ref
@@ -227,8 +274,8 @@ Future<String?> urunFormDialog(BuildContext context, WidgetRef ref,
                 controller: minStokCtrl,
                 decoration: InputDecoration(
                     labelText: miktarli
-                        ? 'Minimum miktar uyarısı ($birim, opsiyonel)'
-                        : 'Minimum adet uyarısı (opsiyonel)',
+                        ? 'Minimum miktar uyarısı ($birim, isteğe bağlı)'
+                        : 'Minimum adet uyarısı (isteğe bağlı)',
                     helperText: 'Depolar + araçlardaki toplam bu sayıya inince uyarır',
                 ),
                 keyboardType: TextInputType.number,
@@ -257,18 +304,19 @@ Future<String?> urunFormDialog(BuildContext context, WidgetRef ref,
                 return;
               }
               final db = ref.read(appDatabaseProvider);
-              final kategori = kategoriCtrl.text.trim().isEmpty
-                  ? null
-                  : kategoriCtrl.text.trim();
               final minStok = int.tryParse(minStokCtrl.text.trim()) ?? 0;
               final seri = miktarli ? '' : seriCtrl.text.trim().toUpperCase();
-              final barkod =
+              var barkod =
                   barkodCtrl.text.trim().isEmpty ? null : barkodCtrl.text.trim();
               final kutu = int.tryParse(kutuCtrl.text.trim());
               final kutuIcerigi =
                   miktarli && kutu != null && kutu > 1 ? kutu : null;
 
               try {
+                // 1.30.3: barkodu boş malzemeye kaydederken stok kodu.
+                if (miktarli && barkod == null) {
+                  barkod = await db.benzersizKurumBarkodu();
+                }
                 if (barkod != null && barkod != mevcut?.barkod) {
                   final ayni = await db.barkodIleUrunBul(barkod);
                   if (ayni != null && !ayni.deleted && ayni.id != mevcut?.id) {
@@ -418,5 +466,60 @@ Future<String?> urunFormDialog(BuildContext context, WidgetRef ref,
         ],
       ),
     ),
+  );
+}
+
+/// 1.30.3: yeni kategori adı; aynı / benzer (İ / I, boşluk farkı) kategori
+/// varsa uyarır ve onu seçmeyi önerir.
+Future<String?> _yeniKategori(BuildContext context, List<String> mevcutlar) {
+  final ctrl = TextEditingController();
+  return showDialog<String>(
+    context: context,
+    builder: (ctx) => StatefulBuilder(builder: (ctx, setState) {
+      final ad = ctrl.text.trim();
+      final anahtar = urunAdiAnahtari(ad);
+      final benzer = ad.isEmpty
+          ? null
+          : mevcutlar
+              .where((k) => urunAdiAnahtari(k) == anahtar)
+              .firstOrNull;
+      return AlertDialog(
+        title: const Text('Yeni kategori'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: ctrl,
+              autofocus: true,
+              textCapitalization: TextCapitalization.characters,
+              inputFormatters: metinBuyuk,
+              decoration: const InputDecoration(
+                  labelText: 'Kategori adı', hintText: 'ÖRN: KAYIT CİHAZLARI'),
+              onChanged: (_) => setState(() {}),
+            ),
+            if (benzer != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Text('Bu kategori zaten var: $benzer',
+                    style: TextStyle(color: Theme.of(ctx).colorScheme.error)),
+              ),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Vazgeç')),
+          if (benzer != null)
+            FilledButton(
+                onPressed: () => Navigator.pop(ctx, benzer),
+                child: const Text('Var olanı seç'))
+          else
+            FilledButton(
+                onPressed: ad.isEmpty ? null : () => Navigator.pop(ctx, ad),
+                child: const Text('Ekle')),
+        ],
+      );
+    }),
   );
 }

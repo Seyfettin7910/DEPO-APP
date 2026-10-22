@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -11,12 +13,23 @@ import '../../widgets/depo_secici.dart';
 import '../../widgets/kod_yardimci.dart';
 import '../../widgets/buyuk_harf.dart';
 import '../../services/bolge_adi.dart';
+import '../../services/adres_servisi.dart';
+import '../../services/konum_izleyici.dart';
+import '../../services/konum_servisi.dart';
+import '../../services/kurum_barkodu.dart';
+import '../../widgets/konum_seridi.dart';
+import '../../widgets/malzeme_etiketi.dart';
 
 /// Seri numarası olmayan, miktarla takip edilen malzemeler (kablo, adaptör…)
 /// için giriş, Araca Yükle, transfer, iade ve Montaj / Kullanıldı.
 ///
-/// Malzeme listeden seçilir ya da fabrika barkodu okutulur; miktar +/- ile
-/// ya da sayıya dokunup yazarak girilir.
+/// Malzeme listeden seçilir ya da stok kodu (266…) etiketi okutulur; miktar
+/// +/- ile ya da sayıya dokunup yazarak girilir.
+///
+/// 1.30.3: Montaj / Kullanıldı'da konum, Montaj ekranındaki gibi Kaydet
+/// anında alınır (yalnız ekran açıkken; arka planda konum yok). Konum varsa
+/// "Nerede kullanıldı?" boş bırakılabilir; yakında eski montaj adı ya da
+/// konumdan bulunan "İLÇE MAHALLE" kendiliğinden yazılır.
 class MalzemeIslemScreen extends ConsumerStatefulWidget {
   const MalzemeIslemScreen({
     super.key,
@@ -49,6 +62,17 @@ class _MalzemeIslemScreenState extends ConsumerState<MalzemeIslemScreen>
   String? _hedefId;
   bool _kaydediliyor = false;
 
+  // 1.30.3: Montaj / Kullanıldı konumu
+  KonumIzleyici? _konum;
+  bool _konumKaydet = true;
+  int? _bekleSn; // "Konum bekleniyor… (8 sn)"
+  bool _adresIstendi = false;
+  bool _yakinBakildi = false;
+  bool _yakinBulundu = false;
+  String? _il, _ilce, _mahalle;
+  String? _yerOtomatik; // en son kendiliğinden yazılan yer
+  String? _yerKaynagi; // alanın altındaki açıklama
+
   MalzemeIslemi get _islem => widget.islem;
 
   @override
@@ -58,11 +82,17 @@ class _MalzemeIslemScreenState extends ConsumerState<MalzemeIslemScreen>
     _hedefId = widget.onceHedefId;
     if (widget.onceUrunId != null) _satirlar[widget.onceUrunId!] = 0;
     taslakKorumasiniBaslat(dinlenecekler: [_notCtrl, _yerCtrl]);
+    if (_islem == MalzemeIslemi.kullanim) {
+      _konum = KonumIzleyici()..addListener(_konumDegisti);
+      unawaited(_konum!.baslat());
+    }
   }
 
   @override
   void dispose() {
     taslakKorumasiniBitir(dinlenecekler: [_notCtrl, _yerCtrl]);
+    _konum?.removeListener(_konumDegisti);
+    _konum?.dispose();
     _notCtrl.dispose();
     _yerCtrl.dispose();
     _barkodCtrl.dispose();
@@ -112,6 +142,99 @@ class _MalzemeIslemScreenState extends ConsumerState<MalzemeIslemScreen>
     });
     _yerCtrl.text = trBuyuk(v['yer'] as String? ?? '');
     _notCtrl.text = trBuyuk(v['not'] as String? ?? '');
+  }
+
+  // --------------------------------------------------------------- konum
+
+  void _konumDegisti() {
+    if (!mounted) return;
+    setState(() {});
+    final k = _konum!;
+    final p = k.gosterilen;
+    if (!k.gpsVar || p == null) return;
+    // Konum ±15 m'den iyiyse: 15 m içinde daha önce yazılmış yer adı var mı?
+    if (!_yakinBakildi && p.accuracy <= 15) {
+      _yakinBakildi = true;
+      unawaited(_yakinAdlariBul(p.latitude, p.longitude));
+    }
+    // İlk iyi konumda il / ilçe / mahalle bir kez bulunur.
+    if (!_adresIstendi && p.accuracy <= 50) {
+      _adresIstendi = true;
+      unawaited(_adresBul(p.latitude, p.longitude));
+    }
+  }
+
+  void _yerYaz(String yer, String kaynak) {
+    final mevcut = _yerCtrl.text.trim();
+    // Boşsa ya da önceki kendiliğinden yazılansa değiştirilir.
+    if (mevcut.isNotEmpty && mevcut != _yerOtomatik) return;
+    final t = trBuyuk(yer);
+    _yerCtrl.text = t;
+    _yerOtomatik = t;
+    _yerKaynagi = kaynak;
+  }
+
+  Future<void> _yakinAdlariBul(double enlem, double boylam) async {
+    final adlar = await ref
+        .read(appDatabaseProvider)
+        .yakindakiKullanimYerleri(enlem, boylam);
+    if (!mounted || adlar.isEmpty) return;
+    setState(() {
+      _yakinBulundu = true;
+      _yerYaz(adlar.first, 'Yakındaki eski montajdan (15 m içinde)');
+    });
+  }
+
+  Future<void> _adresBul(double enlem, double boylam) async {
+    final a = await AdresServisi.konumdanAdres(enlem, boylam);
+    if (!mounted || a == null) return; // internet yok: sonra tamamlanır
+    setState(() {
+      _il = a.il;
+      _ilce = a.ilce;
+      _mahalle = a.mahalle;
+      final yer = yerMetni(a.ilce, a.mahalle);
+      if (yer.isNotEmpty && !_yakinBulundu) {
+        _yerYaz(yer, 'Konumdan bulundu, gerekirse düzeltin');
+      }
+    });
+  }
+
+  /// Kaydet anındaki konum: (devam, konum). Konum alınamazsa "Konumsuz
+  /// kaydet / Tekrar dene / Vazgeç" sorulur; vazgeçilirse devam = false.
+  Future<(bool, KonumSonucu?)> _kaydetKonumu() async {
+    final izleyici = _konum;
+    if (izleyici == null || !_konumKaydet) return (true, null);
+    while (true) {
+      final k = await izleyici.kaydetAnindakiKonum(kalanSaniye: (s) {
+        if (mounted) setState(() => _bekleSn = s);
+      });
+      if (!mounted) return (false, null);
+      setState(() => _bekleSn = null);
+      if (k.basarili) return (true, k);
+      final secim = await showDialog<String>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          icon: const Icon(Icons.location_off),
+          title: const Text('Konum bulunamadı'),
+          content: Text('${k.hata}.\n\nKonumsuz kaydedilsin mi, yoksa '
+              'açık alanda tekrar denensin mi?'),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Vazgeç')),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, 'tekrar'),
+                child: const Text('Tekrar dene')),
+            FilledButton(
+                onPressed: () => Navigator.pop(ctx, 'konumsuz'),
+                child: const Text('Konumsuz kaydet')),
+          ],
+        ),
+      );
+      if (!mounted) return (false, null);
+      if (secim == 'konumsuz') return (true, null);
+      if (secim != 'tekrar') return (false, null);
+    }
   }
 
   // ---------------------------------------------------------------
@@ -199,8 +322,9 @@ class _MalzemeIslemScreenState extends ConsumerState<MalzemeIslemScreen>
     }
   }
 
-  /// Fabrika barkodu: tanımlı malzemeyse 1 eklenir; tanımlı değilse hangi
-  /// malzemeye ait olduğu sorulur ve kaydedilir.
+  /// Stok kodu (ya da henüz stok kodu verilmemiş malzemenin fabrika
+  /// barkodu): tanımlı malzemeyse eklenir. 1.30.3: tanımsız fabrika barkodu
+  /// artık malzemeye yazılmaz (malzemenin tek kimliği stok kodu).
   Future<void> _barkodIsle(String ham, List<Urun> malzemeler) async {
     final kod = ham.trim();
     if (kod.isEmpty) return;
@@ -220,45 +344,13 @@ class _MalzemeIslemScreenState extends ConsumerState<MalzemeIslemScreen>
           adet: _islem == MalzemeIslemi.kullanim ? 1 : urun.okutmaMiktari);
       return;
     }
-    if (malzemeler.isEmpty) {
-      SesServisi.hata();
-      _mesaj('Barkod tanımsız ve hiç malzeme yok', hata: true);
-      return;
-    }
     SesServisi.hata();
-    final secilen = await showDialog<Urun>(
-      context: context,
-      builder: (ctx) => SimpleDialog(
-        title: Text('Barkod tanımsız: $kod'),
-        children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(24, 0, 24, 8),
-            child: Text('Bu barkod hangi malzemenin? Seçerseniz kaydedilir; '
-                'bir dahaki okutmada doğrudan eklenir.'),
-          ),
-          for (final u in malzemeler)
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(ctx, u),
-              child: Text(u.barkod == null
-                  ? u.ad
-                  : '${u.ad} (şu anki barkod: ${u.barkod})'),
-            ),
-        ],
-      ),
-    );
-    if (secilen == null || !mounted) return;
-    await db.urunGuncelle(
-      id: secilen.id,
-      ad: secilen.ad,
-      barkod: kod,
-      birim: secilen.birim,
-      kategori: secilen.kategori,
-      minStokSeviyesi: secilen.minStokSeviyesi,
-      kutuIcerigi: secilen.kutuIcerigi,
-    );
-    if (!mounted) return;
-    _mesaj('Barkod ${secilen.ad} için kaydedildi');
-    _ekle(secilen);
+    _mesaj(
+        kurumBarkoduMu(kod)
+            ? 'Stok kodu $kod hiçbir malzemeye tanımlı değil'
+            : 'Fabrika barkodu ($kod): kutudaki stok kodu etiketini okutun '
+                'ya da "Malzeme seç" ile seçin',
+        hata: true);
   }
 
   Future<void> _kameraIleOkut(List<Urun> malzemeler) async {
@@ -316,7 +408,16 @@ class _MalzemeIslemScreenState extends ConsumerState<MalzemeIslemScreen>
     }
     setState(() => _kaydediliyor = true);
     try {
-      await ref.read(appDatabaseProvider).malzemeHareketiKaydet(
+      final (devam, k) = await _kaydetKonumu();
+      if (!devam || !mounted) return;
+      if (_islem == MalzemeIslemi.kullanim &&
+          _yerCtrl.text.trim().isEmpty &&
+          k == null) {
+        _mesaj('Konum yok: nerede kullanıldığını yazın', hata: true);
+        return;
+      }
+      final db = ref.read(appDatabaseProvider);
+      await db.malzemeHareketiKaydet(
             islem: _islem,
             kaynakDepoId: _islem.kaynakli ? _kaynakId : null,
             hedefDepoId: _islem.hedefli ? _hedefId : null,
@@ -325,19 +426,49 @@ class _MalzemeIslemScreenState extends ConsumerState<MalzemeIslemScreen>
                 ref.read(aktifKullaniciIdProvider) ?? 'demo-kullanici',
             not_: _notCtrl.text,
             kullanimYeri: _yerCtrl.text,
+            enlem: k?.enlem,
+            boylam: k?.boylam,
+            konumHassasiyet: k?.hassasiyet,
+            il: k == null ? null : _il,
+            ilce: k == null ? null : _ilce,
+            mahalle: k == null ? null : _mahalle,
           );
+      // İnternet varsa eksik bölge (il / ilçe / mahalle) hemen tamamlanır.
+      if (k != null) unawaited(AdresTamamlayici.calistir(db));
       SesServisi.basari();
       await taslakTamamlandi();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      final messenger = ScaffoldMessenger.of(context);
+      final konumMetni = _konum == null
+          ? ''
+          : (k == null
+              ? ' · konumsuz'
+              : ' · konum ±${(k.hassasiyet ?? 0).round()} m');
+      // 1.30.3: girişten sonra "Kaç kutu geldi? Etiket basılsın mı?"
+      if (_islem == MalzemeIslemi.giris) {
+        final urunler =
+            ref.read(urunlerStreamProvider).valueOrNull ?? <Urun>[];
+        final harita = {for (final u in urunler) u.id: u};
+        await girisSonrasiEtiketSor(context, [
+          for (final e in miktarlar.entries)
+            if (harita[e.key] != null) (harita[e.key]!, e.value),
+        ]);
+        if (!mounted) return;
+      }
+      messenger.showSnackBar(SnackBar(
           content: Text('${_islem.baslik}: ${miktarlar.length} kalem '
-              'kaydedildi')));
+              'kaydedildi$konumMetni')));
       Navigator.pop(context);
     } catch (e) {
       SesServisi.hata();
       _mesaj(e is StateError ? e.message : 'Kaydedilemedi: $e', hata: true);
     } finally {
-      if (mounted) setState(() => _kaydediliyor = false);
+      if (mounted) {
+        setState(() {
+          _kaydediliyor = false;
+          _bekleSn = null;
+        });
+      }
     }
   }
 
@@ -377,12 +508,19 @@ class _MalzemeIslemScreenState extends ConsumerState<MalzemeIslemScreen>
     final urunMap = {for (final u in urunler) u.id: u};
     final kaynaklar = _kaynaklar(depolar);
     final hedefler = _hedefler(depolar);
+    final kalem = _satirlar.values.where((m) => m > 0).length;
 
     return yarimIsKapsayici(
       child: Scaffold(
         appBar: AppBar(title: Text(_islem.baslik)),
         body: Column(
           children: [
+            if (_konum != null)
+              KonumSeridi(
+                izleyici: _konum!,
+                kaydet: _konumKaydet,
+                onChanged: (v) => setState(() => _konumKaydet = v),
+              ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
               child: Column(
@@ -424,10 +562,20 @@ class _MalzemeIslemScreenState extends ConsumerState<MalzemeIslemScreen>
                       textCapitalization: TextCapitalization.characters,
                       inputFormatters: metinBuyuk,
                       controller: _yerCtrl,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Nerede kullanıldı?',
-                        hintText: 'Örn: Zabıta Müdürlüğü, Park Cad. 12',
+                        hintText: 'ÖRN: ZABITA MÜDÜRLÜĞÜ, PARK CAD. 12',
+                        helperText: _yerKaynagi ??
+                            (_konumKaydet
+                                ? 'Konum kaydedilirse boş bırakılabilir'
+                                : null),
                       ),
+                      onChanged: (t) {
+                        if (_yerKaynagi != null &&
+                            t.trim() != _yerOtomatik) {
+                          setState(() => _yerKaynagi = null);
+                        }
+                      },
                     ),
                 ],
               ),
@@ -443,7 +591,7 @@ class _MalzemeIslemScreenState extends ConsumerState<MalzemeIslemScreen>
                             inputFormatters: kodBuyuk,
                             controller: _barkodCtrl,
                             decoration: const InputDecoration(
-                              labelText: 'Fabrika barkodu (okuyucuyla okutun)',
+                              labelText: 'Stok kodu (okuyucuyla okutun)',
                               prefixIcon: Icon(Icons.qr_code_scanner),
                             ),
                             onSubmitted: (v) => _barkodIsle(v, malzemeler),
@@ -488,7 +636,7 @@ class _MalzemeIslemScreenState extends ConsumerState<MalzemeIslemScreen>
                               ? 'Henüz miktarla takip edilen malzeme yok.\n\n'
                                   'Ürünler sekmesinde yeni ürün eklerken takip '
                                   'türünü "Miktar" seçin (kablo, adaptör…).'
-                              : 'Malzemenin fabrika barkodunu okutun ya da '
+                              : 'Stok kodu etiketini okutun ya da '
                                   '"Malzeme seç" ile listeden seçin. Miktarı '
                                   '+/- ile ya da sayıya dokunup yazarak girin.',
                           textAlign: TextAlign.center,
@@ -527,17 +675,22 @@ class _MalzemeIslemScreenState extends ConsumerState<MalzemeIslemScreen>
                       inputFormatters: metinBuyuk,
                       controller: _notCtrl,
                       decoration:
-                          const InputDecoration(labelText: 'Not (opsiyonel)'),
+                          const InputDecoration(labelText: 'Not (isteğe bağlı)'),
                     ),
                     const SizedBox(height: 12),
                     SizedBox(
                       width: double.infinity,
                       child: FilledButton.icon(
-                        onPressed: _kaydediliyor ? null : _kaydet,
-                        icon: const Icon(Icons.save),
-                        label: Text(_kaydediliyor
-                            ? 'Kaydediliyor...'
-                            : 'Kaydet (${_satirlar.values.where((m) => m > 0).length} kalem)'),
+                        // 1.30.3: miktar girilmeden Kaydet kapalı.
+                        onPressed: _kaydediliyor || kalem == 0 ? null : _kaydet,
+                        icon: Icon(_bekleSn != null
+                            ? Icons.gps_not_fixed
+                            : Icons.save),
+                        label: Text(_bekleSn != null
+                            ? 'Konum bekleniyor… ($_bekleSn sn)'
+                            : _kaydediliyor
+                                ? 'Kaydediliyor...'
+                                : 'Kaydet ($kalem kalem)'),
                       ),
                     ),
                   ],

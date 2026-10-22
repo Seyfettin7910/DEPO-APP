@@ -63,49 +63,74 @@ class TutanakBilgi {
 }
 
 extension MalzemeVeritabani on AppDatabase {
-  // ------------------------------------------- kurum içi barkod (1.30.2)
+  // --------------------------- stok kodu: 266'lı EAN-13 (1.30.2 / 1.30.3)
+  // Kural: her malzemenin tek kimliği stok kodu; fabrika barkodu kullanılmaz.
 
-  /// Veritabanında olmayan yeni 266'lı kurum barkodu.
+  /// Veritabanında olmayan yeni 266'lı stok kodu.
   Future<String> benzersizKurumBarkodu() async {
     for (var i = 0; i < 20; i++) {
       final k = kurumBarkoduUret();
       if (await barkodIleUrunBul(k) == null) return k;
     }
-    throw StateError('Kurum kodu üretilemedi, tekrar deneyin');
+    throw StateError('Stok kodu üretilemedi, tekrar deneyin');
   }
 
-  /// Barkodu olmayan malzemeye kurum kodu yazar; yazılan kodu döner.
-  Future<String> malzemeyeKurumKoduVer(String urunId) async {
-    final k = await benzersizKurumBarkodu();
+  /// Malzemeye stok kodu yazar; yazılan kodu döner. [fabrikaninYerine]:
+  /// fabrika barkodu varsa onun yerine (zaten stok kodu varsa dokunulmaz).
+  Future<String> malzemeyeKurumKoduVer(String urunId,
+      {bool fabrikaninYerine = false}) async {
     final db = await _database;
-    final n = await db.rawUpdate(
-        'UPDATE urunler SET barkod = ?, updated_at = ?, dirty = 1 '
-        "WHERE id = ? AND seri_takipli = 0 AND (barkod IS NULL OR barkod = '')",
+    final r = await db.query('urunler',
+        columns: ['barkod', 'seri_takipli'],
+        where: 'id = ? AND deleted = 0',
+        whereArgs: [urunId],
+        limit: 1);
+    if (r.isEmpty || (r.first['seri_takipli'] as num) != 0) {
+      throw StateError('Malzeme bulunamadı');
+    }
+    final mevcut = ((r.first['barkod'] as String?) ?? '').trim();
+    if (kurumBarkoduMu(mevcut)) throw StateError('Bu malzemenin zaten stok kodu var');
+    if (mevcut.isNotEmpty && !fabrikaninYerine) {
+      throw StateError('Bu malzemenin barkodu var');
+    }
+    final k = await benzersizKurumBarkodu();
+    await db.rawUpdate(
+        'UPDATE urunler SET barkod = ?, updated_at = ?, dirty = 1 WHERE id = ?',
         [k, DateTime.now().millisecondsSinceEpoch, urunId]);
-    if (n == 0) throw StateError('Bu malzemenin zaten barkodu var');
     _notify();
     return k;
   }
 
-  /// Barkodsuz malzeme sayısı (Ürünler → "Barkodsuz malzemelere kod üret").
-  Future<int> barkodsuzMalzemeSayisi() async {
-    final db = await _database;
-    return Sqflite.firstIntValue(await db.rawQuery(
-            'SELECT COUNT(*) FROM urunler WHERE deleted = 0 AND seri_takipli = 0 '
-            "AND (barkod IS NULL OR barkod = '')")) ??
-        0;
-  }
-
-  /// Barkodu olmayan bütün malzemelere kurum kodu verir; verilen sayıyı döner.
-  Future<int> barkodsuzMalzemelereKodVer() async {
+  /// Stok kodu durumu: (barkodsuz, fabrika barkodlu) malzeme sayısı.
+  Future<(int, int)> stokKoduSayilari() async {
     final db = await _database;
     final rows = await db.rawQuery(
-        'SELECT id FROM urunler WHERE deleted = 0 AND seri_takipli = 0 '
-        "AND (barkod IS NULL OR barkod = '')");
+        'SELECT barkod FROM urunler WHERE deleted = 0 AND seri_takipli = 0');
+    var bos = 0, fabrika = 0;
+    for (final r in rows) {
+      final b = ((r['barkod'] as String?) ?? '').trim();
+      if (b.isEmpty) {
+        bos++;
+      } else if (!kurumBarkoduMu(b)) {
+        fabrika++;
+      }
+    }
+    return (bos, fabrika);
+  }
+
+  /// Malzemelere toplu stok kodu: barkodsuzlara; [fabrikaninYerine] ise
+  /// fabrika barkodlulara da (stok kodu olanlara dokunulmaz). Verilen sayı.
+  Future<int> malzemelereStokKoduVer({bool fabrikaninYerine = false}) async {
+    final db = await _database;
+    final rows = await db.rawQuery(
+        'SELECT id, barkod FROM urunler WHERE deleted = 0 AND seri_takipli = 0');
     var n = 0;
     for (final r in rows) {
+      final b = ((r['barkod'] as String?) ?? '').trim();
+      if (kurumBarkoduMu(b) || (b.isNotEmpty && !fabrikaninYerine)) continue;
       try {
-        await malzemeyeKurumKoduVer(r['id'] as String);
+        await malzemeyeKurumKoduVer(r['id'] as String,
+            fabrikaninYerine: fabrikaninYerine);
         n++;
       } catch (_) {}
     }

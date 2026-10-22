@@ -249,21 +249,33 @@ class EtiketPdf {
 
   /// Malzeme barkod etiketleri (1.30.2): [adet] kadar aynı etiket; EAN-13
   /// çizgi barkod (altında rakamlar), ürün adı, birim / kutu içeriği.
-  /// Fabrika barkodu ya da 266'lı kurum kodu olan malzemeler için.
   static Future<Uint8List> malzemeEtiketleri(
     Urun u,
     int adet,
     EtiketSablonu s, {
     int baslangic = 0,
+  }) =>
+      cokluMalzemeEtiketleri([(u, adet)], s, baslangic: baslangic);
+
+  /// 1.30.3: birden çok malzemenin etiketleri tek PDF'te (malzeme girişi
+  /// sonrası "etiket basılsın mı?"). Barkodu olmayan malzemeler atlanır.
+  static Future<Uint8List> cokluMalzemeEtiketleri(
+    List<(Urun, int)> kalemler,
+    EtiketSablonu s, {
+    int baslangic = 0,
   }) async {
-    final barkod = (u.barkod ?? '').trim();
-    if (barkod.isEmpty) throw StateError('Malzemenin barkodu yok');
+    final liste = <(Urun, String)>[
+      for (final (u, adet) in kalemler)
+        if ((u.barkod ?? '').trim().isNotEmpty)
+          for (var i = 0; i < adet; i++) (u, u.barkod!.trim()),
+    ];
+    if (liste.isEmpty) throw StateError('Malzemenin barkodu yok');
     final tema = await _temaYukle();
     final doc = pw.Document(theme: tema, title: 'Malzeme etiketleri');
     final format = sayfaFormati(s);
     final sayfadaki = s.sayfadakiEtiket;
     final atla = s.rulo ? 0 : baslangic.clamp(0, sayfadaki - 1);
-    final toplam = atla + adet;
+    final toplam = atla + liste.length;
     for (var bas = 0; bas < toplam; bas += sayfadaki) {
       final son = math.min(bas + sayfadaki, toplam);
       doc.addPage(pw.Page(
@@ -271,7 +283,9 @@ class EtiketPdf {
         margin: pw.EdgeInsets.zero,
         build: (_) => pw.Stack(fit: pw.StackFit.expand, children: [
           for (var i = bas; i < son; i++)
-            if (i >= atla) _yerlestir(s, i - bas, _malzemeEtiket(s, u, barkod)),
+            if (i >= atla)
+              _yerlestir(s, i - bas,
+                  _malzemeEtiket(s, liste[i - atla].$1, liste[i - atla].$2)),
         ]),
       ));
     }

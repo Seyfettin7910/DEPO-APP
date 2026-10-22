@@ -43,7 +43,10 @@ class SyncDurumDugmesi extends ConsumerWidget {
     Color zemin;
     String metin;
     String ipucu;
-    if (d.calisiyor) {
+    // 1.30.3: "Gönderiliyor…" yalnız gönderilecek kayıt varken; yalnız
+    // sunucu denetleniyorsa simgenin yerinde küçük bir dönen halka.
+    final denetleniyor = d.calisiyor && d.bekleyen == 0;
+    if (d.calisiyor && d.bekleyen > 0) {
       ikon = Icons.sync;
       renk = Renkler.depo;
       zemin = Renkler.depoZemin;
@@ -76,6 +79,7 @@ class SyncDurumDugmesi extends ConsumerWidget {
           ? 'Henüz senkronize edilmedi'
           : 'Güncel · son senkron ${DateFormat('dd.MM.yyyy HH:mm').format(d.sonBasari!)}';
     }
+    if (denetleniyor) ipucu = 'Sunucu denetleniyor…';
 
     return Tooltip(
       message: ipucu,
@@ -87,7 +91,7 @@ class SyncDurumDugmesi extends ConsumerWidget {
           child: InkWell(
             customBorder: const StadiumBorder(),
             onTap: () {
-              ref.read(syncServiceProvider).syncNow();
+              ref.read(syncServiceProvider).syncNow(elle: true);
               if (d.hata != null) {
                 ScaffoldMessenger.of(context)
                   ..hideCurrentSnackBar()
@@ -99,7 +103,18 @@ class SyncDurumDugmesi extends ConsumerWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(ikon, color: renk, size: 22),
+                  if (denetleniyor)
+                    SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: Padding(
+                        padding: const EdgeInsets.all(4),
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: renk),
+                      ),
+                    )
+                  else
+                    Icon(ikon, color: renk, size: 22),
                   const SizedBox(width: 5),
                   Text(metin,
                       maxLines: 1,

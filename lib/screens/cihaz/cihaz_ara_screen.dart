@@ -12,6 +12,7 @@ import '../../widgets/silme_islemleri.dart';
 import '../urun/urun_form_dialog.dart';
 import '../../widgets/sync_durum_dugmesi.dart';
 import '../../widgets/buyuk_harf.dart';
+import '../../widgets/sag_tik.dart';
 
 /// Seri numarası (veya model, depo, araç/yer) yazarak ya da okutarak arama.
 /// Sonuçta cihazın hangi modele ait olduğu ve şu an hangi depoda / hangi
@@ -141,33 +142,41 @@ class _Sonuclar extends ConsumerWidget {
           itemBuilder: (context, i) {
             final b = liste[i];
             final renk = cihazRengi(b.cihaz);
-            return ListTile(
+            Future<void> menu() async {
+              final secim = await secenekMenusu(context,
+                  baslik: '${b.urunAdi}\nSN: ${b.cihaz.seriNo}',
+                  secenekler: const [
+                    ('ac', Icons.open_in_new, 'Cihaz kartını aç'),
+                    ('sil', Icons.delete_outline, 'Cihazı sil'),
+                  ]);
+              if (!context.mounted) return;
+              if (secim == 'ac') {
+                Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => CihazDetayScreen(cihazId: b.cihaz.id)));
+              } else if (secim == 'sil') {
+                await cihazSilAkisi(context, ref, b);
+              }
+            }
+
+            return SagTik(onMenu: menu, child: ListTile(
               leading: Icon(cihazIkonu(b.cihaz), color: renk),
               title: Text(b.urunAdi),
               subtitle: Text('SN: ${b.cihaz.seriNo}\n${cihazKonumMetni(b)}'
                   '${b.cihaz.durum == CihazDurumu.kullanimda ? ' · Tutanak: ${tutanakKisa(b.tutanak)}' : ''}'),
               isThreeLine: true,
-              trailing: const Icon(Icons.chevron_right),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  MenuDugmesi(onPressed: menu),
+                  const Icon(Icons.chevron_right),
+                ],
+              ),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(
                     builder: (_) => CihazDetayScreen(cihazId: b.cihaz.id)),
               ),
-              onLongPress: () async {
-                final secim = await secenekMenusu(context,
-                    baslik: '${b.urunAdi}\nSN: ${b.cihaz.seriNo}',
-                    secenekler: const [
-                      ('ac', Icons.open_in_new, 'Cihaz kartını aç'),
-                      ('sil', Icons.delete_outline, 'Cihazı sil'),
-                    ]);
-                if (!context.mounted) return;
-                if (secim == 'ac') {
-                  Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => CihazDetayScreen(cihazId: b.cihaz.id)));
-                } else if (secim == 'sil') {
-                  await cihazSilAkisi(context, ref, b);
-                }
-              },
-            );
+              onLongPress: menu,
+            ));
           },
         );
       },
@@ -207,32 +216,43 @@ class _ModelAdetleri extends ConsumerWidget {
           ),
         ),
         for (final u in urunler)
-          ListTile(
+          SagTik(
+            onMenu: () => _modelMenusu(context, ref, u),
+            child: ListTile(
             leading: Icon(u.miktarli ? Icons.cable_outlined : Icons.qr_code_2),
             title: Text(u.ad),
             subtitle: u.kategori == null ? null : Text(u.kategori!),
-            trailing: Text(
-              u.miktarli
-                  ? u.miktarMetni(toplamlar[u.id] ?? 0)
-                  : '${toplamlar[u.id] ?? 0}',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  u.miktarli
+                      ? u.miktarMetni(toplamlar[u.id] ?? 0)
+                      : '${toplamlar[u.id] ?? 0}',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 18),
+                ),
+                MenuDugmesi(onPressed: () => _modelMenusu(context, ref, u)),
+              ],
             ),
-            onLongPress: () async {
-              final secim = await secenekMenusu(context,
-                  baslik: u.ad,
-                  secenekler: const [
-                    ('duzenle', Icons.edit_outlined, 'Düzenle'),
-                    ('sil', Icons.delete_outline, 'Ürünü sil'),
-                  ]);
-              if (!context.mounted) return;
-              if (secim == 'duzenle') {
-                urunFormDialog(context, ref, mevcut: u);
-              } else if (secim == 'sil') {
-                await urunSilAkisi(context, ref, u);
-              }
-            },
-          ),
+            onLongPress: () => _modelMenusu(context, ref, u),
+          )),
       ],
     );
+  }
+}
+
+Future<void> _modelMenusu(BuildContext context, WidgetRef ref, Urun u) async {
+  final secim = await secenekMenusu(context,
+      baslik: u.ad,
+      secenekler: const [
+        ('duzenle', Icons.edit_outlined, 'Düzenle'),
+        ('sil', Icons.delete_outline, 'Ürünü sil'),
+      ]);
+  if (!context.mounted) return;
+  if (secim == 'duzenle') {
+    urunFormDialog(context, ref, mevcut: u);
+  } else if (secim == 'sil') {
+    await urunSilAkisi(context, ref, u);
   }
 }

@@ -13,6 +13,7 @@ import '../../widgets/silme_islemleri.dart';
 import '../../widgets/servis_islemleri.dart';
 import '../../widgets/renkler.dart';
 import '../../widgets/buyuk_harf.dart';
+import '../../widgets/sag_tik.dart';
 
 /// Bir deponun detayı: "Stok" sekmesinde ürünlerin güncel adedi,
 /// "Hareketler" sekmesinde giren/çıkan her işlem görünür.
@@ -296,7 +297,9 @@ class _CihazListesiState extends ConsumerState<_CihazListesi> {
                       separatorBuilder: (_, __) => const Divider(height: 1),
                       itemBuilder: (context, i) {
                         final b = gorunen[i];
-                        return ListTile(
+                        return SagTik(
+                          onMenu: () => _cihazMenusu(context, ref, b),
+                          child: ListTile(
                           dense: true,
                           leading: Icon(
                               b.cihaz.servisDurumu == null
@@ -312,6 +315,9 @@ class _CihazListesiState extends ConsumerState<_CihazListesi> {
                             children: [
                               if (b.cihaz.servisDurumu != null)
                                 ServisRozeti(b.cihaz.servisDurumu!),
+                              MenuDugmesi(
+                                  onPressed: () =>
+                                      _cihazMenusu(context, ref, b)),
                               const Icon(Icons.chevron_right),
                             ],
                           ),
@@ -322,7 +328,7 @@ class _CihazListesiState extends ConsumerState<_CihazListesi> {
                             ),
                           ),
                           onLongPress: () => _cihazMenusu(context, ref, b),
-                        );
+                        ));
                       },
                     ),
             ),
@@ -427,7 +433,9 @@ class _HareketListesi extends ConsumerWidget {
                 ));
             }
 
-            return ListTile(
+            return SagTik(
+              onMenu: h.seriNo == null ? null : kopyala,
+              child: ListTile(
               leading: Icon(_ikon(h), color: renk),
               // Seri no: satıra uzun basınca veya kopyala simgesiyle kopyalanır.
               onLongPress: h.seriNo == null ? null : kopyala,
@@ -459,7 +467,7 @@ class _HareketListesi extends ConsumerWidget {
                   ),
                 ],
               ),
-            );
+            ));
           },
         );
       },

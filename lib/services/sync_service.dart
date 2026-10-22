@@ -124,6 +124,14 @@ class SyncService {
 
   // Tur sürerken gelen istekler kaybolmasın: tur bitince yeniden çalışır.
   bool _tamBekliyor = false;
+
+  // 1.30.3: gereksiz tetiklemeyi azaltma. Tam tur bittikten sonraki 30 sn
+  // içinde gelen kendiliğinden tam tur istekleri (ekrana dönüş, oturum
+  // olayı, Realtime yeniden bağlanma…) gönderilecek kayıt yoksa atlanır.
+  // Elle ("Şimdi senkronize et", durum düğmesi) her zaman çalışır.
+  static const _tamAralik = Duration(seconds: 30);
+  DateTime? _sonTamTur;
+  bool? _cevrimici; // yalnız çevrimdışı → çevrimiçi geçişinde senkron
   final _bekleyenTablolar = <String>{};
 
   // Realtime "zil"i
@@ -150,15 +158,28 @@ class SyncService {
             sonBasari: DateTime.fromMillisecondsSinceEpoch(ms)));
       }
     }).catchError((_) {}));
+    unawaited(Connectivity().checkConnectivity().then((r) {
+      _cevrimici ??= r.any((x) => x != ConnectivityResult.none);
+    }).catchError((_) {}));
+    // Wi-Fi ↔ mobil veri geçişi senkron başlatmaz; yalnız bağlantı
+    // yokken gelince.
     _baglantiSub = Connectivity().onConnectivityChanged.listen((sonuclar) {
-      if (sonuclar.any((r) => r != ConnectivityResult.none)) syncNow();
+      final simdi = sonuclar.any((r) => r != ConnectivityResult.none);
+      final once = _cevrimici;
+      _cevrimici = simdi;
+      if (simdi && once == false) syncNow();
     });
+    // Saatlik token yenilemesi (tokenRefreshed) senkron başlatmaz.
     _authSub = SupabaseService.client.auth.onAuthStateChange.listen((e) {
-      if (e.session != null) {
-        _kanalKur();
-        syncNow();
-      } else if (e.event == AuthChangeEvent.signedOut) {
+      if (e.event == AuthChangeEvent.signedOut) {
         _kanalKapat();
+        return;
+      }
+      if (e.session == null) return;
+      _kanalKur();
+      if (e.event == AuthChangeEvent.signedIn ||
+          e.event == AuthChangeEvent.initialSession) {
+        syncNow();
       }
     });
     // Yerel değişiklik olunca kısa bir gecikmeyle gönder.
@@ -195,7 +216,7 @@ class SyncService {
           .onPostgresChanges(
             event: PostgresChangeEvent.all,
             schema: 'public',
-            callback: (p) => _zilCaldi(p.table),
+            callback: _zilCaldi,
           )
           .subscribe((durum, hata) {
         if (durum != RealtimeSubscribeStatus.subscribed || _kapandi) return;
@@ -220,8 +241,27 @@ class SyncService {
 
   /// Aynı anda çok değişiklik gelir (100 cihazlık giriş): 1 sn toplanır,
   /// değişen tablolar tek seferde çekilir.
-  void _zilCaldi(String tablo) {
+  void _zilCaldi(PostgresChangePayload p) {
+    final tablo = p.table;
     if (_kapandi || !_tablolar.contains(tablo)) return;
+    // 1.30.3: kendi gönderdiğimiz kaydın yankısı (yerelde aynı updated_at,
+    // gönderilmiş) çekim başlatmaz.
+    final id = p.newRecord['id'];
+    final guncelleme = p.newRecord['updated_at'];
+    final ms = guncelleme is num
+        ? guncelleme.toInt()
+        : int.tryParse('${guncelleme ?? ''}');
+    if (id is String && ms != null) {
+      unawaited(db.yereldeAyni(tablo, id, ms).then((ayni) {
+        if (!ayni) _zilEkle(tablo);
+      }).catchError((_) => _zilEkle(tablo)));
+      return;
+    }
+    _zilEkle(tablo);
+  }
+
+  void _zilEkle(String tablo) {
+    if (_kapandi) return;
     _zilTablolari.add(tablo);
     _zilGecikme ??= Timer(const Duration(seconds: 1), () {
       _zilGecikme = null;
@@ -245,7 +285,18 @@ class SyncService {
 
   /// Hemen senkronize eder. [tablolar] verilirse yalnız onlar çekilir
   /// (gönderme her zaman tümü). Tur sürerken çağrılırsa tur bitince yapılır.
-  Future<void> syncNow({Set<String>? tablolar}) async {
+  /// [elle]: kullanıcı istedi (30 sn sınırı uygulanmaz).
+  Future<void> syncNow({Set<String>? tablolar, bool elle = false}) async {
+    if (_kapandi) return;
+    final son = _sonTamTur;
+    if (tablolar == null &&
+        !elle &&
+        !_calisiyor &&
+        son != null &&
+        DateTime.now().difference(son) < _tamAralik &&
+        await db.bekleyenSayisi() == 0) {
+      return;
+    }
     if (_kapandi) return;
     if (_calisiyor) {
       if (tablolar == null) {
@@ -281,6 +332,7 @@ class SyncService {
       unawaited(AdresTamamlayici.calistir(db));
 
       final simdi = DateTime.now();
+      if (tablolar == null) _sonTamTur = simdi;
       unawaited(SharedPreferences.getInstance()
           .then((p) => p.setInt(_sonSenkronAnahtari, simdi.millisecondsSinceEpoch))
           .catchError((_) => false));

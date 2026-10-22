@@ -2694,6 +2694,21 @@ class AppDatabase {
     return toplam;
   }
 
+  /// 1.30.3: Realtime'tan gelen değişiklik zaten yerelde var mı (kendi
+  /// gönderdiğimiz kaydın yankısı)? Aynı updated_at ve gönderilmiş ise true.
+  Future<bool> yereldeAyni(String tablo, String id, int updatedAt) async {
+    if (!senkronKolonlari.containsKey(tablo)) return false;
+    final db = await _database;
+    final r = await db.query(tablo,
+        columns: ['updated_at', 'dirty'],
+        where: 'id = ?',
+        whereArgs: [id],
+        limit: 1);
+    if (r.isEmpty) return false;
+    return (r.first['updated_at'] as num?)?.toInt() == updatedAt &&
+        (r.first['dirty'] as num?)?.toInt() == 0;
+  }
+
   Future<List<Map<String, Object?>>> kirliSatirlar(String tablo,
       {int limit = 200}) async {
     final db = await _database;
@@ -2810,6 +2825,32 @@ class AppDatabase {
         updatedAt: DateTime.now(),
       ).toMap(),
     );
+    _notify();
+  }
+
+  /// 1.30.3: Ayarlar → Kullanıcılar listesi (sunucudan senkronlanan
+  /// kullanıcılar; en az bir kez giriş yapmış olanlar): (id, ad, e-posta).
+  Future<List<(String, String, String)>> kullaniciListesi() async {
+    final db = await _database;
+    final r = await db.query('kullanicilar',
+        columns: ['id', 'ad', 'email'], where: 'deleted = 0');
+    return [
+      for (final m in r)
+        (m['id'] as String, (m['ad'] as String?) ?? '', (m['email'] as String?) ?? '')
+    ];
+  }
+
+  Stream<List<(String, String, String)>> kullaniciListesiStream() =>
+      _watch(kullaniciListesi);
+
+  /// 1.30.3: kullanıcının görünen adı (hareket geçmişinde "kim yaptı");
+  /// sunucuya gönderilir.
+  Future<void> kullaniciAdiDegistir(String id, String ad) async {
+    final db = await _database;
+    final n = await db.rawUpdate(
+        'UPDATE kullanicilar SET ad = ?, updated_at = ?, dirty = 1 WHERE id = ?',
+        [ad.trim(), DateTime.now().millisecondsSinceEpoch, id]);
+    if (n == 0) throw StateError('Kullanıcı bulunamadı');
     _notify();
   }
 

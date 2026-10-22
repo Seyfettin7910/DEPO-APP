@@ -36,6 +36,59 @@ class NotMaddesi {
 
 const surumNotlari = <SurumNotu>[
   SurumNotu(
+    surum: '1.30.3',
+    tarih: '23.10.2026',
+    bolumler: [
+      NotBolumu('Yeni', [
+        NotMaddesi(
+          'Stok Kodu',
+          'Malzemeler artık 266 ile başlayan stok koduyla okunur.',
+          'Yeni malzemede barkod boş bırakılırsa stok kodu kendiliğinden '
+              'üretilir. Eski malzemeler için: Ürünler → ⋮ → "Malzemelere stok '
+              'kodu ver" (yalnız barkodsuzlara ya da fabrika barkodlarının '
+              'yerine bütün malzemelere). Okut\'ta fabrika barkodu okunursa '
+              '"kutudaki stok kodu etiketini okutun" yazar.',
+        ),
+        NotMaddesi(
+          'Girişten sonra etiket',
+          'Malzeme girişi kaydedilince "Etiket basılsın mı?" sorulur.',
+          'Her malzeme için kaç kutu / parça geldiği önerilir (miktar ÷ kutu '
+              'içeriği), değiştirilebilir. Hepsi tek önizlemede açılır.',
+        ),
+        NotMaddesi(
+          'Kategori listesi',
+          'Ürün formunda kategori açılır listeden seçilir; "+ Yeni" ile eklenir.',
+          'Aynı ya da benzer adlı kategori varsa uyarır ve onu seçmeyi önerir.',
+        ),
+        NotMaddesi(
+          'Kullanıcılar',
+          'Ayarlar → Kullanıcılar: kimin kullandığı, son giriş ve sürüm.',
+          'Ada dokunarak görünen ad (hareket geçmişindeki "kim yaptı") '
+              'düzeltilir.',
+        ),
+        NotMaddesi(
+          'Bilgisayarda sağ tık',
+          'Edge / Chrome / Firefox\'ta listelerde sağ tık ya da ⋮ menüyü açar.',
+          'Telefonda ve iPhone\'da yine basılı tutulur.',
+        ),
+      ]),
+      NotBolumu('Değişen', [
+        NotMaddesi(
+          'Malzeme Montaj / Kullanıldı',
+          'Konum, Montaj ekranındaki gibi Kaydet anında alınır.',
+          'Yakında eski montaj varsa ya da konumdan bulunan yer adı kendiliğinden '
+              'yazılır; konum varsa "Nerede kullanıldı?" boş bırakılabilir. '
+              'Malzeme eklenmeden Kaydet kapalıdır.',
+        ),
+        NotMaddesi('Bildirimler',
+            'Ayar dişlisi kalktı; bildirim ayarları Ayarlar\'da.'),
+        NotMaddesi('Eşitleme',
+            'Gereksiz yere daha az çalışır; "Gönderiliyor…" yalnız gönderilecek kayıt varken görünür.'),
+        NotMaddesi('Yazılar', '"Opsiyonel" yerine "isteğe bağlı".'),
+      ]),
+    ],
+  ),
+  SurumNotu(
     surum: '1.30.2',
     tarih: '22.10.2026',
     bolumler: [

@@ -216,8 +216,8 @@ class DepoListScreen extends ConsumerWidget {
                 controller: konumCtrl,
                 decoration: InputDecoration(
                   labelText: arac
-                      ? 'Açıklama (marka, sürücü... opsiyonel)'
-                      : 'Konum (opsiyonel)',
+                      ? 'Açıklama (marka, sürücü... isteğe bağlı)'
+                      : 'Konum (isteğe bağlı)',
                 ),
               ),
               if (hata != null)
