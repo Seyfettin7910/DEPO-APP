@@ -20,11 +20,8 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 
 ## Sıradaki: 1.29.3 ("yap" bekliyor)
 - [ ] **Karekod modunda "15-25 cm uzakta tutun" görünmüyor** (bu telefonda çerçeve ile seçici arasında ~10 piksel eksik; sığmazsa gizle kuralına takıldı). Çözüm: 1x · 2x · 3x daha incelir (daire 34 → 28, alt boşluk 8 → 4, yazı payı 22 → 20) → ~14 piksel kazanılır; çerçeve küçülmez, yazı kenara konmaz.
+- [ ] **Ürün / model adı Latin kuralla büyük harf** (i → I): "Hikvision" → "HIKVISION" (Türkçe kuralla "HİKVİSİON" oluyordu). Klavye zaten büyük harfle açıldığı için Türkçe İ isteyen kendisi yazar ("ELEKTRİK"). Eski kayıtlar: SQL'le toptan İ → I yapılamaz ("ELEKTRİK" bozulur); yanlış olanlar elle ya da marka listesiyle düzeltilir (karar bekliyor).
 - Not: Ürün barkodu filtresi aynen kalır (tanımsız EAN / UPC yok sayılır; malzemeye tanımlı barkod okunur).
-
-## Açık sorular
-- [ ] **Büyük harf – yabancı marka adları:** Türkçe kuralla küçük yazılmış "Hikvision" → "HİKVİSİON" olur. Rahatsız ederse ürün / model adı da Latin kurala (i → I) alınır.
-- [ ] **iPhone'da kamera durdurma:** 30 sn sonra durup açılırken Safari izin tekrar sorarsa iPhone'da durdurma yerine yalnız yavaşlatma.
 
 ## Sonraya
 - [ ] **"Nerede kullanıldı?"nın konumdan otomatik dolması – Google'dan çekme ERTELENDİ** (Google hesabı 1.500 TL ön ödeme istiyor; Geocoding anahtarı / günlük kota 250 hazır bekliyor). Kararlar:
@@ -32,7 +29,8 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
   - Yakında eski ad yoksa adres servisinden (OpenStreetMap / ileride Google) ilçe + mahalle.
   - İnternet yokken satır boş bırakılabilir, bağlantı gelince otomatik dolar (konum da yoksa elle yazmak zorunlu).
   - Şehir / ilçe merkezindeki belediye tesislerinde sorun çıkarmaması için ayrıca düşünülecek.
-- [ ] **iPhone (Safari) kamerası:** netleme ve çözünürlük Safari'nin elinde (dokununca netleme orada çalışmaz); iPhone denemesinde okuma yavaş / zor olursa ya da dönüşte kamera açılmazsa bakılacak. Android'de hepsi yapıldı: yüksek çözünürlük, dokununca + 4 sn'de bir netleme, dönüşte yeniden açılma (1.21.0), hızlı okuma 120 ms + okuma sayısıyla onay (1.24.1), 2x sabit (1.27.2).
+- [ ] **iPhone optimizasyonu (bekleyebilir):** iPhone şu an web sürümünü (Safari) kullanıyor, iOS uygulaması henüz derlenmedi. 30 sn sonra kamera durup açılırken Safari izin tekrar sorarsa iPhone'da durdurma yerine yalnız yavaşlatma.
+- [ ] **iPhone (Safari) kamerası (bekleyebilir):** netleme ve çözünürlük Safari'nin elinde (dokununca netleme orada çalışmaz); iPhone denemesinde okuma yavaş / zor olursa ya da dönüşte kamera açılmazsa bakılacak. Android'de hepsi yapıldı: yüksek çözünürlük, dokununca + 4 sn'de bir netleme, dönüşte yeniden açılma (1.21.0), hızlı okuma 120 ms + okuma sayısıyla onay (1.24.1), 2x sabit (1.27.2).
 - Not: **test** ve **Mustafa** kullanıcılarının eklediği her şey deneme verisidir (iPhone denemesi dahil).
 - Not: Şu an kullanan telefonlar: Seyfettin'in ve kardeşinin telefonu; başka kullanıcı yok. Arkadaşlar ara ara deneme yapıyor.
 
