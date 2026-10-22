@@ -46,6 +46,9 @@ Bulunan sebepler: uygulamaya her dönüşte 3 tam senkron (öne gelme + oturum y
 - [ ] **Görünüm:** "Gönderiliyor…" yalnız gönderilecek kayıt varken; yalnız kontrolde düğmede küçük dönen simge.
 - Kayıt kaçmasına karşı korumalar (5 dk yedek kontrol, damga yöntemi, 1 dk pay) aynen kalır.
 
+#### Yazım birliği
+- [ ] **"opsiyonel" → "isteğe bağlı"** bütün ekranlarda (ör. Malzeme Montaj / Kullanıldı → "Not (isteğe bağlı)"); Yenilikler yazım kuralındaki gibi tek dil.
+
 ## Final paketi (toplanıyor; tek güncellemede yapılacak, "yap" bekliyor)
 İhtiyaçlar ekran ekran toplanıyor: Okut · Depolar · Ürünler · Ara ve cihaz kartı · Raporlar · Ayarlar ve bildirimler · Bilgisayar (web) ve iPhone · Sistem.
 
