@@ -42,6 +42,14 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 ### Depolar
 - (Araçta hızlı bakış: vazgeçildi; dokununca stok ekranı zaten açılıyor.)
 
+### Malzeme stok kodu (266'lı EAN-13; 1.30.2'de geldi)
+- [ ] **Adı "Stok Kodu"** (Seyfettin'in kararı): 266'lı kodun her yerdeki adı "kurum kodu" yerine **Stok Kodu** (ürün formu, menüler, Okut uyarısı, etiket, yenilikler). "Kurum kodu / kurum etiketi" yalnız cihazlardaki BLD-BIM-… karekodu için kalır. ("Seri no" denmedi: seri no tek cihaza özel, stok kodu malzemenin türüne.)
+- **Kural (Seyfettin'in kararı):** her malzemenin tek kimliği stok kodu; hangi firmadan / hangi barkodla gelirse gelsin depoya girerken kutuya bizim etiketimiz yapıştırılır, fabrika barkodu kullanılmaz → birden çok barkod alanı gerekmez.
+- (Öneri, onay bekliyor) Toplu: "Bütün malzemelere stok kodu ver (fabrika barkodlarının yerine)"; yeni malzemede barkod boşsa kaydederken stok kodu kendiliğinden; Okut'ta malzemenin fabrika barkodu okutulursa "Fabrika barkodu okunmaz, kutudaki stok kodu etiketini okutun"; malzeme girişi kaydedilince "Kaç kutu geldi? Etiket basılsın mı?".
+
+### Bilgisayar (web)
+- [ ] **Sağ tık menüsü + satırlarda görünür ⋮** yalnız bilgisayar tarayıcısında (Edge / Chrome / Firefox); telefon uygulaması ve iPhone Safari'de bugünkü gibi uzun basma (⋮ gizli). Uzun basmayla menü açılan bütün listelerde (ürünler, depolar, cihazlar…).
+
 ### Flexity uyumu (dökümdeki biçime göre; döküm ÖRNEK, yapı buna göre düzenlenecek)
 - [ ] **Ürün:** MARKA ve MODEL ayrı alanlar (bugün yalnız "ad"); ad bunlardan + kısa açıklamadan oluşur. Ürüne Flexity **taşınır kodu ve adı** (ör. 253.01.03 · GÖRÜNTÜLEME, BİLGİ TOPLAMA VE TAKİP SİSTEMLERİ).
 - [ ] **Cihaz kartı:** **Flexity sicil no** (253.01.03.2025.N), **değer**, (eşleştirme için) Flexity ID. Seri no = Flexity "ETİKET NO". İlk giriş tarihi = alım tarihi. ZİMMETLİ / KULLANAN / DOSYA NO tutulmaz (Flexity'nin işi, KVKK).
