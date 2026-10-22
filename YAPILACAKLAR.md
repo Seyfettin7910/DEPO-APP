@@ -27,8 +27,9 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 - [ ] **Okuma sayıları ("kapının ölçüsü"), göstergeyle aynı pakette, SENKRONLU** (amaç: hangi telefon modelinde okuma zayıf, cihaza özel iyileştirme):
   - Sayılanlar: kabul edilen okumalar kaynağa göre (barkod / karekod / yazı); yok sayılan kodlar sebebe göre (ürün barkodu, MAC, web adresi, sipariş / kutu kodu, kayıtlı değil…); "Doğru mu?" Evet / Hayır; kameranın 30 sn'de durması; ortalama okuma süresi (kamera açılışı / son okumadan kabul edilen okumaya).
   - Telefon bilgisi: model (ör. Xiaomi 2201117TG), Android / iOS sürümü, uygulama sürümü, tarayıcı (web), kamera yakınlığı (1x / 2x / 3x). Telefon başına sabit bir kurulum kimliği.
-  - Kayıt biçimi: telefon başına günde bir satır, sunucuda yeni tablo `okuma_istatistikleri` (Supabase SQL gerekir); senkronla gider. Kişisel veri yok; kullanıcı bağlantısı yalnız istenirse (öneri: yok, telefon bazında).
-  - Görünüm: Raporlar → "Okuma istatistikleri": telefon modeline göre tablo (okuma sayısı, yazıdan %, yok sayılan %, "Hayır" %, ortalama süre), tarih aralığı; PDF / Excel. Telefonda Ayarlar'da yalnız kendi sayıları.
+  - Kayıt biçimi: telefon başına günde bir satır, sunucuda yeni tablo `okuma_istatistikleri` (Supabase SQL gerekir). Kişisel veri yok; telefon bazında (kullanıcıya bağlanmaz, aksi istenmedikçe).
+  - **Anlık senkrona GİRMEZ (Seyfettin'in kararı):** sayılar gün boyu telefonda birikir, **günde bir kez akşam ~17:00-18:00** sunucuya gönderilir (arka plan görevi; o saatte gönderilemezse uygulama sonraki açıldığında önceki günler gönderilir). Yalnız gönderilir, telefonlara geri çekilmez; Realtime yayınına eklenmez → pil, internet ve senkron yükü yok.
+  - Görünüm: Raporlar → "Okuma istatistikleri" (internet gerekir, sunucudan anlık okunur, giriş kayıtları gibi): telefon modeline göre tablo (okuma sayısı, yazıdan %, yok sayılan %, "Hayır" %, ortalama süre), tarih aralığı; PDF / Excel. Telefonda Ayarlar'da kendi sayıları (bugün dahil, gönderilmemişler de).
   - Gerekli: telefon modeli için `device_info_plus` paketi.
 
 ## Sonraya
