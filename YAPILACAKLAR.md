@@ -39,7 +39,7 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
   - Gerekli: telefon modeli için `device_info_plus` paketi.
 
 ### Depolar
-- [ ] **Araçlar sekmesinde uzun basınca hızlı bakış:** listeden çıkmadan alttan açılan pencerede araçtakilerin özeti (ör. "HIKVISION 7104 NVR × 2 · IP KAMERA × 6 · CAT6 KABLO 305 m"), altında "Ayrıntılar" (stok ekranını açar). Dokununca bugünkü gibi stok ekranı açılır. (Depolar sekmesinde de aynı olabilir.)
+- (Araçta hızlı bakış: vazgeçildi; dokununca stok ekranı zaten açılıyor.)
 
 ## Sonraya
 - [ ] **"Nerede kullanıldı?"nın konumdan otomatik dolması – Google'dan çekme ERTELENDİ** (Google hesabı 1.500 TL ön ödeme istiyor; Geocoding anahtarı / günlük kota 250 hazır bekliyor). Kararlar:
