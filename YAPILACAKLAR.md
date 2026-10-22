@@ -34,6 +34,18 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 #### Bilgisayar (web)
 - [ ] **Sağ tık menüsü + satırlarda görünür ⋮** yalnız bilgisayar tarayıcısında (Edge / Chrome / Firefox); telefon uygulaması ve iPhone Safari'de bugünkü gibi uzun basma (⋮ gizli). Uzun basmayla menü açılan bütün listelerde (ürünler, depolar, cihazlar…).
 
+#### Bildirimler
+- [ ] **Zil yalnız bildirimleri göstersin:** bildirim listesindeki dişli (sağ üst) ve liste boşken çıkan "ayarlar" düğmesi kalkar; bildirim ayarları yalnız Ayarlar → Bildirim ayarları'nda.
+
+#### Senkron gereksiz tetikleniyor (incelendi)
+Bulunan sebepler: uygulamaya her dönüşte 3 tam senkron (öne gelme + oturum yenileme olayı + anlık bağlantının yeniden kurulması; yazdırma / paylaşma / izin pencereleri de "dönüş" sayılıyor); saatlik oturum yenilemesinde tam senkron; Wi-Fi ⇄ mobil veri geçişinde tam senkron; kendi gönderdiğimiz kaydın sunucudan "yankısı"; yalnız kontrol ederken bile "Gönderiliyor…" yazması.
+- [ ] **Birleştirme:** tam senkron bitince 30 sn içinde gelen yeni tam senkron istekleri atlanır (gönderilmemiş kayıt varsa ve "Şimdi senkronize et"e elle basılırsa atlanmaz).
+- [ ] **Oturum olayı:** yalnız gerçek girişte senkron; saatlik yenilemede değil.
+- [ ] **İnternet:** yalnız "yoktu → geldi" geçişinde tam senkron; Wi-Fi ⇄ mobil geçişinde değil.
+- [ ] **Yankı:** sunucudan gelen değişiklik bilgisi telefondaki kayıtla aynıysa (kendi gönderdiğimiz) yok sayılır.
+- [ ] **Görünüm:** "Gönderiliyor…" yalnız gönderilecek kayıt varken; yalnız kontrolde düğmede küçük dönen simge.
+- Kayıt kaçmasına karşı korumalar (5 dk yedek kontrol, damga yöntemi, 1 dk pay) aynen kalır.
+
 ## Final paketi (toplanıyor; tek güncellemede yapılacak, "yap" bekliyor)
 İhtiyaçlar ekran ekran toplanıyor: Okut · Depolar · Ürünler · Ara ve cihaz kartı · Raporlar · Ayarlar ve bildirimler · Bilgisayar (web) ve iPhone · Sistem.
 
