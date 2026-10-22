@@ -86,7 +86,7 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 
 - **Uygulama:** yetkisi olmayan düğmeyi görmez; **sunucuda da veritabanı kurallarıyla** (RLS) kesinleşir; internetsizken yapılmış yetkisiz işlem sunucuca reddedilir, telefonda "yetkiniz yok".
 - **Geçiş:** ilk yönetici Seyfettin (tek SQL); mevcut kullanıcıların rolleri Seyfettin'den.
-- (Karar bekliyor: saha kullanıcısına araç bağlansın mı?)
+- **Saha kullanıcısına araç bağlanır** (Seyfettin'in kararı): kullanıcı kartında "Aracı" seçilir (bir araca birden çok kişi bağlanabilir: ekip). Etkisi: montaj / sahadan geri alma / iade ekranlarında kendi aracı hazır seçili; Depolar → Araçlar'da kendi aracı en üstte; "aracına cihaz geldi" bildirimi kendi aracı için kendiliğinden açık. Kısıt değil, kolaylık: gerekirse başka araç seçebilir. (Ayrıntı onaylanacak.)
 
 ## Sonraya
 - [ ] **"Nerede kullanıldı?"nın konumdan otomatik dolması – Google'dan çekme ERTELENDİ** (Google hesabı 1.500 TL ön ödeme istiyor; Geocoding anahtarı / günlük kota 250 hazır bekliyor). Kararlar:
