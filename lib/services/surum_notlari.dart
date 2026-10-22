@@ -36,6 +36,28 @@ class NotMaddesi {
 
 const surumNotlari = <SurumNotu>[
   SurumNotu(
+    surum: '1.30.2',
+    tarih: '22.10.2026',
+    bolumler: [
+      NotBolumu('Yeni', [
+        NotMaddesi(
+          'Kurum kodu (malzeme barkodu)',
+          'Barkodu olmayan metre / adet malzemeye 266 ile başlayan barkod üretilir.',
+          'Ürün formunda "Barkodu yok: kurum kodu üret", ya da Ürünler\'de '
+              'malzemeye basılı tutun → "Kurum kodu üret". Hepsine birden: '
+              'Ürünler → ⋮ → "Barkodsuz malzemelere kurum kodu üret". Kod, '
+              'bildiğimiz 13 haneli market barkodu (EAN-13); her okuyucu okur.',
+        ),
+        NotMaddesi(
+          'Barkod etiketi bas',
+          'Malzemeye basılı tutun → "Barkod etiketi bas", kaç adet olduğunu yazın.',
+          'Etikette çizgi barkod, malzeme adı ve kutu içeriği (ör. 305 METRE / '
+              'KUTU). Önizlemede büyütüp kontrol edin, sonra yazdırın.',
+        ),
+      ]),
+    ],
+  ),
+  SurumNotu(
     surum: '1.30.1',
     tarih: '22.10.2026',
     bolumler: [

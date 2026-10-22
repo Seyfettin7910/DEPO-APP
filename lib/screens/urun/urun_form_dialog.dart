@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../database/app_database.dart';
 import '../../database/models.dart';
 import '../../providers/app_providers.dart';
 import '../../services/ses_servisi.dart';
@@ -140,6 +141,7 @@ Future<String?> urunFormDialog(BuildContext context, WidgetRef ref,
                   textCapitalization: TextCapitalization.characters,
                   inputFormatters: kodBuyuk,
                   controller: barkodCtrl,
+                  onChanged: (_) => setState(() {}),
                   decoration: InputDecoration(
                     labelText: 'Fabrika barkodu (isteğe bağlı)',
                     helperText: 'Kaydedilirse girişte okutularak seçilir',
@@ -152,11 +154,34 @@ Future<String?> urunFormDialog(BuildContext context, WidgetRef ref,
                             builder: (_) => const BarkodOkuyucuSayfasi(urunBarkodu: true),
                           ),
                         );
-                        if (kod != null) barkodCtrl.text = kod.trim().toUpperCase();
+                        if (kod != null) {
+                          barkodCtrl.text = kod.trim().toUpperCase();
+                          setState(() {});
+                        }
                       },
                     ),
                   ),
                 ),
+                // 1.30.2: fabrika barkodu yoksa 266'lı kurum içi EAN-13.
+                if (barkodCtrl.text.trim().isEmpty)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      icon: const Icon(Icons.qr_code_2),
+                      label: const Text('Barkodu yok: kurum kodu üret (266…)'),
+                      onPressed: () async {
+                        try {
+                          final k = await ref
+                              .read(appDatabaseProvider)
+                              .benzersizKurumBarkodu();
+                          barkodCtrl.text = k;
+                          setState(() => hata = null);
+                        } catch (e) {
+                          setState(() => hata = '$e');
+                        }
+                      },
+                    ),
+                  ),
               ],
               if (mevcut == null && !miktarli && !sadeceModel) ...[
                 TextField(

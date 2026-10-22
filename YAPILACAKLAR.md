@@ -23,6 +23,7 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 - [x] **Supabase SQL:** `supabase_guncelleme_1_30_0.sql` (urunler.birlesti_id) 22.10.2026'da çalıştırıldı.
 - [ ] 1.30.0: ürün birleştirme (Ürünler → basılı tut → "Başka ürünle birleştir"; ad düzeltmede "Birleştir"); özet sayıları doğru mu, cihazlar / hareketler / malzeme stoğu kalan üründe mi; internetsiz telefonda eski ürünle kayıt → internet gelince kalan ürüne geçiyor mu. Roller gelince yalnız yönetici.
 - [ ] 1.30.1: Okut'ta kayıtsız seri → "Depoya ekle" → "+ Yeni" ile model tanımla, seçili geliyor mu, seriler duruyor mu.
+- [ ] 1.30.2: barkodsuz malzemeye kurum kodu (tek tek / hepsine), barkod etiketi basma + önizleme, Okut'ta etiketi okutunca kutu içeriği ekleniyor mu, tanımsız 266'lı kodda uyarı.
 
 ## Final paketi (toplanıyor; tek güncellemede yapılacak, "yap" bekliyor)
 İhtiyaçlar ekran ekran toplanıyor: Okut · Depolar · Ürünler · Ara ve cihaz kartı · Raporlar · Ayarlar ve bildirimler · Bilgisayar (web) ve iPhone · Sistem.

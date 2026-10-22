@@ -63,6 +63,55 @@ class TutanakBilgi {
 }
 
 extension MalzemeVeritabani on AppDatabase {
+  // ------------------------------------------- kurum içi barkod (1.30.2)
+
+  /// Veritabanında olmayan yeni 266'lı kurum barkodu.
+  Future<String> benzersizKurumBarkodu() async {
+    for (var i = 0; i < 20; i++) {
+      final k = kurumBarkoduUret();
+      if (await barkodIleUrunBul(k) == null) return k;
+    }
+    throw StateError('Kurum kodu üretilemedi, tekrar deneyin');
+  }
+
+  /// Barkodu olmayan malzemeye kurum kodu yazar; yazılan kodu döner.
+  Future<String> malzemeyeKurumKoduVer(String urunId) async {
+    final k = await benzersizKurumBarkodu();
+    final db = await _database;
+    final n = await db.rawUpdate(
+        'UPDATE urunler SET barkod = ?, updated_at = ?, dirty = 1 '
+        "WHERE id = ? AND seri_takipli = 0 AND (barkod IS NULL OR barkod = '')",
+        [k, DateTime.now().millisecondsSinceEpoch, urunId]);
+    if (n == 0) throw StateError('Bu malzemenin zaten barkodu var');
+    _notify();
+    return k;
+  }
+
+  /// Barkodsuz malzeme sayısı (Ürünler → "Barkodsuz malzemelere kod üret").
+  Future<int> barkodsuzMalzemeSayisi() async {
+    final db = await _database;
+    return Sqflite.firstIntValue(await db.rawQuery(
+            'SELECT COUNT(*) FROM urunler WHERE deleted = 0 AND seri_takipli = 0 '
+            "AND (barkod IS NULL OR barkod = '')")) ??
+        0;
+  }
+
+  /// Barkodu olmayan bütün malzemelere kurum kodu verir; verilen sayıyı döner.
+  Future<int> barkodsuzMalzemelereKodVer() async {
+    final db = await _database;
+    final rows = await db.rawQuery(
+        'SELECT id FROM urunler WHERE deleted = 0 AND seri_takipli = 0 '
+        "AND (barkod IS NULL OR barkod = '')");
+    var n = 0;
+    for (final r in rows) {
+      try {
+        await malzemeyeKurumKoduVer(r['id'] as String);
+        n++;
+      } catch (_) {}
+    }
+    return n;
+  }
+
   /// Miktarlı ürünlerin stoğu: urunId -> (depoId -> miktar).
   Future<Map<String, Map<String, int>>> malzemeStoklari() async {
     final db = await _database;

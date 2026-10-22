@@ -5,6 +5,12 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.30.2 – Kurum içi malzeme barkodu (266 önekli EAN-13)
+- `lib/services/kurum_barkodu.dart`: GS1'in kurum içi aralığından **266** önek (Balıkesir alan kodu) + 9 rastgele hane + EAN-13 kontrol hanesi; `ean13Gecerli`, `kurumBarkoduMu` (testleri `test/kurum_barkodu_test.dart`). `benzersizKurumBarkodu`, `malzemeyeKurumKoduVer`, `barkodsuzMalzemelereKodVer` (yalnız seri takipsiz, barkodu boş, silinmemiş malzemeler).
+- Ürün formunda (malzeme, barkod boşsa) "Barkodu yok: kurum kodu üret"; Ürünler basılı tutma menüsünde "Kurum kodu üret" / "Barkod etiketi bas"; ⋮ → "Barkodsuz malzemelere kurum kodu üret" (onaylı).
+- `EtiketPdf.malzemeEtiketleri`: etiket kağıdı şablonuyla adet kadar etiket; ad, birim / kutu içeriği, EAN-13 (geçersiz kontrol haneliyse Code128) + rakamlar; `PdfOnizleme` ile.
+- Okut: tanımsız 266'lı kod "Yok sayıldı: … (kurum kodu, hiçbir malzemeye tanımlı değil)".
+
 ## 1.30.1 – Depoya girişte "+ Yeni" model
 - `TopluGirisScreen`: "Ürün / model" listesinin yanında "+ Yeni" → `urunFormDialog(sadeceModel: true)` (seri takipli; seri no / depo alanları ve takip türü seçimi gizli; benzer ürün kontrolü aynı). Dönen id seçilir; okutulan seriler korunur.
 

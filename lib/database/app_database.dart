@@ -9,6 +9,7 @@ import '../services/etiket/etiket_kodu.dart';
 import 'etiket_modelleri.dart';
 import 'models.dart';
 import '../services/bolge_adi.dart' show trBuyuk;
+import '../services/kurum_barkodu.dart';
 
 export 'etiket_modelleri.dart';
 

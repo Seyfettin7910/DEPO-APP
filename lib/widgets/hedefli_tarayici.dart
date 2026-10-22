@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/cihaz_tercihleri.dart';
 import '../services/etiket/etiket_kodu.dart';
+import '../services/kurum_barkodu.dart';
 import '../services/ses_servisi.dart';
 import '../services/sn_metni.dart';
 import '../services/tarayici.dart';
@@ -534,6 +535,11 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
         sy / b.corners.length * olcek + dy);
   }
 
+  /// 1.30.2: 266'lı kurum kodu tanımlı değilse bunu açıkça söyler.
+  String _urunBarkoduSebebi(String v) => kurumBarkoduMu(v)
+      ? 'kurum kodu, hiçbir malzemeye tanımlı değil'
+      : 'ürün barkodu';
+
   /// Kurum etiketi ya da koli karekodu: yerelde tanınır, kısa beklenir.
   bool _taninan(String v) =>
       EtiketKodu.coz(v) != null || seriNolariAyir(v).length > 1;
@@ -586,12 +592,12 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
         }
         if (_kayitliOlmali(b, v)) {
           if (widget.bilinenMi == null && urunBarkoduTuru(b)) {
-            yokSayilan ??= '${_kisalt(v)} (ürün barkodu)';
+            yokSayilan ??= '${_kisalt(v)} (${_urunBarkoduSebebi(v)})';
             continue;
           }
           if (_bilinenler[v] == false) {
             yokSayilan ??= urunBarkoduTuru(b)
-                ? '${_kisalt(v)} (ürün barkodu)'
+                ? '${_kisalt(v)} (${_urunBarkoduSebebi(v)})'
                 : '${_kisalt(v)} (kayıtlı değil: malzeme / lot / model kodu)';
             continue;
           }
@@ -717,7 +723,7 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
       if (!v && _kayitliOlmali(_adayKod ?? b, deger)) {
         setState(() => _aday = null);
         _ipucuGoster('Yok sayıldı: ${_kisalt(deger)} '
-            '(kayıtlı değil: malzeme / lot / model kodu)');
+            '(${kurumBarkoduMu(deger) ? _urunBarkoduSebebi(deger) : 'kayıtlı değil: malzeme / lot / model kodu'})');
         return;
       }
       _adayGereken = v ? 1 : 2;

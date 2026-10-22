@@ -7,6 +7,8 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import '../../database/etiket_modelleri.dart';
+import '../../database/models.dart' show Urun;
+import '../kurum_barkodu.dart';
 import 'etiket_kodu.dart';
 import 'etiket_sablonu.dart';
 
@@ -243,6 +245,84 @@ class EtiketPdf {
       ]),
     ));
     return doc.save();
+  }
+
+  /// Malzeme barkod etiketleri (1.30.2): [adet] kadar aynı etiket; EAN-13
+  /// çizgi barkod (altında rakamlar), ürün adı, birim / kutu içeriği.
+  /// Fabrika barkodu ya da 266'lı kurum kodu olan malzemeler için.
+  static Future<Uint8List> malzemeEtiketleri(
+    Urun u,
+    int adet,
+    EtiketSablonu s, {
+    int baslangic = 0,
+  }) async {
+    final barkod = (u.barkod ?? '').trim();
+    if (barkod.isEmpty) throw StateError('Malzemenin barkodu yok');
+    final tema = await _temaYukle();
+    final doc = pw.Document(theme: tema, title: 'Malzeme etiketleri');
+    final format = sayfaFormati(s);
+    final sayfadaki = s.sayfadakiEtiket;
+    final atla = s.rulo ? 0 : baslangic.clamp(0, sayfadaki - 1);
+    final toplam = atla + adet;
+    for (var bas = 0; bas < toplam; bas += sayfadaki) {
+      final son = math.min(bas + sayfadaki, toplam);
+      doc.addPage(pw.Page(
+        pageFormat: format,
+        margin: pw.EdgeInsets.zero,
+        build: (_) => pw.Stack(fit: pw.StackFit.expand, children: [
+          for (var i = bas; i < son; i++)
+            if (i >= atla) _yerlestir(s, i - bas, _malzemeEtiket(s, u, barkod)),
+        ]),
+      ));
+    }
+    return doc.save();
+  }
+
+  static pw.Widget _malzemeEtiket(EtiketSablonu s, Urun u, String barkod) {
+    const mm = PdfPageFormat.mm;
+    final g = s.etiketGenislik;
+    final y = s.etiketYukseklik;
+    final bosluk = math.min(2.0, y * 0.07);
+    final temel = (y * 0.2).clamp(5.0, 10.0);
+    final kurum = s.kurumAdi.trim().isNotEmpty && y >= 30;
+    // Geçersiz kontrol haneli 13 hane EAN olarak çizilemez → Code128.
+    final ean = ean13Gecerli(barkod);
+    final miktar = u.okutmaMiktari > 1
+        ? '${u.okutmaMiktari} ${u.birim.toUpperCase()} / KUTU'
+        : u.birim.toUpperCase();
+    return pw.Padding(
+      padding: pw.EdgeInsets.all(bosluk * mm),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.center,
+        children: [
+          if (kurum)
+            pw.Text(s.kurumAdi.trim(),
+                style: pw.TextStyle(
+                    fontSize: math.max(4.5, temel * 0.6),
+                    color: PdfColors.grey800),
+                maxLines: 1),
+          pw.Text(u.ad,
+              style: pw.TextStyle(fontSize: temel, fontWeight: pw.FontWeight.bold),
+              maxLines: 2,
+              textAlign: pw.TextAlign.center),
+          pw.Text(miktar,
+              style: pw.TextStyle(fontSize: temel * 0.8), maxLines: 1),
+          pw.SizedBox(height: 0.8 * mm),
+          // Okuyucular için iki yanda sessiz bölge bırakılır.
+          pw.Expanded(
+            child: pw.Center(
+              child: pw.BarcodeWidget(
+                barcode: ean ? pw.Barcode.ean13() : pw.Barcode.code128(),
+                data: barkod,
+                width: (g - 2 * bosluk - 6) * mm,
+                drawText: true,
+                textStyle: pw.TextStyle(fontSize: math.max(5.0, temel * 0.75)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Şablonu denemek için örnek etiketlerle dolu bir sayfa.

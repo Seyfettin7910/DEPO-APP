@@ -7,6 +7,7 @@ import 'urun_form_dialog.dart';
 import '../../widgets/silme_islemleri.dart';
 import '../../widgets/sync_durum_dugmesi.dart';
 import '../../widgets/urun_birlestir.dart';
+import '../../widgets/malzeme_etiketi.dart';
 
 /// Ürünler (modeller), kategoriye göre gruplu; her başlıkta kategori toplamı,
 /// her satırda o modelin tüm depolardaki toplam adedi görünür.
@@ -24,7 +25,20 @@ class UrunListScreen extends ConsumerWidget {
     };
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Ürünler'), actions: ustDugmeler()),
+      appBar: AppBar(title: const Text('Ürünler'), actions: [
+        // 1.30.2: barkodu olmayan malzemelere toplu kurum kodu.
+        PopupMenuButton<String>(
+          onSelected: (v) {
+            if (v == 'kod') barkodsuzlaraKodVer(context, ref);
+          },
+          itemBuilder: (_) => const [
+            PopupMenuItem(
+                value: 'kod',
+                child: Text('Barkodsuz malzemelere kurum kodu üret')),
+          ],
+        ),
+        ...ustDugmeler(),
+      ]),
       floatingActionButton: FloatingActionButton(
         onPressed: () => urunFormDialog(context, ref),
         child: const Icon(Icons.add),
@@ -141,14 +155,25 @@ class UrunListScreen extends ConsumerWidget {
                     onLongPress: () async {
                       final secim = await secenekMenusu(context,
                           baslik: urun.ad,
-                          secenekler: const [
+                          secenekler: [
                             ('duzenle', Icons.edit_outlined, 'Düzenle'),
+                            if (urun.miktarli &&
+                                (urun.barkod ?? '').trim().isEmpty)
+                              ('kod', Icons.qr_code_2, 'Kurum kodu üret (266…)'),
+                            if (urun.miktarli &&
+                                (urun.barkod ?? '').trim().isNotEmpty)
+                              ('etiket', Icons.print_outlined,
+                                  'Barkod etiketi bas'),
                             ('birlestir', Icons.merge_type,
                                 'Başka ürünle birleştir'),
                             ('sil', Icons.delete_outline, 'Ürünü sil'),
                           ]);
                       if (!context.mounted) return;
-                      if (secim == 'duzenle') {
+                      if (secim == 'kod') {
+                        await malzemeyeKodVer(context, ref, urun);
+                      } else if (secim == 'etiket') {
+                        await malzemeEtiketiBas(context, urun);
+                      } else if (secim == 'duzenle') {
                         urunFormDialog(context, ref, mevcut: urun);
                       } else if (secim == 'birlestir') {
                         await urunBirlestirAkisi(context, ref, urun);
