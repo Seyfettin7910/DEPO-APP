@@ -43,11 +43,12 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 
 ### Sistem: kullanıcı kaydı ve roller (taslak, karar sürüyor)
 - **Bugün:** kullanıcılar Supabase panelinden açılıyor; uygulama herkesi "saha" kaydediyor ama rolün etkisi yok; sunucuda giriş yapan herkes her şeyi yapabiliyor.
-- **Kayıt:** dışarıdan kayıt kapalı; Ayarlar → Kullanıcılar (yalnız yönetici): ekle / düzenle / pasif yap (silme yok, geçmiş korunur; pasif kullanıcının oturumu kapanır); şifre sıfırlama. Gizli anahtar telefona gelmez, Supabase sunucu fonksiyonu çağıranın yönetici olduğunu denetler. (Karar bekliyor: **geçici şifre + ilk girişte değiştirme** mi, **davet e-postası** mı?)
-- **Roller:** Yönetici (Y) · Depo sorumlusu (D) · Saha (S) · 4. rol (R): yalnız görür + rapor alır (idari işler, amirler, sayım komisyonu). (Karar bekliyor: 4. rolün adı — öneri "Raporlayıcı"; yapı: **sabit tablo** (belediye için yeter) mı, yöneticinin düzenleyebildiği tablo (ticari sürümde gerekir) mi?)
+- **Kayıt:** dışarıdan kayıt kapalı; Ayarlar → Kullanıcılar (yalnız yönetici): ekle / düzenle / pasif yap (silme yok, geçmiş korunur; pasif kullanıcının oturumu kapanır); şifre sıfırlama. Gizli anahtar telefona gelmez, Supabase sunucu fonksiyonu çağıranın yönetici olduğunu denetler. **Kullanıcı açma: geçici şifre + ilk girişte değiştirme zorunlu** (Seyfettin'in kararı; e-posta altyapısı gerekmez). **Şifre unutulursa:** yönetici Ayarlar → Kullanıcılar → "Şifre sıfırla" ile yeni geçici şifre verir, ilk girişte yine değiştirme zorunlu. **Yönetici unutursa:** başka bir yönetici sıfırlar → en az 2 yönetici olması önerilir; hiç yönetici kalmazsa Supabase panelinden.
+- **Roller:** Yönetici (Y) · Depo sorumlusu (D) · Saha (S) · **Gözlemci** (R): yalnız görür + rapor alır (idari işler, amirler, sayım komisyonu).
+- **Yetki tablosu yöneticinin düzenleyebildiği tablo** (Seyfettin'in kararı; sabit olsaydı her değişiklik kod demekti): Ayarlar → Roller ve yetkiler; **aşağıdaki varsayılanlarla başlar**, "Varsayılana dön" düğmesi. Kilitlenmeye karşı: Yönetici rolünden kullanıcı yönetimi (30) kaldırılamaz; 33 (hareket silme) kimseye açılamaz. Yetkiler sunucuda da (RLS) aynı tablodan okunur.
 - **Yetki tablosu (madde madde, taslak; Seyfettin numarayla düzeltecek):**
 
-| # | Yetki | Y | D | S | R |
+| # | Yetki (varsayılan) | Y | D | S | Gözlemci |
 |---|---|---|---|---|---|
 | 1 | Okutma, cihaz kartını görme | ✅ | ✅ | ✅ | ✅ |
 | 2 | Cihaz arama | ✅ | ✅ | ✅ | ✅ |
