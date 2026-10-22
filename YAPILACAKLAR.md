@@ -52,6 +52,12 @@ Bulunan sebepler: uygulamaya her dönüşte 3 tam senkron (öne gelme + oturum y
 #### Ayarlar → Kullanıcılar (yalnız görüntüleme; roller DEVREYE GİRMEZ)
 - [ ] Liste: ad, e-posta, son giriş (tarih-saat, Android / iPhone / web), **uygulama sürümü** (büyük harf SQL'inin ikinci çalıştırması için "herkes 1.29.1'de mi" buradan). **Görünen ad düzenlenebilir** (e-postanın @ öncesi yerine "SEYFETTİN AYDIN"). Ekleme / şifre sıfırlama / pasif yapma / roller YOK (Final paketinde, sunucu fonksiyonu gerekir). Sınır: yalnız en az bir kez giriş yapmış kullanıcılar görünür. Herkes görür (deneme döneminde e-postalar uydurma, Seyfettin'in notu).
 
+#### Malzeme Montaj / Kullanıldı ekranı
+- [ ] Alttaki açıklama: "fabrika barkodunu okutun" yerine "stok kodu etiketini okutun ya da 'Malzeme seç' ile listeden seçin".
+- [ ] **Konum:** cihaz montajındaki gibi Kaydet anında konum alınır (konum şeridi), "Nerede kullanıldı?" 15 m içindeki eski addan ya da "İLÇE MAHALLE" olarak kendiliğinden dolar; internetsizde boş bırakılabilir, sonra dolar.
+- [ ] **"Kaydet (0 kalem)"** kalem yokken pasif.
+- [ ] Yer örneği büyük harf: "ÖRN: ZABITA MÜDÜRLÜĞÜ, PARK CAD. 12"; "Not (isteğe bağlı)" (aşağıdaki yazım birliğiyle).
+
 #### Yazım birliği
 - [ ] **"opsiyonel" → "isteğe bağlı"** bütün ekranlarda (ör. Malzeme Montaj / Kullanıldı → "Not (isteğe bağlı)"); Yenilikler yazım kuralındaki gibi tek dil.
 
