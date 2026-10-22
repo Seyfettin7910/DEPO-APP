@@ -24,7 +24,12 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 
 ## Sıradaki: 1.30.2 (notta, "yap" bekliyor)
 - [ ] **Okuma kaynağı göstergesi:** okuma kabul edilince çerçevenin hemen üstünde 1,5 sn küçük etiket: "✓ Barkod" (çizgi barkod), "✓ Karekod" (koli dahil), "✓ Yazı (S/N)" (pembe). Kayıtlara / senkrona / rapora GEÇMEZ, yalnız ekranda. Bütün kamera ekranlarında. (Amaç: hangi etiketlerin barkoddan okunamadığını sahada görmek.)
-- [ ] **Okuma sayıları ("kapının ölçüsü"), göstergeyle aynı pakette:** kabul edilen okumalar kaynağa göre (barkod / karekod / yazı), yok sayılan kodlar sebebe göre (ürün barkodu, MAC, web adresi, sipariş / kutu kodu, kayıtlı değil…), "Doğru mu?" sorusunda Evet / Hayır, kameranın 30 sn'de durması. Önerilen: **yalnız bu telefonda** tutulur (sunucuya gitmez, kişisel veri yok), günlük, son 30 gün; Ayarlar → "Okuma istatistikleri" ekranında bugün / 7 gün / 30 gün ve oranlar ("okumaların %4'ü yazıdan"), "Sıfırla" düğmesi. (Onay bekliyor: yalnız telefonda mı, yoksa ileride bütün telefonlar toplu mu görülsün?)
+- [ ] **Okuma sayıları ("kapının ölçüsü"), göstergeyle aynı pakette, SENKRONLU** (amaç: hangi telefon modelinde okuma zayıf, cihaza özel iyileştirme):
+  - Sayılanlar: kabul edilen okumalar kaynağa göre (barkod / karekod / yazı); yok sayılan kodlar sebebe göre (ürün barkodu, MAC, web adresi, sipariş / kutu kodu, kayıtlı değil…); "Doğru mu?" Evet / Hayır; kameranın 30 sn'de durması; ortalama okuma süresi (kamera açılışı / son okumadan kabul edilen okumaya).
+  - Telefon bilgisi: model (ör. Xiaomi 2201117TG), Android / iOS sürümü, uygulama sürümü, tarayıcı (web), kamera yakınlığı (1x / 2x / 3x). Telefon başına sabit bir kurulum kimliği.
+  - Kayıt biçimi: telefon başına günde bir satır, sunucuda yeni tablo `okuma_istatistikleri` (Supabase SQL gerekir); senkronla gider. Kişisel veri yok; kullanıcı bağlantısı yalnız istenirse (öneri: yok, telefon bazında).
+  - Görünüm: Raporlar → "Okuma istatistikleri": telefon modeline göre tablo (okuma sayısı, yazıdan %, yok sayılan %, "Hayır" %, ortalama süre), tarih aralığı; PDF / Excel. Telefonda Ayarlar'da yalnız kendi sayıları.
+  - Gerekli: telefon modeli için `device_info_plus` paketi.
 
 ## Sonraya
 - [ ] **"Nerede kullanıldı?"nın konumdan otomatik dolması – Google'dan çekme ERTELENDİ** (Google hesabı 1.500 TL ön ödeme istiyor; Geocoding anahtarı / günlük kota 250 hazır bekliyor). Kararlar:
