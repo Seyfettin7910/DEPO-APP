@@ -18,7 +18,7 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 - [ ] 1.29.1: bütün alanlar büyük harf (Türkçe İ / I; seri no, barkod, plaka Latin), klavye büyük harfle açılıyor mu, SQL sonrası eski kayıtlar çevrildi mi.
 - [ ] 1.29.2: kamera ekranı (düğme yok, üstte "… için yana kaydırın", sol üstte sayaç 100/kalan, pembe şerit çerçevenin hemen üstünde, karekod çerçevesi aynı boyutta, altta "15-25 cm uzakta tutun", küçük 1x · 2x · 3x); yazıdan okuma 3 sn + barkod önceliği (Mercusys etiketiyle); alttaki düğmeler tuşların üstünde mi (etiket kağıdı, rapor önizleme); etiket kağıdı ekranı tek Kaydet + tam genişlik; yazdırma önizlemesi (büyütme, çift dokunuş, Yazdır / PDF paylaş).
 - [ ] 1.29.3: karekod modunda "15-25 cm uzakta tutun" görünüyor mu, ince 1x · 2x · 3x; ürün adı Latin büyük harf (hikvision → HIKVISION); benzer ürün ekranı (yeni üründe seçim, ad düzeltmede uyarı). Eski "HİKVİSİON" adlarını elle düzelt.
-- [ ] **Supabase SQL:** `supabase_guncelleme_1_30_0.sql` (urunler.birlesti_id).
+- [x] **Supabase SQL:** `supabase_guncelleme_1_30_0.sql` (urunler.birlesti_id) 22.10.2026'da çalıştırıldı.
 - [ ] 1.30.0: ürün birleştirme (Ürünler → basılı tut → "Başka ürünle birleştir"; ad düzeltmede "Birleştir"); özet sayıları doğru mu, cihazlar / hareketler / malzeme stoğu kalan üründe mi; internetsiz telefonda eski ürünle kayıt → internet gelince kalan ürüne geçiyor mu. Roller gelince yalnız yönetici.
 
 ## Sonraya
