@@ -18,6 +18,10 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 - [ ] 1.29.1: bütün alanlar büyük harf (Türkçe İ / I; seri no, barkod, plaka Latin), klavye büyük harfle açılıyor mu, SQL sonrası eski kayıtlar çevrildi mi.
 - [ ] 1.29.2: kamera ekranı (düğme yok, üstte "… için yana kaydırın", sol üstte sayaç 100/kalan, pembe şerit çerçevenin hemen üstünde, karekod çerçevesi aynı boyutta, altta "15-25 cm uzakta tutun", küçük 1x · 2x · 3x); yazıdan okuma 3 sn + barkod önceliği (Mercusys etiketiyle); alttaki düğmeler tuşların üstünde mi (etiket kağıdı, rapor önizleme); etiket kağıdı ekranı tek Kaydet + tam genişlik; yazdırma önizlemesi (büyütme, çift dokunuş, Yazdır / PDF paylaş).
 
+## Sıradaki: 1.29.3 ("yap" bekliyor)
+- [ ] **Karekod modunda "15-25 cm uzakta tutun" görünmüyor** (bu telefonda çerçeve ile seçici arasında ~10 piksel eksik; sığmazsa gizle kuralına takıldı). Çözüm: 1x · 2x · 3x daha incelir (daire 34 → 28, alt boşluk 8 → 4, yazı payı 22 → 20) → ~14 piksel kazanılır; çerçeve küçülmez, yazı kenara konmaz.
+- Not: Ürün barkodu filtresi aynen kalır (tanımsız EAN / UPC yok sayılır; malzemeye tanımlı barkod okunur).
+
 ## Açık sorular
 - [ ] **Büyük harf – yabancı marka adları:** Türkçe kuralla küçük yazılmış "Hikvision" → "HİKVİSİON" olur. Rahatsız ederse ürün / model adı da Latin kurala (i → I) alınır.
 - [ ] **iPhone'da kamera durdurma:** 30 sn sonra durup açılırken Safari izin tekrar sorarsa iPhone'da durdurma yerine yalnız yavaşlatma.
