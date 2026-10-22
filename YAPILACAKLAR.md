@@ -105,6 +105,11 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 - Not: Şu an kullanan telefonlar: Seyfettin'in ve kardeşinin telefonu; başka kullanıcı yok. Arkadaşlar ara ara deneme yapıyor.
 
 ## Excel dökümü gelince (ayrı paket)
+- **Döküm geldi (22.10.2026):** Flexity'den "Görüntüleme, Bilgi Toplama ve Takip Sistemleri" (taşınır kodu 253.01.03), 699 satır, hepsi HIKVISION, 13 model. Sütunlar: ID · SİCİL NO (253.01.03.2025.N) · ADI · SERVİS · MARKA · MODEL · PLAKA (boş) · İLK GİRİŞ TARİHİ · DEĞERİ · ZİMMETLİ · DOSYA NO · KULLANAN (boş) · BULUNDUĞU YER · GİRİŞ / DEMİRBAŞ AÇIKLAMASI · ORTAK KULLANIM · ETİKET NO.
+  - **ETİKET NO aslında seri no:** 285 satırda dolu (22.08.2025 Netkur alımı; GA8346… / 11 haneli), 414 satırda boş (24.01.2025 ve 02.05.2025 alımları).
+  - Yer: 414 "Sanal Oda (Taşınır Yer Tanımı Öncesi)", 281 "Kamera Montaj Ekibi Deposu", 3 montajlı (Şehitlik ×2, Atatürk Parkı), 1 boş (açıklamada "Fen İşleri"). Montajlılarda seri ve yer elle DEMİRBAŞ AÇIKLAMASI'na yazılmış.
+  - Yazım farkları: "HIKVISON", "16 KANL", "DS-2CD 1340GOILF" (boşluk, O / 0), "DS-2CD2121G0-1" (I / 1).
+  - Analiz sohbette; kararlar bekleniyor (seri nosuz 414 cihaz, Sanal Oda'dakilerin gerçek yeri, sicil no ve değer alanları).
 - [ ] **Excel'den aktarım** (Kamera biriminin demirbaş dökümü): döküm gelince sütun eşleştirmesi, seri nosu boş satırlar, konum (depo / montajlı), demirbaş sicil no kurum kodu olsun mu kararları.
   - **Not:** Miktarlı ürünlerin (kablo, adaptör…) **ilk stoğu** elle mi girilecek, Excel'den mi gelecek? Döküm gelince karar verilecek.
 - [ ] **Test verisi temizliği + telefonların otomatik sıfırlanması**: sunucuda "veri sürümü" işareti; değişince cihaz göndermeden kendi kopyasını silip temiz veriyi çeker. Temizlik yalnızca SQL ile (uygulamada silme düğmesi yok). Neyin kalacağı tablosu netleşecek.
