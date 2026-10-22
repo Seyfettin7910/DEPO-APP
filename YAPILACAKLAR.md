@@ -17,12 +17,15 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 - [ ] 1.29.0: kamera 15 sn'de yavaşlama / 30 sn'de durma + dokununca açılma, fener sönmesi; iki telefonla (biri uçak modunda) senkron denemesi; Android'de S/N yazıdan okuma (gerçek etiketlerle); iPhone'da kamera durup açılınca izin tekrar soruluyor mu.
 - [ ] 1.29.1: bütün alanlar büyük harf (Türkçe İ / I; seri no, barkod, plaka Latin), klavye büyük harfle açılıyor mu, SQL sonrası eski kayıtlar çevrildi mi.
 - [ ] 1.29.2: kamera ekranı (düğme yok, üstte "… için yana kaydırın", sol üstte sayaç 100/kalan, pembe şerit çerçevenin hemen üstünde, karekod çerçevesi aynı boyutta, altta "15-25 cm uzakta tutun", küçük 1x · 2x · 3x); yazıdan okuma 3 sn + barkod önceliği (Mercusys etiketiyle); alttaki düğmeler tuşların üstünde mi (etiket kağıdı, rapor önizleme); etiket kağıdı ekranı tek Kaydet + tam genişlik; yazdırma önizlemesi (büyütme, çift dokunuş, Yazdır / PDF paylaş).
+- [ ] 1.29.3: karekod modunda "15-25 cm uzakta tutun" görünüyor mu, ince 1x · 2x · 3x; ürün adı Latin büyük harf (hikvision → HIKVISION); benzer ürün ekranı (yeni üründe seçim, ad düzeltmede uyarı). Eski "HİKVİSİON" adlarını elle düzelt.
 
-## Sıradaki: 1.29.3 ("yap" bekliyor)
-- [ ] **Karekod modunda "15-25 cm uzakta tutun" görünmüyor** (bu telefonda çerçeve ile seçici arasında ~10 piksel eksik; sığmazsa gizle kuralına takıldı). Çözüm: 1x · 2x · 3x daha incelir (daire 34 → 28, alt boşluk 8 → 4, yazı payı 22 → 20) → ~14 piksel kazanılır; çerçeve küçülmez, yazı kenara konmaz.
-- [ ] **Ürün / model adı Latin kuralla büyük harf** (i → I): "Hikvision" → "HIKVISION" (Türkçe kuralla "HİKVİSİON" oluyordu). Klavye zaten büyük harfle açıldığı için Türkçe İ isteyen kendisi yazar ("ELEKTRİK"). Eski kayıtlar: SQL yok (toptan İ → I "ELEKTRİK"i bozar); yanlış olanlar Ürünler'den **elle** düzeltilir (karar: a, deneme verisi az).
-- [ ] **Benzer ad uyarısı:** yeni ürün tanımlarken ad, var olan bir ürünle İ / I, büyük / küçük harf ve boşluk farkı dışında aynıysa: "Bu ürün zaten var: … Onu mu kullanmak istiyorsunuz?" → **Var olanı kullan** / **Yine de yeni oluştur**. (Ad düzeltmek aynı ürünün adını değiştirir, cihazlar / geçmiş onda kalır; çift ürünleri birleştirme şimdilik yok, gerçek veriye geçince gerekirse.)
-- Not: Ürün barkodu filtresi aynen kalır (tanımsız EAN / UPC yok sayılır; malzemeye tanımlı barkod okunur).
+## Sıradaki: 1.30.0 – Ürün birleştirme ("yap" bekliyor; veritabanı değişikliği)
+- [ ] Ürün kartında "Başka ürünle birleştir"; ad düzeltirken benzer ürün çıkarsa "Bu ürünle birleştir".
+- [ ] Önce özet: "X ürünündeki 12 cihaz ve 30 hareket Y ürününe taşınacak. Geri alınamaz." → Birleştir / Vazgeç.
+- [ ] Cihazlar, hareketler, servis kayıtları kalan ürüne bağlanır; **hiçbir hareket kaydı silinmez** (yalnız bağlı olduğu ürün değişir). Malzemede stok kendiliğinden toplanır; kalan üründe fabrika barkodu yoksa birleşenden alınır. Birleşen ürün silinmiş işaretlenir.
+- [ ] Seri no ile takip edilen ürün, miktarla takip edilen malzemeyle birleştirilemez.
+- [ ] İnternetsiz telefonlar için urunler'e "birleştiği ürün" sütunu (yerel veritabanı yükseltmesi + Supabase SQL): sonradan eski ürünle gelen kayıtlar kendiliğinden yeni ürüne aktarılır.
+- [ ] Şimdilik herkes yapabilir; roller gelince yalnız yönetici.
 
 ## Sonraya
 - [ ] **"Nerede kullanıldı?"nın konumdan otomatik dolması – Google'dan çekme ERTELENDİ** (Google hesabı 1.500 TL ön ödeme istiyor; Geocoding anahtarı / günlük kota 250 hazır bekliyor). Kararlar:

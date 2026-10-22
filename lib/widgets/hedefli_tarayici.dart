@@ -477,8 +477,10 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
   // şerit; altta "15-25 cm uzakta tutun" ve 1x · 2x · 3x seçici.
   static const _satir = 30.0; // üst satır (sayaç / ipucu)
   static const _serit = 28.0; // pembe şerit
-  static const _altYazi = 22.0;
-  double _seciciPay(bool kucuk) => _seciciVar ? (kucuk ? 42.0 : 50.0) : 6.0;
+  static const _altYazi = 20.0;
+  // 1.29.3: seçici inceldi (daire 28, alt boşluk 4): karekod modunda da alt
+  // yazı sığsın.
+  double _seciciPay(bool kucuk) => _seciciVar ? (kucuk ? 34.0 : 38.0) : 6.0;
 
   /// Görüntü alanına göre hedef çerçeve ve alt yazının sığıp sığmadığı.
   /// Çerçevenin boyutu değişmez (karekod çerçevesi küçültülmez); sığdığı
@@ -918,7 +920,7 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
             Positioned(
               left: 16,
               right: 16,
-              top: pencere.bottom + 3,
+              top: pencere.bottom + 2,
               child: const IgnorePointer(
                 child: Text(
                   '15-25 cm uzakta tutun',
@@ -936,7 +938,7 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
             Positioned(
               left: 0,
               right: 0,
-              bottom: kucuk ? 4 : 8,
+              bottom: kucuk ? 3 : 4,
               child: Center(
                 child: _YakinlikSecici(
                   secili: kIsWeb
@@ -1003,10 +1005,10 @@ class _YakinlikSecici extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 1.29.2: küçültüldü (44 → 34).
-    final boyut = kucuk ? 30.0 : 34.0;
+    // 1.29.2: 44 → 34; 1.29.3: 34 → 28.
+    final boyut = kucuk ? 26.0 : 28.0;
     return Container(
-      padding: const EdgeInsets.all(3),
+      padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
         color: Colors.black54,
         borderRadius: BorderRadius.circular(boyut),
@@ -1032,7 +1034,7 @@ class _YakinlikSecici extends StatelessWidget {
                         style: TextStyle(
                           color: secili == k ? Colors.black : Colors.white,
                           fontWeight: FontWeight.bold,
-                          fontSize: kucuk ? 12 : 13,
+                          fontSize: kucuk ? 11 : 12,
                         ),
                       ),
                     ),

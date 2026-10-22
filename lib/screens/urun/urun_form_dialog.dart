@@ -7,6 +7,8 @@ import '../../services/ses_servisi.dart';
 import '../../widgets/barkod_okuyucu_sayfasi.dart';
 import '../../widgets/depo_secici.dart';
 import '../../widgets/buyuk_harf.dart';
+import '../../services/urun_adi.dart';
+import '../../widgets/benzer_urun.dart';
 
 /// Yeni ürün (model) ekler; [mevcut] verilirse o ürünü düzenler.
 ///
@@ -53,7 +55,9 @@ Future<String?> urunFormDialog(BuildContext context, WidgetRef ref,
             children: [
               TextField(
                 textCapitalization: TextCapitalization.characters,
-                inputFormatters: metinBuyuk,
+                // 1.29.3: ürün / model adı Latin kuralla (hikvision →
+                // HIKVISION); Türkçe İ isteyen klavyeden kendisi yazar.
+                inputFormatters: kodBuyuk,
                 controller: adCtrl,
                 decoration:
                     const InputDecoration(labelText: 'Ürün / model adı'),
@@ -239,6 +243,20 @@ Future<String?> urunFormDialog(BuildContext context, WidgetRef ref,
                   }
                 }
                 if (mevcut != null) {
+                  // Ad değiştiyse ve aynı adda (İ / I, boşluk farkı hariç)
+                  // başka ürün varsa uyar (birleştirme sonraki sürümde).
+                  if (ad != mevcut.ad) {
+                    final anahtar = urunAdiAnahtari(ad);
+                    final cakisan = (await db.tumUrunler())
+                        .where((u) =>
+                            u.id != mevcut.id &&
+                            urunAdiAnahtari(u.ad) == anahtar)
+                        .toList();
+                    if (cakisan.isNotEmpty) {
+                      if (!ctx.mounted) return;
+                      if (!await benzerAdUyarisi(ctx, cakisan)) return;
+                    }
+                  }
                   await db.urunGuncelle(
                     id: mevcut.id,
                     ad: ad,
@@ -254,22 +272,47 @@ Future<String?> urunFormDialog(BuildContext context, WidgetRef ref,
                   return;
                 }
 
-                // Aynı adlı model var mı?
-                final tumu = await db.tumUrunler();
+                // 1.29.3: aynı / benzer adlı ürün var mı? (İ / I, büyük /
+                // küçük harf, boşluk farkı yok sayılır) Varsa seçim ekranı.
+                final anahtar = urunAdiAnahtari(ad);
+                final benzerler = (await db.tumUrunler())
+                    .where((u) => urunAdiAnahtari(u.ad) == anahtar)
+                    .toList();
                 Urun? ayniAd;
-                for (final u in tumu) {
-                  if (u.ad.toLowerCase() == ad.toLowerCase()) {
-                    ayniAd = u;
-                    break;
-                  }
+                if (benzerler.isNotEmpty) {
+                  if (!ctx.mounted) return;
+                  final secim = await benzerUrunSec(ctx, benzerler);
+                  if (secim == null) return; // forma dönülür
+                  if (secim is Urun) ayniAd = secim;
                 }
-                if (ayniAd != null && (seri.isEmpty || (ayniAd?.miktarli ?? false))) {
-                  setState(() => hata = (ayniAd?.miktarli ?? false)
-                      ? 'Bu malzeme zaten kayıtlı. Miktarı Depolar → '
-                          'İşlemler → "Malzeme girişi" ile ekleyin.'
-                      : 'Bu model zaten kayıtlı. Seri numarası girerek '
-                          'mevcut modele ekleyebilirsiniz.');
-                  return;
+                if (ayniAd != null) {
+                  if (ayniAd.miktarli != miktarli) {
+                    setState(() => hata = 'Seçilen ürünün takip türü farklı '
+                        '(${ayniAd!.miktarli ? 'miktarla' : 'seri no ile'}). '
+                        'Takip türünü değiştirin ya da yeni ürün oluşturun.');
+                    return;
+                  }
+                  if (seri.isEmpty) {
+                    // Var olan ürün kullanılır; malzemede barkodu yoksa
+                    // girilen barkod ona yazılır.
+                    if (ayniAd.miktarli &&
+                        barkod != null &&
+                        (ayniAd.barkod ?? '').isEmpty) {
+                      await db.urunGuncelle(
+                        id: ayniAd.id,
+                        ad: ayniAd.ad,
+                        barkod: barkod,
+                        birim: ayniAd.birim,
+                        kategori: ayniAd.kategori,
+                        minStokSeviyesi: ayniAd.minStokSeviyesi,
+                        kutuIcerigi: ayniAd.kutuIcerigi ?? kutuIcerigi,
+                      );
+                    }
+                    if (dialogContext.mounted) {
+                      Navigator.pop(dialogContext, ayniAd.id);
+                    }
+                    return;
+                  }
                 }
 
                 if (seri.isNotEmpty) {

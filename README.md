@@ -5,6 +5,11 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.29.3 – Benzer ürün, ürün adı Latin büyük harf, ince seçici
+- `lib/services/urun_adi.dart` `urunAdiAnahtari` (İ / I / ı, Ç Ğ Ö Ş Ü, büyük / küçük, boşluk ve noktalama yok; testleri `test/urun_adi_test.dart`). Yeni ürün kaydında anahtarı aynı ürün varsa `benzerUrunSec` (lib/widgets/benzer_urun.dart): seçilen ürün kullanılır (malzemede barkodu yoksa girilen barkod yazılır; takip türü farklıysa hata), "Hiçbiri değil" yeni ürün açar, Vazgeç forma döner. Ad düzeltmede çakışan varsa `benzerAdUyarisi`.
+- Ürün / model adı alanı `kodBuyuk` (Latin: i → I). Eski "HİKVİSİON" kayıtları için SQL yok (toptan İ → I "ELEKTRİK"i bozar); elle düzeltilir.
+- Seçici daire 34 → 28, alt boşluk 8 → 4 (`_seciciPay` 38), alt yazı payı 20: karekod modunda da "15-25 cm uzakta tutun" sığar.
+
 ## 1.29.2 – Kamera ekranı düzeni, yazdırma önizlemesi, alt pay
 - `HedefliTarayici`: Barkod / Karekod düğmesi (`_Hap`) kalktı; üst satırda sol üstte `sayac` (eski `ustOrta`; Okut'ta "100/kalan"), ortada kaydırma ipucu; çerçevenin hemen üstünde "Yok sayıldı" / pembe şerit; çerçeve boyutu aynı, `_pencere` sığdığı sürece üst satır (+ şerit) ile alttaki seçici arasında ortalar ve alt yazının ("15-25 cm uzakta tutun") sığıp sığmadığını döndürür. Seçici 44 → 34.
 - Yazıdan okuma 2,5 → 3 sn; barkod önceliği: iki kez okunan yazı 0,5 sn bekler, bu arada barkod kabul edilirse (`_sonKabul`) atılır.

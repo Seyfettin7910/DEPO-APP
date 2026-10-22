@@ -36,6 +36,34 @@ class NotMaddesi {
 
 const surumNotlari = <SurumNotu>[
   SurumNotu(
+    surum: '1.29.3',
+    tarih: '22.10.2026',
+    bolumler: [
+      NotBolumu('Yeni', [
+        NotMaddesi(
+          'Benzer ürün',
+          'Yeni ürünün adı var olan bir ürüne benziyorsa seçim ekranı çıkar.',
+          '"Hikvision 7104…" yazınca "HİKVİSİON 7104…" bulunur: aynı ürünse '
+              'listeden seçin, cihazlar tek ürün altında toplanır. Değilse '
+              '"Hiçbiri değil, yeni ürün oluştur". Ad düzeltirken aynı adda '
+              'başka ürün varsa uyarır.',
+        ),
+      ]),
+      NotBolumu('Değişen', [
+        NotMaddesi(
+          'Ürün / model adı',
+          'Yabancı harflerle büyük harf: hikvision → HIKVISION.',
+          'Türkçe İ gereken yerde klavyeden İ yazın (ELEKTRİK). Eski '
+              '"HİKVİSİON" gibi adlar ürünü açıp düzeltilebilir.',
+        ),
+        NotMaddesi(
+          'Kamera',
+          'Karekod modunda da "15-25 cm uzakta tutun" görünür; 1x · 2x · 3x inceldi.',
+        ),
+      ]),
+    ],
+  ),
+  SurumNotu(
     surum: '1.29.2',
     tarih: '22.10.2026',
     bolumler: [
