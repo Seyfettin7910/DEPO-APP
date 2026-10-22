@@ -9,6 +9,7 @@ import '../../widgets/depo_secici.dart';
 import '../../widgets/buyuk_harf.dart';
 import '../../services/urun_adi.dart';
 import '../../widgets/benzer_urun.dart';
+import '../../widgets/urun_birlestir.dart';
 
 /// Yeni ürün (model) ekler; [mevcut] verilirse o ürünü düzenler.
 ///
@@ -254,7 +255,18 @@ Future<String?> urunFormDialog(BuildContext context, WidgetRef ref,
                         .toList();
                     if (cakisan.isNotEmpty) {
                       if (!ctx.mounted) return;
-                      if (!await benzerAdUyarisi(ctx, cakisan)) return;
+                      final karar = await benzerAdUyarisi(ctx, cakisan);
+                      if (karar == null || !ctx.mounted) return;
+                      if (karar == 'birlestir') {
+                        // 1.30.0: bu ürün çakışan ürüne katılır.
+                        final hedefId = await urunBirlestirAkisi(
+                            ctx, ref, mevcut,
+                            adaylar: cakisan);
+                        if (hedefId != null && dialogContext.mounted) {
+                          Navigator.pop(dialogContext, hedefId);
+                        }
+                        return;
+                      }
                     }
                   }
                   await db.urunGuncelle(

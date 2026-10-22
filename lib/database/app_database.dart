@@ -14,6 +14,7 @@ export 'etiket_modelleri.dart';
 
 part 'app_database_etiket.dart';
 part 'app_database_malzeme.dart';
+part 'app_database_birlestir.dart';
 
 const _uuid = Uuid();
 
@@ -36,6 +37,7 @@ CREATE TABLE urunler (
   min_stok_seviyesi INTEGER NOT NULL DEFAULT 0,
   seri_takipli INTEGER NOT NULL DEFAULT 0,
   kutu_icerigi INTEGER,
+  birlesti_id TEXT,
   updated_at INTEGER NOT NULL,
   dirty INTEGER NOT NULL DEFAULT 1,
   deleted INTEGER NOT NULL DEFAULT 0
@@ -398,7 +400,7 @@ class AppDatabase {
         : p.join(await getDatabasesPath(), 'depo_app.sqlite');
     _db = await openDatabase(
       path,
-      version: 13,
+      version: 14,
       onCreate: (db, version) async {
         for (final stmt in _createTablesSql.split(';')) {
           final trimmed = stmt.trim();
@@ -485,6 +487,10 @@ class AppDatabase {
         if (oldVersion < 13) {
           // 1.27.0: malzemenin bir kutu / topunda kaç birim var (305 m gibi)
           await db.execute('ALTER TABLE urunler ADD COLUMN kutu_icerigi INTEGER');
+        }
+        if (oldVersion < 14) {
+          // 1.30.0: ürün birleştirme (birleşen ürün → kalan ürün)
+          await db.execute('ALTER TABLE urunler ADD COLUMN birlesti_id TEXT');
         }
         if (oldVersion < 4) {
           // 1.4.0: araçlar seyyar depo olarak depolar tablosunda tutulur.
@@ -2636,7 +2642,7 @@ class AppDatabase {
     'depolar': ['id', 'ad', 'konum', 'tur', 'updated_at', 'deleted'],
     'urunler': [
       'id', 'ad', 'barkod', 'birim', 'kategori', 'min_stok_seviyesi',
-      'seri_takipli', 'kutu_icerigi', 'updated_at', 'deleted'
+      'seri_takipli', 'kutu_icerigi', 'birlesti_id', 'updated_at', 'deleted'
     ],
     'araclar': ['id', 'plaka', 'ad', 'aciklama', 'updated_at', 'deleted'],
     'kullanicilar': ['id', 'ad', 'email', 'rol', 'updated_at', 'deleted'],

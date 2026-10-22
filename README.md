@@ -5,6 +5,11 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.30.0 – Ürün birleştirme
+- **Supabase SQL:** `supabase_guncelleme_1_30_0.sql` (urunler.birlesti_id). Çalıştırılana kadar birleştirme yine çalışır; sütun gönderilmez (`_yeniKolonlar`).
+- Yerel veritabanı v14: `urunler.birlesti_id`. `lib/database/app_database_birlestir.dart`: `urunleriBirlestir` (cihazlar / stok_hareketleri / servis_kayitlari `urun_id` → kalan, `updated_at` + dirty; hareket silinmez; kalan üründe boş barkod / kutu içeriği / kategori birleşenden; birleşen deleted + birlesti_id; zincir için eski birlesti_id'ler de güncellenir; seri ↔ miktar birleştirilemez), `birlestirmeOzeti`, `birlesenleriAktar` (senkrondan sonra; internetsizken eski ürünle kaydedilenler kalan ürüne aktarılıp gönderilir, zincir için 5 tur).
+- `lib/widgets/urun_birlestir.dart`: kalacak ürün seçimi (benzer adlar üstte, arama `urunAdiAnahtari`), özet + onay. Ürün listesi basılı tutma menüsünde "Başka ürünle birleştir"; ad düzeltmede çakışma uyarısında "Birleştir".
+
 ## 1.29.3 – Benzer ürün, ürün adı Latin büyük harf, ince seçici
 - `lib/services/urun_adi.dart` `urunAdiAnahtari` (İ / I / ı, Ç Ğ Ö Ş Ü, büyük / küçük, boşluk ve noktalama yok; testleri `test/urun_adi_test.dart`). Yeni ürün kaydında anahtarı aynı ürün varsa `benzerUrunSec` (lib/widgets/benzer_urun.dart): seçilen ürün kullanılır (malzemede barkodu yoksa girilen barkod yazılır; takip türü farklıysa hata), "Hiçbiri değil" yeni ürün açar, Vazgeç forma döner. Ad düzeltmede çakışan varsa `benzerAdUyarisi`.
 - Ürün / model adı alanı `kodBuyuk` (Latin: i → I). Eski "HİKVİSİON" kayıtları için SQL yok (toptan İ → I "ELEKTRİK"i bozar); elle düzeltilir.

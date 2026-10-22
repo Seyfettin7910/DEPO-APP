@@ -66,10 +66,10 @@ Future<Object?> benzerUrunSec(BuildContext context, List<Urun> benzerler) {
   );
 }
 
-/// Ad düzeltirken aynı adda (benzer) başka ürün varsa: birleştirme henüz yok,
-/// yalnız uyarılır. true: yine de kaydet.
-Future<bool> benzerAdUyarisi(BuildContext context, List<Urun> cakisan) async {
-  final r = await showDialog<bool>(
+/// Ad düzeltirken aynı adda (benzer) başka ürün varsa (1.30.0: birleştirme
+/// seçeneğiyle). Dönen: 'kaydet' (yine de kaydet), 'birlestir' ya da null.
+Future<String?> benzerAdUyarisi(BuildContext context, List<Urun> cakisan) {
+  return showDialog<String>(
     context: context,
     builder: (ctx) => AlertDialog(
       icon: const Icon(Icons.warning_amber_rounded, color: Renkler.zil),
@@ -85,19 +85,23 @@ Future<bool> benzerAdUyarisi(BuildContext context, List<Urun> cakisan) async {
                   style: const TextStyle(fontWeight: FontWeight.w600)),
             ),
           const SizedBox(height: 8),
-          const Text('Kaydederseniz iki ürün ayrı ayrı görünür. Aynı ürünse '
-              'iki ürünü birleştirme sonraki sürümde gelecek.'),
+          const Text('Aynı ürünse "Birleştir" ile bu ürünün cihazlarını ve '
+              'hareketlerini ona taşıyın; tek ürün olarak görünür. '
+              'Kaydederseniz iki ürün ayrı ayrı görünür.'),
         ],
       ),
+      actionsOverflowButtonSpacing: 4,
       actions: [
         TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
+            onPressed: () => Navigator.pop(ctx),
             child: const Text('Vazgeç')),
-        FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
+        TextButton(
+            onPressed: () => Navigator.pop(ctx, 'kaydet'),
             child: const Text('Yine de kaydet')),
+        FilledButton(
+            onPressed: () => Navigator.pop(ctx, 'birlestir'),
+            child: const Text('Birleştir')),
       ],
     ),
   );
-  return r ?? false;
 }

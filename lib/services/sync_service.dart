@@ -82,7 +82,7 @@ class SyncService {
   /// gönderilmez (diğer bilgiler gider), SQL çalıştırılınca kendiliğinden
   /// gönderilmeye başlar.
   static const _yeniKolonlar = {
-    'urunler': {'kutu_icerigi': '1.27.0'},
+    'urunler': {'kutu_icerigi': '1.27.0', 'birlesti_id': '1.30.0'},
   };
   static final _eksikKolonlar = <String, Set<String>>{};
 
@@ -274,6 +274,9 @@ class SyncService {
       final sorunlar = <String>[];
       await _gonder(sorunlar);
       await _cek(sorunlar, tablolar);
+      // 1.30.0: birleşmiş ürüne bağlı kalmış (internetsizken kaydedilmiş)
+      // cihaz / hareketler kalan ürüne aktarılıp gönderilir.
+      if (await db.birlesenleriAktar() > 0) await _gonder(sorunlar);
       // İnternetsiz kaydedilmiş kurulum noktalarının il/ilçe/mahallesini bul.
       unawaited(AdresTamamlayici.calistir(db));
 

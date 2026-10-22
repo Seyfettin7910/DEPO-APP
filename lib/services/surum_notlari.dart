@@ -36,6 +36,23 @@ class NotMaddesi {
 
 const surumNotlari = <SurumNotu>[
   SurumNotu(
+    surum: '1.30.0',
+    tarih: '22.10.2026',
+    bolumler: [
+      NotBolumu('Yeni', [
+        NotMaddesi(
+          'Ürün birleştirme',
+          'Aynı ürün iki kez açıldıysa biri diğerine katılır.',
+          'Ürünler\'de ürüne basılı tutun → "Başka ürünle birleştir" → kalacak '
+              'ürünü seçin (benzer adlar en üstte). Cihazlar, hareketler ve '
+              'servis kayıtları kalan ürüne taşınır, hiçbir hareket silinmez. '
+              'Ad düzeltirken aynı adda ürün çıkarsa "Birleştir" de seçilebilir. '
+              'Geri alınamaz.',
+        ),
+      ]),
+    ],
+  ),
+  SurumNotu(
     surum: '1.29.3',
     tarih: '22.10.2026',
     bolumler: [

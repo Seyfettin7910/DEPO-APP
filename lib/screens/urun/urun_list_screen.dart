@@ -6,6 +6,7 @@ import '../../providers/app_providers.dart';
 import 'urun_form_dialog.dart';
 import '../../widgets/silme_islemleri.dart';
 import '../../widgets/sync_durum_dugmesi.dart';
+import '../../widgets/urun_birlestir.dart';
 
 /// Ürünler (modeller), kategoriye göre gruplu; her başlıkta kategori toplamı,
 /// her satırda o modelin tüm depolardaki toplam adedi görünür.
@@ -142,11 +143,15 @@ class UrunListScreen extends ConsumerWidget {
                           baslik: urun.ad,
                           secenekler: const [
                             ('duzenle', Icons.edit_outlined, 'Düzenle'),
+                            ('birlestir', Icons.merge_type,
+                                'Başka ürünle birleştir'),
                             ('sil', Icons.delete_outline, 'Ürünü sil'),
                           ]);
                       if (!context.mounted) return;
                       if (secim == 'duzenle') {
                         urunFormDialog(context, ref, mevcut: urun);
+                      } else if (secim == 'birlestir') {
+                        await urunBirlestirAkisi(context, ref, urun);
                       } else if (secim == 'sil') {
                         await urunSilAkisi(context, ref, urun);
                       }
