@@ -53,7 +53,7 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 | 2 | Cihaz arama | ✅ | ✅ | ✅ | ✅ |
 | 3 | Depoya giriş (yeni cihaz) | ✅ | ✅ | ❌ | ❌ |
 | 4 | Depolar arası transfer | ✅ | ✅ | ❌ | ❌ |
-| 5 | Araca yükleme | ✅ | ✅ | ❌ | ❌ |
+| 5 | Araca yükleme | ✅ | ✅ | ✅ | ❌ |
 | 6 | Araçtan depoya iade | ✅ | ✅ | ✅ | ❌ |
 | 7 | Montaj / kullanıldı | ✅ | ✅ | ✅ | ❌ |
 | 8 | Sahadan geri alma | ✅ | ✅ | ✅ | ❌ |
