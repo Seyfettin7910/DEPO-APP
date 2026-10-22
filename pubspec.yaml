@@ -1,7 +1,7 @@
 name: depo_app
 description: Çok kullanıcılı, çoklu depo stok ve kullanım takip uygulaması (iOS / Android / Windows / Web)
 publish_to: 'none'
-version: 1.30.0+62
+version: 1.30.1+63
 
 environment:
   sdk: '>=3.3.0 <4.0.0'

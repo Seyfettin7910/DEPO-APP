@@ -36,6 +36,21 @@ class NotMaddesi {
 
 const surumNotlari = <SurumNotu>[
   SurumNotu(
+    surum: '1.30.1',
+    tarih: '22.10.2026',
+    bolumler: [
+      NotBolumu('Yeni', [
+        NotMaddesi(
+          'Depoya girişte "+ Yeni"',
+          'Listede olmayan model giriş ekranından tanımlanır.',
+          '"Ürün / model" listesinin yanındaki "+ Yeni" ile ad ve kategori '
+              'girilir; benzer ad varsa önerilir. Kaydedince yeni model seçili '
+              'gelir, okutulan seri numaraları yerinde kalır.',
+        ),
+      ]),
+    ],
+  ),
+  SurumNotu(
     surum: '1.30.0',
     tarih: '22.10.2026',
     bolumler: [

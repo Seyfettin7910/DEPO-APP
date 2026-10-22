@@ -17,6 +17,7 @@ import '../../widgets/renkler.dart';
 import '../../widgets/malzeme_kalemleri.dart';
 import '../../widgets/buyuk_harf.dart';
 import '../../services/bolge_adi.dart';
+import '../urun/urun_form_dialog.dart';
 
 /// Seri numaralarıyla depoya giriş: model ve depo seçilir, seri numaraları
 /// kamerayla tek tek okutulur, hepsi tek seferde kaydedilir. Hatalı girişi
@@ -593,6 +594,13 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen>
   }
 
   /// Listedeki bir seri noya ayrı model seçer (karışık koli).
+  /// "+ Yeni": listede olmayan modeli tanımlar (benzer ad kontrolüyle) ve
+  /// seçer.
+  Future<void> _yeniModel() async {
+    final id = await urunFormDialog(context, ref, sadeceModel: true);
+    if (id != null && mounted) setState(() => _urunId = id);
+  }
+
   Future<void> _seriModeliSec(String seri, List<Urun> urunler) async {
     final secim = await showModalBottomSheet<String>(
       context: context,
@@ -665,24 +673,43 @@ class _TopluGirisScreenState extends ConsumerState<TopluGirisScreen>
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: Column(
               children: [
-                DropdownButtonFormField<String>(
-                  value: urunler.any((u) => u.id == _urunId) ? _urunId : null,
-                  isExpanded: true,
-                  decoration:
-                      const InputDecoration(labelText: 'Ürün / model'),
-                  items: [
-                    for (final u in urunler)
-                      DropdownMenuItem(
-                        value: u.id,
-                        child: Text(
-                          u.kategori == null ? u.ad : '${u.ad} (${u.kategori})',
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: urunler.any((u) => u.id == _urunId)
+                            ? _urunId
+                            : null,
+                        isExpanded: true,
+                        decoration:
+                            const InputDecoration(labelText: 'Ürün / model'),
+                        items: [
+                          for (final u in urunler)
+                            DropdownMenuItem(
+                              value: u.id,
+                              child: Text(
+                                u.kategori == null
+                                    ? u.ad
+                                    : '${u.ad} (${u.kategori})',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                        ],
+                        // Model değişince liste silinmez: kendi modeli
+                        // seçilmemiş seri nolar yeni modele geçer.
+                        onChanged: (v) => setState(() => _urunId = v),
                       ),
+                    ),
+                    const SizedBox(width: 8),
+                    // 1.30.1: listede olmayan model buradan tanımlanır;
+                    // okutulan seriler yerinde kalır, yeni model seçili gelir.
+                    FilledButton.tonalIcon(
+                      onPressed: _yeniModel,
+                      icon: const Icon(Icons.add),
+                      label: const Text('Yeni'),
+                    ),
                   ],
-                  // Model değişince liste silinmez: kendi modeli seçilmemiş
-                  // seri nolar yeni modele geçer.
-                  onChanged: (v) => setState(() => _urunId = v),
                 ),
                 _depoSecimi(depolar),
                 ListTile(

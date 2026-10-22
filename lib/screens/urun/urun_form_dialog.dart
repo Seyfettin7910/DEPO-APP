@@ -23,8 +23,15 @@ import '../../widgets/urun_birlestir.dart';
 ///
 /// [malzeme]: Okut'tan "+ Yeni malzeme tanımla" (Miktarla seçili, [barkod]
 /// hazır). Kaydedilen ürünün id'si döner (vazgeçilirse null).
+///
+/// [sadeceModel] (1.30.1): Depoya girişteki "+ Yeni" düğmesi: yalnız seri no
+/// ile takip edilen model tanımlanır (ad, kategori, uyarı sayısı); seri no ve
+/// depo alanları gizli (giriş ekranı onları zaten biliyor).
 Future<String?> urunFormDialog(BuildContext context, WidgetRef ref,
-    {Urun? mevcut, bool malzeme = false, String? barkod}) {
+    {Urun? mevcut,
+    bool malzeme = false,
+    String? barkod,
+    bool sadeceModel = false}) {
   final adCtrl = TextEditingController(text: mevcut?.ad ?? '');
   final seriCtrl = TextEditingController();
   final kategoriCtrl = TextEditingController(text: mevcut?.kategori ?? '');
@@ -49,7 +56,9 @@ Future<String?> urunFormDialog(BuildContext context, WidgetRef ref,
     context: context,
     builder: (dialogContext) => StatefulBuilder(
       builder: (ctx, setState) => AlertDialog(
-        title: Text(mevcut == null ? 'Yeni Ürün' : 'Ürünü Düzenle'),
+        title: Text(mevcut != null
+            ? 'Ürünü Düzenle'
+            : (sadeceModel ? 'Yeni Model' : 'Yeni Ürün')),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -72,7 +81,7 @@ Future<String?> urunFormDialog(BuildContext context, WidgetRef ref,
                     labelText: 'Kategori / tür (ör. Kayıt Cihazları)'),
               ),
               const SizedBox(height: 12),
-              if (mevcut == null && !malzeme)
+              if (mevcut == null && !malzeme && !sadeceModel)
                 SegmentedButton<bool>(
                   segments: const [
                     ButtonSegment(
@@ -149,7 +158,7 @@ Future<String?> urunFormDialog(BuildContext context, WidgetRef ref,
                   ),
                 ),
               ],
-              if (mevcut == null && !miktarli) ...[
+              if (mevcut == null && !miktarli && !sadeceModel) ...[
                 TextField(
                   textCapitalization: TextCapitalization.characters,
                   inputFormatters: kodBuyuk,

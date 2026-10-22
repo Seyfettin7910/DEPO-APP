@@ -5,6 +5,9 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.30.1 – Depoya girişte "+ Yeni" model
+- `TopluGirisScreen`: "Ürün / model" listesinin yanında "+ Yeni" → `urunFormDialog(sadeceModel: true)` (seri takipli; seri no / depo alanları ve takip türü seçimi gizli; benzer ürün kontrolü aynı). Dönen id seçilir; okutulan seriler korunur.
+
 ## 1.30.0 – Ürün birleştirme
 - **Supabase SQL:** `supabase_guncelleme_1_30_0.sql` (urunler.birlesti_id). Çalıştırılana kadar birleştirme yine çalışır; sütun gönderilmez (`_yeniKolonlar`).
 - Yerel veritabanı v14: `urunler.birlesti_id`. `lib/database/app_database_birlestir.dart`: `urunleriBirlestir` (cihazlar / stok_hareketleri / servis_kayitlari `urun_id` → kalan, `updated_at` + dirty; hareket silinmez; kalan üründe boş barkod / kutu içeriği / kategori birleşenden; birleşen deleted + birlesti_id; zincir için eski birlesti_id'ler de güncellenir; seri ↔ miktar birleştirilemez), `birlestirmeOzeti`, `birlesenleriAktar` (senkrondan sonra; internetsizken eski ürünle kaydedilenler kalan ürüne aktarılıp gönderilir, zincir için 5 tur).

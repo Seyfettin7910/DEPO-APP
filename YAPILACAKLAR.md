@@ -20,6 +20,7 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 - [ ] 1.29.3: karekod modunda "15-25 cm uzakta tutun" görünüyor mu, ince 1x · 2x · 3x; ürün adı Latin büyük harf (hikvision → HIKVISION); benzer ürün ekranı (yeni üründe seçim, ad düzeltmede uyarı). Eski "HİKVİSİON" adlarını elle düzelt.
 - [x] **Supabase SQL:** `supabase_guncelleme_1_30_0.sql` (urunler.birlesti_id) 22.10.2026'da çalıştırıldı.
 - [ ] 1.30.0: ürün birleştirme (Ürünler → basılı tut → "Başka ürünle birleştir"; ad düzeltmede "Birleştir"); özet sayıları doğru mu, cihazlar / hareketler / malzeme stoğu kalan üründe mi; internetsiz telefonda eski ürünle kayıt → internet gelince kalan ürüne geçiyor mu. Roller gelince yalnız yönetici.
+- [ ] 1.30.1: Okut'ta kayıtsız seri → "Depoya ekle" → "+ Yeni" ile model tanımla, seçili geliyor mu, seriler duruyor mu.
 
 ## Sonraya
 - [ ] **"Nerede kullanıldı?"nın konumdan otomatik dolması – Google'dan çekme ERTELENDİ** (Google hesabı 1.500 TL ön ödeme istiyor; Geocoding anahtarı / günlük kota 250 hazır bekliyor). Kararlar:
