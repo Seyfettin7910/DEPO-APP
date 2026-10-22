@@ -41,6 +41,22 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 ### Depolar
 - (Araçta hızlı bakış: vazgeçildi; dokununca stok ekranı zaten açılıyor.)
 
+### Sistem: kullanıcı kaydı ve roller (taslak, karar sürüyor)
+- **Bugün:** kullanıcılar Supabase panelinden açılıyor; uygulama herkesi "saha" kaydediyor ama rolün etkisi yok; sunucuda giriş yapan herkes her şeyi yapabiliyor.
+- **Kayıt:** dışarıdan kayıt kapalı; Ayarlar → Kullanıcılar (yalnız yönetici): ekle / düzenle / pasif yap (silme yok, geçmiş korunur; pasif kullanıcının oturumu kapanır); şifre sıfırlama. Gizli anahtar telefona gelmez, Supabase sunucu fonksiyonu çağıranın yönetici olduğunu denetler. (Karar bekliyor: **geçici şifre + ilk girişte değiştirme** mi, **davet e-postası** mı?)
+- **Roller:** Yönetici · Depo sorumlusu · Saha · İzleyici (yalnız görür + rapor alır; ör. idari işler). (Karar bekliyor: 4 rol onayı.)
+  - Okut, cihaz kartı, arama: hepsi (İzleyici yalnız görür).
+  - Montaj / kullanıldı, sahadan geri alma, arıza bildirme: Yönetici, Depo, Saha.
+  - Depoya giriş, transfer, araca yükleme, sayım, servis süreci, ürün / depo / araç tanımlama: Yönetici, Depo.
+  - **Ürün birleştirme: Yönetici + Depo sorumlusu** (Seyfettin'in kararı).
+  - **Hurda ve silme: rolden bağımsız AYRI YETKİ** (Seyfettin'in kararı): kullanıcı kartında ayrıca işaretlenir; rolü ne olursa olsun yalnız bu yetkisi olan yapar.
+  - Raporlar (PDF / Excel, Flexity): Yönetici, Depo, İzleyici.
+  - Giriş kayıtları, kullanıcı yönetimi, kurum ayarları: Yönetici.
+  - Hareket kaydı silme: kimse (sunucu kuralıyla kesin).
+- **Uygulama:** yetkisi olmayan düğmeyi görmez; **sunucuda da veritabanı kurallarıyla** (RLS) kesinleşir; internetsizken yapılmış yetkisiz işlem sunucuca reddedilir, telefonda "yetkiniz yok".
+- **Geçiş:** ilk yönetici Seyfettin (tek SQL); mevcut kullanıcıların rolleri Seyfettin'den.
+- (Karar bekliyor: saha kullanıcısına araç bağlansın mı?)
+
 ## Sonraya
 - [ ] **"Nerede kullanıldı?"nın konumdan otomatik dolması – Google'dan çekme ERTELENDİ** (Google hesabı 1.500 TL ön ödeme istiyor; Geocoding anahtarı / günlük kota 250 hazır bekliyor). Kararlar:
   - Önce eski montajlardan öğrenme: yeni konumun **en fazla 15 m** yakınında daha önce yazılmış ad varsa o gelir; konum hassasiyeti **±15 m'den kötüyse** eski ad önerilmez.
