@@ -57,6 +57,7 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 - Başlıklar: Yeni · Değişen · Düzeltilen (boş başlık yazılmaz). Teknik kelime yok; düğme adları ekrandaki gibi.
 
 ## Sırada
+- [ ] **Flexity'ye aktarım raporu:** idari işlerin Flexity'ye girdiği bilgiler (yeni alınan cihazlar, kurulum yeri, hurda…) doğrudan Flexity'nin beklediği sütunlarla Excel olarak. Gerekli: Flexity'nin toplu aktarım şablonu / örnek dosyası (idari işlerden alınacak).
 - [ ] **Kullanıcı rolleri ve yetkiler** (Yönetici / Depocu / Saha); silme yalnızca yöneticide, hareket kayıtları kimse tarafından silinemez.
 - [ ] **Veritabanı yedeği** (gece şifreli otomatik yedek + uygulamadan Excel dışa aktarım).
 - [ ] **Belediye sunucusuna geçiş** (alan adı → web + APK → veritabanı). Gerekli bilgi: sunucu Windows mu Linux mu, internete çıkışı ve dışarıdan erişimi var mı.
