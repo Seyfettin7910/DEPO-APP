@@ -44,15 +44,46 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 ### Sistem: kullanıcı kaydı ve roller (taslak, karar sürüyor)
 - **Bugün:** kullanıcılar Supabase panelinden açılıyor; uygulama herkesi "saha" kaydediyor ama rolün etkisi yok; sunucuda giriş yapan herkes her şeyi yapabiliyor.
 - **Kayıt:** dışarıdan kayıt kapalı; Ayarlar → Kullanıcılar (yalnız yönetici): ekle / düzenle / pasif yap (silme yok, geçmiş korunur; pasif kullanıcının oturumu kapanır); şifre sıfırlama. Gizli anahtar telefona gelmez, Supabase sunucu fonksiyonu çağıranın yönetici olduğunu denetler. (Karar bekliyor: **geçici şifre + ilk girişte değiştirme** mi, **davet e-postası** mı?)
-- **Roller:** Yönetici · Depo sorumlusu · Saha · İzleyici (yalnız görür + rapor alır; ör. idari işler). (Karar bekliyor: 4 rol onayı.)
-  - Okut, cihaz kartı, arama: hepsi (İzleyici yalnız görür).
-  - Montaj / kullanıldı, sahadan geri alma, arıza bildirme: Yönetici, Depo, Saha.
-  - Depoya giriş, transfer, araca yükleme, sayım, servis süreci, ürün / depo / araç tanımlama: Yönetici, Depo.
-  - **Ürün birleştirme: Yönetici + Depo sorumlusu** (Seyfettin'in kararı).
-  - **Hurda ve silme: ayrı satır, yalnız Yönetici.**
-  - Raporlar (PDF / Excel, Flexity): Yönetici, Depo, İzleyici.
-  - Giriş kayıtları, kullanıcı yönetimi, kurum ayarları: Yönetici.
-  - Hareket kaydı silme: kimse (sunucu kuralıyla kesin).
+- **Roller:** Yönetici (Y) · Depo sorumlusu (D) · Saha (S) · 4. rol (R): yalnız görür + rapor alır (idari işler, amirler, sayım komisyonu). (Karar bekliyor: 4. rolün adı — öneri "Raporlayıcı"; yapı: **sabit tablo** (belediye için yeter) mı, yöneticinin düzenleyebildiği tablo (ticari sürümde gerekir) mi?)
+- **Yetki tablosu (madde madde, taslak; Seyfettin numarayla düzeltecek):**
+
+| # | Yetki | Y | D | S | R |
+|---|---|---|---|---|---|
+| 1 | Okutma, cihaz kartını görme | ✅ | ✅ | ✅ | ✅ |
+| 2 | Cihaz arama | ✅ | ✅ | ✅ | ✅ |
+| 3 | Depoya giriş (yeni cihaz) | ✅ | ✅ | ❌ | ❌ |
+| 4 | Depolar arası transfer | ✅ | ✅ | ❌ | ❌ |
+| 5 | Araca yükleme | ✅ | ✅ | ❌ | ❌ |
+| 6 | Araçtan depoya iade | ✅ | ✅ | ✅ | ❌ |
+| 7 | Montaj / kullanıldı | ✅ | ✅ | ✅ | ❌ |
+| 8 | Sahadan geri alma | ✅ | ✅ | ✅ | ❌ |
+| 9 | Arıza bildirme (arızalı işaretleme) | ✅ | ✅ | ✅ | ❌ |
+| 10 | Servis süreci (gönderme, dönüş, değişim) | ✅ | ✅ | ❌ | ❌ |
+| 11 | Cihaz kartı bilgisini düzenleme (alım, garanti, yer) | ✅ | ✅ | ❌ | ❌ |
+| 12 | Hurdaya ayırma | ✅ | ❌ | ❌ | ❌ |
+| 13 | Cihaz silme | ✅ | ❌ | ❌ | ❌ |
+| 14 | Malzeme girişi | ✅ | ✅ | ❌ | ❌ |
+| 15 | Malzeme transferi / araca yükleme / iade | ✅ | ✅ | ❌ | ❌ |
+| 16 | Montajda malzeme kullanımı | ✅ | ✅ | ✅ | ❌ |
+| 17 | Ürün / model tanımlama, düzenleme | ✅ | ✅ | ❌ | ❌ |
+| 18 | Ürün birleştirme | ✅ | ✅ | ❌ | ❌ |
+| 19 | Ürün silme | ✅ | ❌ | ❌ | ❌ |
+| 20 | Depo / araç tanımlama, düzenleme | ✅ | ✅ | ❌ | ❌ |
+| 21 | Depo / araç silme | ✅ | ❌ | ❌ | ❌ |
+| 22 | Sayım | ✅ | ✅ | ❌ | ❌ |
+| 23 | Kurum kodu üretme, basım kuyruğu | ✅ | ✅ | ❌ | ❌ |
+| 24 | Etiket basma (bilgisayardan) | ✅ | ✅ | ❌ | ❌ |
+| 25 | Etiket yapıştırma doğrulaması | ✅ | ✅ | ✅ | ❌ |
+| 26 | Kurum etiketi ayarları (kodlar, engel) | ✅ | ❌ | ❌ | ❌ |
+| 27 | Raporlar, PDF / Excel (Flexity dahil) | ✅ | ✅ | ❌ | ✅ |
+| 28 | Giriş kayıtları | ✅ | ❌ | ❌ | ❌ |
+| 29 | Okuma istatistikleri raporu | ✅ | ✅ | ❌ | ❌ |
+| 30 | Kullanıcı yönetimi | ✅ | ❌ | ❌ | ❌ |
+| 31 | Kendi bildirim ayarları | ✅ | ✅ | ✅ | ✅ |
+| 32a | Bütün kullanıcıların güvenlik bildirimleri (hatalı şifre, yeni IP) | ✅ | ❌ | ❌ | ❌ |
+| 32b | Kendi hesabının güvenlik bildirimleri ("hesabına yeni bir yerden giriş yapıldı") | ✅ | ✅ | ✅ | ✅ |
+| 33 | **Hareket kaydı silme** | ❌ | ❌ | ❌ | ❌ |
+
 - **Uygulama:** yetkisi olmayan düğmeyi görmez; **sunucuda da veritabanı kurallarıyla** (RLS) kesinleşir; internetsizken yapılmış yetkisiz işlem sunucuca reddedilir, telefonda "yetkiniz yok".
 - **Geçiş:** ilk yönetici Seyfettin (tek SQL); mevcut kullanıcıların rolleri Seyfettin'den.
 - (Karar bekliyor: saha kullanıcısına araç bağlansın mı?)
