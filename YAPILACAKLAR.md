@@ -46,6 +46,12 @@ Bulunan sebepler: uygulamaya her dönüşte 3 tam senkron (öne gelme + oturum y
 - [ ] **Görünüm:** "Gönderiliyor…" yalnız gönderilecek kayıt varken; yalnız kontrolde düğmede küçük dönen simge.
 - Kayıt kaçmasına karşı korumalar (5 dk yedek kontrol, damga yöntemi, 1 dk pay) aynen kalır.
 
+#### Ürün formu: kategori açılır liste
+- [ ] **Kategori açılır liste** (ürünlerde kullanılan kategoriler, alfabetik; en üstte "Kategorisiz") + yanında **"+ Yeni"** (depoya girişteki "Ürün / model" satırı gibi): küçük pencerede yeni ad (büyük harf), kaydedince seçili gelir. Yeni ad var olana benziyorsa uyarı ("KAYIT CİHAZLARI zaten var…", benzer ürün kontrolü gibi). Yeni tablo yok, kategoriler ürünlerden. (Sonraya not: kategori yeniden adlandırma / birleştirme.)
+
+#### Ayarlar → Kullanıcılar (yalnız görüntüleme; roller DEVREYE GİRMEZ)
+- [ ] Liste: ad, e-posta, son giriş (tarih-saat, Android / iPhone / web), **uygulama sürümü** (büyük harf SQL'inin ikinci çalıştırması için "herkes 1.29.1'de mi" buradan). **Görünen ad düzenlenebilir** (e-postanın @ öncesi yerine "SEYFETTİN AYDIN"). Ekleme / şifre sıfırlama / pasif yapma / roller YOK (Final paketinde, sunucu fonksiyonu gerekir). Sınır: yalnız en az bir kez giriş yapmış kullanıcılar görünür. Herkes görür (deneme döneminde e-postalar uydurma, Seyfettin'in notu).
+
 #### Yazım birliği
 - [ ] **"opsiyonel" → "isteğe bağlı"** bütün ekranlarda (ör. Malzeme Montaj / Kullanıldı → "Not (isteğe bağlı)"); Yenilikler yazım kuralındaki gibi tek dil.
 
