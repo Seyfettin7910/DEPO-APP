@@ -20,7 +20,7 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 
 ## Sıradaki: 1.29.3 ("yap" bekliyor)
 - [ ] **Karekod modunda "15-25 cm uzakta tutun" görünmüyor** (bu telefonda çerçeve ile seçici arasında ~10 piksel eksik; sığmazsa gizle kuralına takıldı). Çözüm: 1x · 2x · 3x daha incelir (daire 34 → 28, alt boşluk 8 → 4, yazı payı 22 → 20) → ~14 piksel kazanılır; çerçeve küçülmez, yazı kenara konmaz.
-- [ ] **Ürün / model adı Latin kuralla büyük harf** (i → I): "Hikvision" → "HIKVISION" (Türkçe kuralla "HİKVİSİON" oluyordu). Klavye zaten büyük harfle açıldığı için Türkçe İ isteyen kendisi yazar ("ELEKTRİK"). Eski kayıtlar: SQL'le toptan İ → I yapılamaz ("ELEKTRİK" bozulur); yanlış olanlar elle ya da marka listesiyle düzeltilir (karar bekliyor).
+- [ ] **Ürün / model adı Latin kuralla büyük harf** (i → I): "Hikvision" → "HIKVISION" (Türkçe kuralla "HİKVİSİON" oluyordu). Klavye zaten büyük harfle açıldığı için Türkçe İ isteyen kendisi yazar ("ELEKTRİK"). Eski kayıtlar: SQL yok (toptan İ → I "ELEKTRİK"i bozar); yanlış olanlar Ürünler'den **elle** düzeltilir (karar: a, deneme verisi az).
 - Not: Ürün barkodu filtresi aynen kalır (tanımsız EAN / UPC yok sayılır; malzemeye tanımlı barkod okunur).
 
 ## Sonraya
