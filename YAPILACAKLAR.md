@@ -2,6 +2,8 @@
 
 Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlarına taşınır.
 
+**Kapsam:** Uygulamanın amacı **depo yönetimi**. Taşınır / taşınmaz / zimmet kayıtları belediyenin **Flexity** yazılımında tutulur, bu uygulamanın kapsamında değil; uygulama raporlarıyla onu **destekler** (ör. Flexity'ye girilecek bilgileri hazır veren dökümler).
+
 ## Yayınlananların telefonda denenmesi
 - [x] **Supabase SQL:** `supabase_guncelleme_1_27_0.sql` çalıştırıldı.
 - [x] **Supabase SQL:** `supabase_guncelleme_1_29_0.sql` (anlık senkron) çalıştırıldı (12 tablo).
