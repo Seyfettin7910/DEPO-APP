@@ -63,7 +63,9 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 | 12 | Hurdaya ayırma | ✅ | ❌ | ❌ | ❌ |
 | 13 | Cihaz silme | ✅ | ❌ | ❌ | ❌ |
 | 14 | Malzeme girişi | ✅ | ✅ | ❌ | ❌ |
-| 15 | Malzeme transferi / araca yükleme / iade | ✅ | ✅ | ❌ | ❌ |
+| 15a | Malzemeyi araca yükleme | ✅ | ✅ | ✅ | ❌ |
+| 15b | Araçtan depoya malzeme iadesi | ✅ | ✅ | ✅ | ❌ |
+| 15c | Depolar arası malzeme transferi | ✅ | ✅ | ❌ | ❌ |
 | 16 | Montajda malzeme kullanımı | ✅ | ✅ | ✅ | ❌ |
 | 17 | Ürün / model tanımlama, düzenleme | ✅ | ✅ | ❌ | ❌ |
 | 18 | Ürün birleştirme | ✅ | ✅ | ❌ | ❌ |
