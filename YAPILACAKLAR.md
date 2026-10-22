@@ -22,6 +22,9 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 - [ ] 1.30.0: ürün birleştirme (Ürünler → basılı tut → "Başka ürünle birleştir"; ad düzeltmede "Birleştir"); özet sayıları doğru mu, cihazlar / hareketler / malzeme stoğu kalan üründe mi; internetsiz telefonda eski ürünle kayıt → internet gelince kalan ürüne geçiyor mu. Roller gelince yalnız yönetici.
 - [ ] 1.30.1: Okut'ta kayıtsız seri → "Depoya ekle" → "+ Yeni" ile model tanımla, seçili geliyor mu, seriler duruyor mu.
 
+## Sıradaki: 1.30.2 (notta, "yap" bekliyor)
+- [ ] **Okuma kaynağı göstergesi:** okuma kabul edilince çerçevenin hemen üstünde 1,5 sn küçük etiket: "✓ Barkod" (çizgi barkod), "✓ Karekod" (koli dahil), "✓ Yazı (S/N)" (pembe). Kayıtlara / senkrona / rapora GEÇMEZ, yalnız ekranda. Bütün kamera ekranlarında. (Amaç: hangi etiketlerin barkoddan okunamadığını sahada görmek; ileride "kapının ölçüsü" sayıları için ilk adım.)
+
 ## Sonraya
 - [ ] **"Nerede kullanıldı?"nın konumdan otomatik dolması – Google'dan çekme ERTELENDİ** (Google hesabı 1.500 TL ön ödeme istiyor; Geocoding anahtarı / günlük kota 250 hazır bekliyor). Kararlar:
   - Önce eski montajlardan öğrenme: yeni konumun **en fazla 15 m** yakınında daha önce yazılmış ad varsa o gelir; konum hassasiyeti **±15 m'den kötüyse** eski ad önerilmez.
