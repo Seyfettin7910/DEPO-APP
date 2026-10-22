@@ -126,5 +126,9 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 - [ ] **El terminali desteği** (Zebra, Honeywell vb.): "barkod okuyucu modu" veya Zebra DataWedge. Cihaz markası/modeli belli olunca.
 - [ ] **Tablet düzeni** (geniş ekranda iki sütun) gerekirse.
 - [ ] **Kısa uygulama adı** ana ekranda ("Depo Otomasyon"), istenirse.
-- [ ] **Giriş kayıtlarının saklama süresi** (KVKK) belediye politikasına göre.
+- [ ] **KVKK (BEKLEMEDE — program kabul edilip gerçek kullanıma geçilince; deneme sürecinde değil, Seyfettin'in kararı):**
+  - Giriş ekranında (Android, iPhone, web) kısa satır: "Sistemin sağlıklı yürütülebilmesi için kullanıcı, giriş ve işlem konumu bilgileriniz kaydedilmektedir. Aydınlatma Metni" → tam metin sayfası (veri sorumlusu: Belediye; veriler ve amaçlar; aktarım: sunucu hizmeti; hukuki sebep; kullanıcı hakları ve başvuru). "Kabul ediyorum" kutusu YOK (aydınlatma ≠ rıza). Taslak hazırlanır, belediyenin KVKK sorumlusu onaylar.
+  - Giriş kayıtları / hesap işlemleri için saklama süresi (belediyenin saklama-imha politikasına göre), süresi dolanlar kendiliğinden silinir.
+  - Sunucunun yeri (yurt dışı aktarım) → Türkiye / belediye sunucusu kararıyla birlikte.
+  - Belediyenin KVKK sorumlusuna bilgi (VERBİS envanteri onların işi). Not alanlarına vatandaş adı / telefonu yazılmaması kullanım kuralı.
 - [ ] Eski `depo-takip.apk` adını kaldırma (herkes 1.16.4+ olunca).
