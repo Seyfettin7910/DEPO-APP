@@ -49,7 +49,7 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
   - Montaj / kullanıldı, sahadan geri alma, arıza bildirme: Yönetici, Depo, Saha.
   - Depoya giriş, transfer, araca yükleme, sayım, servis süreci, ürün / depo / araç tanımlama: Yönetici, Depo.
   - **Ürün birleştirme: Yönetici + Depo sorumlusu** (Seyfettin'in kararı).
-  - **Hurda ve silme: rolden bağımsız AYRI YETKİ** (Seyfettin'in kararı): kullanıcı kartında ayrıca işaretlenir; rolü ne olursa olsun yalnız bu yetkisi olan yapar.
+  - **Hurda ve silme: ayrı satır, yalnız Yönetici.**
   - Raporlar (PDF / Excel, Flexity): Yönetici, Depo, İzleyici.
   - Giriş kayıtları, kullanıcı yönetimi, kurum ayarları: Yönetici.
   - Hareket kaydı silme: kimse (sunucu kuralıyla kesin).
