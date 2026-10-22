@@ -24,7 +24,10 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 - [ ] 1.30.0: ürün birleştirme (Ürünler → basılı tut → "Başka ürünle birleştir"; ad düzeltmede "Birleştir"); özet sayıları doğru mu, cihazlar / hareketler / malzeme stoğu kalan üründe mi; internetsiz telefonda eski ürünle kayıt → internet gelince kalan ürüne geçiyor mu. Roller gelince yalnız yönetici.
 - [ ] 1.30.1: Okut'ta kayıtsız seri → "Depoya ekle" → "+ Yeni" ile model tanımla, seçili geliyor mu, seriler duruyor mu.
 
-## Sıradaki: 1.30.2 (notta, "yap" bekliyor)
+## Final paketi (toplanıyor; tek güncellemede yapılacak, "yap" bekliyor)
+İhtiyaçlar ekran ekran toplanıyor: Okut · Depolar · Ürünler · Ara ve cihaz kartı · Raporlar · Ayarlar ve bildirimler · Bilgisayar (web) ve iPhone · Sistem.
+
+### Okut
 - [ ] **Okuma kaynağı göstergesi:** okuma kabul edilince çerçevenin hemen üstünde 1,5 sn küçük etiket: "✓ Barkod" (çizgi barkod), "✓ Karekod" (koli dahil), "✓ Yazı (S/N)" (pembe). Kayıtlara / senkrona / rapora GEÇMEZ, yalnız ekranda. Bütün kamera ekranlarında. (Amaç: hangi etiketlerin barkoddan okunamadığını sahada görmek.)
 - [ ] **Okuma sayıları ("kapının ölçüsü"), göstergeyle aynı pakette, SENKRONLU** (amaç: hangi telefon modelinde okuma zayıf, cihaza özel iyileştirme):
   - Sayılanlar: kabul edilen okumalar kaynağa göre (barkod / karekod / yazı); yok sayılan kodlar sebebe göre (ürün barkodu, MAC, web adresi, sipariş / kutu kodu, kayıtlı değil…); "Doğru mu?" Evet / Hayır; kameranın 30 sn'de durması; ortalama okuma süresi (kamera açılışı / son okumadan kabul edilen okumaya).
@@ -34,6 +37,9 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
   - Görünüm: Raporlar → "Okuma istatistikleri" (internet gerekir, sunucudan anlık okunur, giriş kayıtları gibi): telefon modeline göre tablo (okuma sayısı, yazıdan %, yok sayılan %, "Hayır" %, ortalama süre), tarih aralığı; PDF / Excel. Telefonda Ayarlar'da yalnız henüz gönderilmemiş (bugünkü) sayılar; geçmiş günler Raporlar'da.
   - **Gönderilen günler telefondan silinir** (sunucu "aldım" deyince; gönderilemeyen gün silinmez, sonra tekrar denenir). Telefonda ekstra veri birikmez.
   - Gerekli: telefon modeli için `device_info_plus` paketi.
+
+### Depolar
+- [ ] **Araçlar sekmesinde uzun basınca hızlı bakış:** listeden çıkmadan alttan açılan pencerede araçtakilerin özeti (ör. "HIKVISION 7104 NVR × 2 · IP KAMERA × 6 · CAT6 KABLO 305 m"), altında "Ayrıntılar" (stok ekranını açar). Dokununca bugünkü gibi stok ekranı açılır. (Depolar sekmesinde de aynı olabilir.)
 
 ## Sonraya
 - [ ] **"Nerede kullanıldı?"nın konumdan otomatik dolması – Google'dan çekme ERTELENDİ** (Google hesabı 1.500 TL ön ödeme istiyor; Geocoding anahtarı / günlük kota 250 hazır bekliyor). Kararlar:
