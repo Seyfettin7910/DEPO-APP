@@ -23,7 +23,8 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 - [ ] 1.30.1: Okut'ta kayıtsız seri → "Depoya ekle" → "+ Yeni" ile model tanımla, seçili geliyor mu, seriler duruyor mu.
 
 ## Sıradaki: 1.30.2 (notta, "yap" bekliyor)
-- [ ] **Okuma kaynağı göstergesi:** okuma kabul edilince çerçevenin hemen üstünde 1,5 sn küçük etiket: "✓ Barkod" (çizgi barkod), "✓ Karekod" (koli dahil), "✓ Yazı (S/N)" (pembe). Kayıtlara / senkrona / rapora GEÇMEZ, yalnız ekranda. Bütün kamera ekranlarında. (Amaç: hangi etiketlerin barkoddan okunamadığını sahada görmek; ileride "kapının ölçüsü" sayıları için ilk adım.)
+- [ ] **Okuma kaynağı göstergesi:** okuma kabul edilince çerçevenin hemen üstünde 1,5 sn küçük etiket: "✓ Barkod" (çizgi barkod), "✓ Karekod" (koli dahil), "✓ Yazı (S/N)" (pembe). Kayıtlara / senkrona / rapora GEÇMEZ, yalnız ekranda. Bütün kamera ekranlarında. (Amaç: hangi etiketlerin barkoddan okunamadığını sahada görmek.)
+- [ ] **Okuma sayıları ("kapının ölçüsü"), göstergeyle aynı pakette:** kabul edilen okumalar kaynağa göre (barkod / karekod / yazı), yok sayılan kodlar sebebe göre (ürün barkodu, MAC, web adresi, sipariş / kutu kodu, kayıtlı değil…), "Doğru mu?" sorusunda Evet / Hayır, kameranın 30 sn'de durması. Önerilen: **yalnız bu telefonda** tutulur (sunucuya gitmez, kişisel veri yok), günlük, son 30 gün; Ayarlar → "Okuma istatistikleri" ekranında bugün / 7 gün / 30 gün ve oranlar ("okumaların %4'ü yazıdan"), "Sıfırla" düğmesi. (Onay bekliyor: yalnız telefonda mı, yoksa ileride bütün telefonlar toplu mu görülsün?)
 
 ## Sonraya
 - [ ] **"Nerede kullanıldı?"nın konumdan otomatik dolması – Google'dan çekme ERTELENDİ** (Google hesabı 1.500 TL ön ödeme istiyor; Geocoding anahtarı / günlük kota 250 hazır bekliyor). Kararlar:
