@@ -104,7 +104,7 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 - (Saha kullanıcısına araç bağlama: vazgeçildi.)
 
 ## Sonraya
-- [ ] **"Nerede kullanıldı?"nın konumdan otomatik dolması – Google'dan çekme ERTELENDİ** (Google hesabı 1.500 TL ön ödeme istiyor; Geocoding anahtarı / günlük kota 250 hazır bekliyor). Kararlar:
+- [ ] **"Nerede kullanıldı?"nın konumdan otomatik dolması – Google'dan çekme ASKIDA (23.10.2026, Seyfettin)** (Google hesabı 1.500 TL ön ödeme istiyor; Geocoding anahtarı / günlük kota 250 hazır bekliyor). Bugün eski montajlardan (15 m) + OpenStreetMap ile çalışıyor (1.28.0, malzeme montajında 1.30.3). Kararlar:
   - Önce eski montajlardan öğrenme: yeni konumun **en fazla 15 m** yakınında daha önce yazılmış ad varsa o gelir; konum hassasiyeti **±15 m'den kötüyse** eski ad önerilmez.
   - Yakında eski ad yoksa adres servisinden (OpenStreetMap / ileride Google) ilçe + mahalle.
   - İnternet yokken satır boş bırakılabilir, bağlantı gelince otomatik dolar (konum da yoksa elle yazmak zorunlu).
