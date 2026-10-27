@@ -31,7 +31,13 @@ jobs:
           if [ -n "$uyarilar" ]; then echo "::warning title=Analiz uyarıları::$uyarilar"; fi
           exit $durum
       - name: Testler (Okut kuralları vb.)
-        run: flutter test test/okut_listesi_test.dart test/bolge_adi_test.dart test/sn_metni_test.dart test/urun_adi_test.dart test/kurum_barkodu_test.dart
+        run: flutter test test/okut_listesi_test.dart test/bolge_adi_test.dart test/sn_metni_test.dart test/urun_adi_test.dart test/kurum_barkodu_test.dart test/xlsx_yazici_test.dart
+      - name: Örnek Excel raporu (elle kontrol için)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ornek-rapor-xlsx
+          path: build/ornek_rapor.xlsx
+          retention-days: 7
       - run: flutter build web --release
       - name: Web duman testi (giriş ekranı, tarayıcı tanıma)
         run: |

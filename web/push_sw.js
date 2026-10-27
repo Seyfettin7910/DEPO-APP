@@ -7,9 +7,9 @@ self.addEventListener('activate', function (e) { e.waitUntil(self.clients.claim(
 self.addEventListener('push', function (event) {
   var veri = {};
   try { veri = event.data ? event.data.json() : {}; } catch (_) {
-    veri = { baslik: 'DEPO OTOMASYON SİSTEMİ', govde: event.data ? event.data.text() : '' };
+    veri = { baslik: 'DEPO YÖNETİM SİSTEMİ', govde: event.data ? event.data.text() : '' };
   }
-  var baslik = veri.baslik || 'DEPO OTOMASYON SİSTEMİ';
+  var baslik = veri.baslik || 'DEPO YÖNETİM SİSTEMİ';
   event.waitUntil(self.registration.showNotification(baslik, {
     body: veri.govde || '',
     icon: 'icons/Icon-192.png',

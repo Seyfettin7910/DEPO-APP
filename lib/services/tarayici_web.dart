@@ -1,4 +1,5 @@
 import 'dart:js_interop';
+import 'dart:typed_data';
 
 // web/tarayici.js içindeki global fonksiyonlar
 @JS('depoTarayiciAdi')
@@ -13,6 +14,8 @@ external JSPromise<JSBoolean> _kalici();
 external JSString _zoomAraligi();
 @JS('depoZoomAyarla')
 external JSPromise<JSBoolean> _zoomAyarla(JSNumber oran);
+@JS('depoDosyaIndir')
+external JSBoolean _dosyaIndir(JSUint8Array baytlar, JSString ad, JSString tur);
 
 T _guvenli<T>(T Function() f, T varsayilan) {
   try {
@@ -59,3 +62,7 @@ Future<bool> webZoomAyarla(double oran) async {
     return false;
   }
 }
+
+/// 1.30.4: dosyayı tarayıcıda indirir (Excel raporu). Olmazsa false.
+bool dosyaIndir(Uint8List baytlar, String ad, String tur) =>
+    _guvenli(() => _dosyaIndir(baytlar.toJS, ad.toJS, tur.toJS).toDart, false);

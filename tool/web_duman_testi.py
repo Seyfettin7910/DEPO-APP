@@ -81,7 +81,7 @@ def main():
 
             ctx, s = ac(t, "masaustu_chrome")
             yazi = metin(s)
-            kontrol("DEPO OTOMASYON" in yazi, "masaüstü: giriş ekranı yazısı görünüyor")
+            kontrol("DEPO YÖNETİM" in yazi, "masaüstü: giriş ekranı yazısı görünüyor")
             kontrol("Android uygulamasını indir" in yazi,
                     "masaüstü: Android APK linki görünüyor")
             kontrol(s.evaluate("depoTarayiciAdi()") == "Chrome",
@@ -96,7 +96,7 @@ def main():
             kontrol(s.evaluate("depoTarayiciAdi()") == "Safari",
                     "iPhone: Safari olarak tanındı")
             kontrol(s.evaluate("depoIos()") is True, "iPhone: iOS olarak tanındı")
-            kontrol("DEPO OTOMASYON" in yazi, "iPhone: giriş ekranı yazısı görünüyor")
+            kontrol("DEPO YÖNETİM" in yazi, "iPhone: giriş ekranı yazısı görünüyor")
             kontrol("Android uygulamasını indir" not in yazi,
                     "iPhone: APK linki gizli")
             ctx.close()

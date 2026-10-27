@@ -70,7 +70,8 @@ class _BildirimAyarlariScreenState
     } else if (izin == 'denied') {
       icerik = Text(WebBildirim.iphone
           ? 'Bildirim izni kapalı. iPhone Ayarlar > Bildirimler > '
-              'DEPO OTOMASYON SİSTEMİ bölümünden açın.'
+              'Depo Yönetim (eski eklemelerde DEPO OTOMASYON SİSTEMİ) '
+              'bölümünden açın.'
           : 'Bildirim izni bu site için engellenmiş. Adres çubuğundaki '
               'kilit simgesinden bildirimlere izin verin.');
     } else if (_webAbone == true) {

@@ -25,6 +25,7 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 - [ ] 1.30.1: Okut'ta kayıtsız seri → "Depoya ekle" → "+ Yeni" ile model tanımla, seçili geliyor mu, seriler duruyor mu.
 - [ ] 1.30.2: barkodsuz malzemeye kurum kodu (tek tek / hepsine), barkod etiketi basma + önizleme, Okut'ta etiketi okutunca kutu içeriği ekleniyor mu, tanımsız 266'lı kodda uyarı.
 - [ ] 1.30.3: **Stok Kodu** (Ürünler → ⋮ → "Malzemelere stok kodu ver": yalnız barkodsuzlara / bütün malzemelere; yeni malzemede barkod boşsa kendiliğinden; Okut'ta fabrika barkodunda "kutudaki stok kodu etiketini okutun"); malzeme girişi sonrası "Etiket basılsın mı?" (önerilen adetler, tek önizleme); kategori açılır liste + "+ Yeni" (benzer ad uyarısı); Ayarlar → Kullanıcılar (son giriş, sürüm, görünen ad düzeltme; ikinci SQL için "herkes 1.29.1+ mı" buradan); bilgisayarda sağ tık / ⋮ (Ürünler, Ara, depo stok); bildirimlerde dişli yok; Malzeme Montaj / Kullanıldı (konum şeridi, Kaydet anında konum, yer kendiliğinden, 0 kalemde Kaydet kapalı); senkron düğmesi daha az "Gönderiliyor…", yazdırma / izin penceresinden dönünce senkron yok; "isteğe bağlı" yazıları.
+- [ ] 1.30.4: yeni ad (simge altında "Depo Yönetim", giriş ekranı, web sekmesi, PDF); güncelleme eski sürümden sorunsuz geliyor mu; **Excel raporu Excel 2007'de uyarısız açılıyor mu** (kalın başlık, renkli satırlar, bağlantı tıklanıyor mu), telefonda paylaşma ve bilgisayarda indirme.
 
 ## Final paketi (toplanıyor; tek güncellemede yapılacak, "yap" bekliyor)
 İhtiyaçlar ekran ekran toplanıyor: Okut · Depolar · Ürünler · Ara ve cihaz kartı · Raporlar · Ayarlar ve bildirimler · Bilgisayar (web) ve iPhone · Sistem.
@@ -165,4 +166,4 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
   - Sunucunun yeri (yurt dışı aktarım) → Türkiye / belediye sunucusu kararıyla birlikte.
   - Yedekler şu an Seyfettin'in kişisel Drive'ında (şifreli) + gizli GitHub deposunda; gerçek kullanımda belediyenin hesabına / sunucusuna taşınır; yedeklerin saklama süresi de aydınlatma metnine.
   - Belediyenin KVKK sorumlusuna bilgi (VERBİS envanteri onların işi). Not alanlarına vatandaş adı / telefonu yazılmaması kullanım kuralı.
-- [ ] Eski `depo-takip.apk` adını kaldırma (herkes 1.16.4+ olunca).
+- [ ] Eski `depo-takip.apk` ve `Depo-Otomasyon-Sistemi.apk` adlarını kaldırma (herkes 1.30.4+ olunca; 1.30.4'ten beri asıl ad `Depo-Yonetim-Sistemi.apk`).

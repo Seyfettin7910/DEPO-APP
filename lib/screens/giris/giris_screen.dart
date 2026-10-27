@@ -123,7 +123,7 @@ class _GirisScreenState extends State<GirisScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  const Text('DEPO OTOMASYON SİSTEMİ',
+                  const Text('DEPO YÖNETİM SİSTEMİ',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                           fontSize: 24,

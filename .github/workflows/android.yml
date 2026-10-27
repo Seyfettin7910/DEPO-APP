@@ -1,6 +1,7 @@
 # Her yüklemede (main dalı) imzalı Android APK derler ve GitHub "Releases"
 # bölümüne koyar. Sabit indirme adresi:
-# https://github.com/Seyfettin7910/DEPO-APP/releases/latest/download/Depo-Otomasyon-Sistemi.apk
+# https://github.com/Seyfettin7910/DEPO-APP/releases/latest/download/Depo-Yonetim-Sistemi.apk
+# (1.30.4'ten önceki sürümler güncellemeyi eski adlarla arar: Depo-Otomasyon-Sistemi.apk, depo-takip.apk)
 # (Eski uygulamalar güncelleme için depo-takip.apk adını arar; o da yüklenir.)
 #
 # Gerekli secret'lar (Settings > Secrets and variables > Actions):
@@ -63,14 +64,16 @@ jobs:
         run: flutter build apk --release --dart-define=APP_SURUM=${{ steps.surum.outputs.v }}
 
       - run: |
+          cp build/app/outputs/flutter-apk/app-release.apk Depo-Yonetim-Sistemi.apk
           cp build/app/outputs/flutter-apk/app-release.apk Depo-Otomasyon-Sistemi.apk
           cp build/app/outputs/flutter-apk/app-release.apk depo-takip.apk
 
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.surum.outputs.v }}
-          name: DEPO OTOMASYON SİSTEMİ ${{ steps.surum.outputs.v }}
+          name: DEPO YÖNETİM SİSTEMİ ${{ steps.surum.outputs.v }}
           files: |
+            Depo-Yonetim-Sistemi.apk
             Depo-Otomasyon-Sistemi.apk
             depo-takip.apk
           make_latest: true

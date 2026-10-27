@@ -36,6 +36,29 @@ class NotMaddesi {
 
 const surumNotlari = <SurumNotu>[
   SurumNotu(
+    surum: '1.30.4',
+    tarih: '27.10.2026',
+    bolumler: [
+      NotBolumu('Değişen', [
+        NotMaddesi(
+          'Yeni ad: DEPO YÖNETİM SİSTEMİ',
+          'Ana ekranda "Depo Yönetim", giriş ekranında ve raporlarda tam ad.',
+          'Güncelleme her zamanki gibi; yeniden kurmaya gerek yok. iPhone\'da '
+              'ana ekrandaki ad, simge silinip yeniden eklenince değişir.',
+        ),
+      ]),
+      NotBolumu('Düzeltilen', [
+        NotMaddesi(
+          'Excel raporları',
+          'Excel 2007 artık "okunamayan içerik buldu" demeden açıyor.',
+          'Raporların görünümü aynı (kalın başlık, renkli satırlar, '
+              'bağlantılar). Excel 2007 ve sonrası, LibreOffice, Google Sheets '
+              've telefon Excel\'inde açılır.',
+        ),
+      ]),
+    ],
+  ),
+  SurumNotu(
     surum: '1.30.3',
     tarih: '23.10.2026',
     bolumler: [

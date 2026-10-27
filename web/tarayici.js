@@ -88,3 +88,22 @@ function depoZoomAyarla(oran) {
       .catch(function () { return false; });
   } catch (e) { return Promise.resolve(false); }
 }
+
+// 1.30.4: bilgisayar tarayıcısında dosyayı indirir (Excel raporu).
+function depoDosyaIndir(baytlar, ad, tur) {
+  try {
+    var blob = new Blob([baytlar], { type: tur });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = ad;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () {
+      URL.revokeObjectURL(url);
+      a.remove();
+    }, 2000);
+    return true;
+  } catch (e) { return false; }
+}

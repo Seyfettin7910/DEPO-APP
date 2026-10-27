@@ -1,9 +1,13 @@
-# Depo Takip Uygulaması
+# DEPO YÖNETİM SİSTEMİ (Depo Yönetim)
 
 Çok kullanıcılı, çoklu depo, offline-senkronizasyonlu stok ve kullanım takip
 uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
+
+## 1.30.4 – Ad: DEPO YÖNETİM SİSTEMİ; Excel 2007 uyumu
+- Ad: Android / iPhone simge altı "Depo Yönetim", web sekmesi / giriş ekranı / PDF alt bilgisi / güncelleme bildirimi "DEPO YÖNETİM SİSTEMİ". APK artık **Depo-Yonetim-Sistemi.apk**; eski sürümlerin güncellemesi bozulmasın diye aynı APK `Depo-Otomasyon-Sistemi.apk` ve `depo-takip.apk` adlarıyla da yüklenir (herkes 1.30.4+ olunca kaldırılır). Paket adı, depo, veritabanı aynı.
+- Excel: `excel` paketi kaldırıldı (Google Sheets şablonundaki x14ac / mc:Ignorable / Mac / çizim parçaları yüzünden Excel 2007 "okunamayan içerik" diyordu). `lib/services/xlsx_yazici.dart`: yalnız ECMA-376 (2006) parçalarıyla yazan küçük yazıcı (paylaşılan yazılar, 6 stil, sütun genişliği, HYPERLINK formülü + hazır sonuç, `archive` ile zip). `ExcelRaporService.olustur` aynı düzeni kurar; web'de `dosyaIndir` (web/tarayici.js `depoDosyaIndir`). Testleri `test/xlsx_yazici_test.dart` (XML geçerliliği, yalnız 2006 ad alanları, hücre türleri, kaçış); CI örnek dosyayı `ornek-rapor-xlsx` yapıtı olarak yükler.
 
 ## 1.30.3 – Stok Kodu, girişte etiket, kategori listesi, Kullanıcılar, sağ tık, daha az senkron
 - **Stok Kodu** (266'lı kurum içi EAN-13; ekranda "kurum kodu" artık yalnız BLD cihaz etiketleri için): `malzemeyeKurumKoduVer(fabrikaninYerine:)`, `stokKoduSayilari`, `malzemelereStokKoduVer` (barkodsuzlara ya da fabrika barkodlarının yerine; stok kodu olanlara dokunulmaz). Ürün formu: barkod boş malzeme kaydedilirken stok kodu üretilir. Okut / malzeme ekranı: tanımsız fabrika barkodu "kutudaki stok kodu etiketini okutun" (artık malzemeye yazılmaz); ipucu 2 satır.
@@ -358,7 +362,7 @@ Tarih aralığı seçildiğinde son gün de dahil edilir.
 
 `.github/workflows/android.yml` her yüklemede imzalı APK derler ve Releases'e koyar.
 Sabit indirme adresi (saha ekibine bu link verilir):
-https://github.com/Seyfettin7910/DEPO-APP/releases/latest/download/Depo-Otomasyon-Sistemi.apk
+https://github.com/Seyfettin7910/DEPO-APP/releases/latest/download/Depo-Yonetim-Sistemi.apk
 
 - İmza anahtarı repoda DEĞİL; GitHub secret'larında durur
   (`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`). Yedeği güvenli yerde saklanmalı.

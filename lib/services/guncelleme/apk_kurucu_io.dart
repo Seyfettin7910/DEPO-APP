@@ -18,7 +18,7 @@ const _kanal = MethodChannel('depo_takip/guncelleme');
 const _anahtarId = 'guncelleme_indirme_id';
 const _anahtarSurum = 'guncelleme_indirme_surum';
 
-String _ad(String surum) => 'Depo-Otomasyon-Sistemi-$surum.apk';
+String _ad(String surum) => 'Depo-Yonetim-Sistemi-$surum.apk';
 
 Future<SharedPreferences?> _prefs() async {
   try {
@@ -102,7 +102,8 @@ Future<void> _eskileriTemizle(String surum) async {
         final dosyaAdi = e.uri.pathSegments.last;
         if (e is File &&
             (dosyaAdi.startsWith('depo-takip-') ||
-                dosyaAdi.startsWith('Depo-Otomasyon-Sistemi-')) &&
+                dosyaAdi.startsWith('Depo-Otomasyon-Sistemi-') ||
+                dosyaAdi.startsWith('Depo-Yonetim-Sistemi-')) &&
             dosyaAdi != ad) {
           e.deleteSync();
         }
@@ -140,7 +141,7 @@ Future<String> apkIndir(
       id = await _kanal.invokeMethod<int>('indirmeBaslat', {
         'url': url,
         'ad': _ad(surum),
-        'baslik': 'DEPO OTOMASYON SİSTEMİ $surum',
+        'baslik': 'DEPO YÖNETİM SİSTEMİ $surum',
         'sadeceWifi': sadeceWifi,
       });
     } catch (_) {

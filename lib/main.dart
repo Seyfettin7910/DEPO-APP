@@ -51,7 +51,7 @@ class DepoApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'DEPO OTOMASYON SİSTEMİ',
+      title: 'DEPO YÖNETİM SİSTEMİ',
       debugShowCheckedModeBanner: false,
       // Güncelleme penceresi hangi ekranda olunursa olsun açılabilsin.
       navigatorKey: GuncellemeServisi.navigatorKey,

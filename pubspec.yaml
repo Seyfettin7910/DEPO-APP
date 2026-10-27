@@ -1,7 +1,7 @@
 name: depo_app
 description: Çok kullanıcılı, çoklu depo stok ve kullanım takip uygulaması (iOS / Android / Windows / Web)
 publish_to: 'none'
-version: 1.30.3+65
+version: 1.30.4+66
 
 environment:
   sdk: '>=3.3.0 <4.0.0'
@@ -50,8 +50,9 @@ dependencies:
   # Raporlama
   pdf: ^3.11.0
   printing: ^5.13.1
-  # Excel (.xlsx) rapor çıktısı ve telefonda paylaşma
-  excel: '>=4.0.2 <5.0.0'
+  # Excel (.xlsx) rapor çıktısı: 1.30.4'ten beri kendi yazıcımız
+  # (lib/services/xlsx_yazici.dart; Excel 2007 uyumlu), zip için archive.
+  archive: '>=3.4.0 <5.0.0'
   share_plus: '>=7.2.0 <11.0.0'
   # Güncelleme kontrolü ve indirme linkini açma
   http: '>=0.13.5 <2.0.0'
@@ -63,6 +64,8 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  # Excel yazıcısı testinde XML denetimi
+  xml: '>=6.3.0 <7.0.0'
   flutter_lints: ^4.0.0
 
 flutter:
