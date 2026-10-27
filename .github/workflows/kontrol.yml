@@ -41,9 +41,10 @@ jobs:
       - run: flutter build web --release
       - name: Web duman testi (giriş ekranı, tarayıcı tanıma)
         run: |
-          pip install --quiet playwright==1.47.0
-          python -m playwright install --with-deps chromium > /dev/null
-          python3 tool/web_duman_testi.py
+          cat /etc/os-release | grep PRETTY_NAME
+          pip install --quiet playwright==1.47.0 || { echo "::error title=Duman testi::pip install playwright başarısız"; exit 1; }
+          python -m playwright install --with-deps chromium > pw_kurulum.txt 2>&1 || { echo "::error title=Duman testi::playwright kurulumu başarısız: $(tail -c 600 pw_kurulum.txt | tr '\n' ' ')"; exit 1; }
+          python3 tool/web_duman_testi.py 2> duman_hata.txt || { echo "::error title=Duman testi::betik hata verdi: $(tail -c 800 duman_hata.txt | tr '\n' ' ')"; exit 1; }
 
   android:
     runs-on: ubuntu-latest
