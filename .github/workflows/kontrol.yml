@@ -39,6 +39,11 @@ jobs:
           path: build/ornek_rapor.xlsx
           retention-days: 7
       - run: flutter build web --release
+      # Ubuntu 26 görüntüsünde sistem Python'una pip ile kurulamıyor
+      # (externally-managed); ayrı Python kullanılır.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - name: Web duman testi (giriş ekranı, tarayıcı tanıma)
         run: |
           cat /etc/os-release | grep PRETTY_NAME
