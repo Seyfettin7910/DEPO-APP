@@ -27,6 +27,9 @@ def kontrol(kosul, mesaj):
     print(("TAMAM  " if kosul else "HATA   ") + mesaj, flush=True)
     if not kosul:
         hatalar.append(mesaj)
+        # Actions özetinde (annotation) görünsün
+        ek = (" · ekrandaki yazı: " + son_yazi[:400].replace("\n", " ")) if son_yazi else ""
+        print(f"::error title=Web duman testi::{mesaj}{ek}", flush=True)
 
 
 def ac(tarayici, ad, ua=None, mobil=False):
@@ -59,8 +62,12 @@ def ac(tarayici, ad, ua=None, mobil=False):
     return ctx, sayfa
 
 
+son_yazi = ""
+
+
 def metin(sayfa):
-    return sayfa.evaluate("""() => {
+    global son_yazi
+    son_yazi = sayfa.evaluate("""() => {
         const parcalar = [];
         document.querySelectorAll('flt-semantics, [aria-label]').forEach(e => {
           if (e.getAttribute('aria-label')) parcalar.push(e.getAttribute('aria-label'));
@@ -68,6 +75,7 @@ def metin(sayfa):
         });
         return parcalar.join(' | ');
     }""")
+    return son_yazi
 
 
 def main():
