@@ -52,7 +52,9 @@ dependencies:
   printing: ^5.13.1
   # Excel (.xlsx) rapor çıktısı: 1.30.4'ten beri kendi yazıcımız
   # (lib/services/xlsx_yazici.dart; Excel 2007 uyumlu), zip için archive.
-  archive: '>=3.4.0 <5.0.0'
+  # 3.6.x: önceki excel paketinin çözümüyle aynı (archive 4 + image 4.11
+  # birlikte derlenmiyor: ZLibDecoder.decodeLazy yok).
+  archive: ^3.6.1
   share_plus: '>=7.2.0 <11.0.0'
   # Güncelleme kontrolü ve indirme linkini açma
   http: '>=0.13.5 <2.0.0'
