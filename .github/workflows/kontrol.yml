@@ -32,6 +32,15 @@ jobs:
           exit $durum
       - name: Testler (Okut kuralları vb.)
         run: flutter test test/okut_listesi_test.dart test/bolge_adi_test.dart test/sn_metni_test.dart test/urun_adi_test.dart test/kurum_barkodu_test.dart test/xlsx_yazici_test.dart
+      # Ubuntu 26 görüntüsünde sistem Python'una pip ile kurulamıyor
+      # (externally-managed); ayrı Python (Excel denetimi ve duman testi).
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Excel çıktısını bağımsız okuyucuyla denetle (openpyxl)
+        run: |
+          pip install --quiet openpyxl==3.1.5
+          python3 tool/xlsx_denetim.py
       - name: Örnek Excel raporu (elle kontrol için)
         uses: actions/upload-artifact@v4
         with:
@@ -39,11 +48,6 @@ jobs:
           path: build/ornek_rapor.xlsx
           retention-days: 7
       - run: flutter build web --release
-      # Ubuntu 26 görüntüsünde sistem Python'una pip ile kurulamıyor
-      # (externally-managed); ayrı Python kullanılır.
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
       - name: Web duman testi (giriş ekranı, tarayıcı tanıma)
         run: |
           cat /etc/os-release | grep PRETTY_NAME
