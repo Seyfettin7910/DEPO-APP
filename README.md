@@ -5,6 +5,9 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.30.5 – Excel görünümü PDF gibi
+- Excel görünümü PDF'e benzetildi (Excel 2007'de açık gri başlık neredeyse görünmüyordu): `XlsxBicim` (kalın, boyut, yazı rengi, altı çizili, dolgu, çerçeve, alt çizgi, kaydırma; birleşimler styles.xml'e bir kez yazılır), başlık 16 pt, gri alt başlık + çizgi, yan yana yeşil özet kutuları, yeşil bölüm başlığı, gri / çerçeveli tablo başlığı, çerçeveli ve bir beyaz bir açık gri satırlar. Tek tablolu raporda başlık satırı dondurulur ve yazdırmada her sayfada tekrarlanır (`_xlnm.Print_Titles`); yazdırma sayfa genişliğine sığar, yatay rapor yatay basılır, alt bilgi "DEPO YÖNETİM SİSTEMİ · Sayfa x / y". CI'da `tool/xlsx_denetim.py` örnek dosyayı openpyxl ile hücre hücre denetler.
+
 ## 1.30.4 – Ad: DEPO YÖNETİM SİSTEMİ; Excel 2007 uyumu
 - Ad: Android / iPhone simge altı "Depo Yönetim", web sekmesi / giriş ekranı / PDF alt bilgisi / güncelleme bildirimi "DEPO YÖNETİM SİSTEMİ". APK artık **Depo-Yonetim-Sistemi.apk**; eski sürümlerin güncellemesi bozulmasın diye aynı APK `Depo-Otomasyon-Sistemi.apk` ve `depo-takip.apk` adlarıyla da yüklenir (herkes 1.30.4+ olunca kaldırılır). Paket adı, depo, veritabanı aynı.
 - Excel: `excel` paketi kaldırıldı (Google Sheets şablonundaki x14ac / mc:Ignorable / Mac / çizim parçaları yüzünden Excel 2007 "okunamayan içerik" diyordu). `lib/services/xlsx_yazici.dart`: yalnız ECMA-376 (2006) parçalarıyla yazan küçük yazıcı (paylaşılan yazılar, 6 stil, sütun genişliği, HYPERLINK formülü + hazır sonuç, `archive` ile zip). `ExcelRaporService.olustur` aynı düzeni kurar; web'de `dosyaIndir` (web/tarayici.js `depoDosyaIndir`). Testleri `test/xlsx_yazici_test.dart` (XML geçerliliği, yalnız 2006 ad alanları, hücre türleri, kaçış); CI örnek dosyayı `ornek-rapor-xlsx` yapıtı olarak yükler.

@@ -87,7 +87,7 @@ void main() {
       'mc:',
       'x14', 'x15', 'xr:', 'xr2', 'xr3', // 2009+ ad alanları
       'spreadsheetml/2009', 'spreadsheetml/2010', 'spreadsheetml/2014',
-      'office/mac', 'drawing', 'chartex', 'theme',
+      'office/mac', 'drawing', 'chartex', 'theme1',
     ];
     for (final e in dosyalar.entries) {
       for (final y in yasak) {
@@ -111,48 +111,119 @@ void main() {
     }
   });
 
-  test('hücreler: yazı, sayı, bağlantı, stil', () {
+  test('hücreler ve PDF gibi görünüm', () {
     final d = _ac(ExcelRaporService.olustur(_ornekRapor()));
     final sayfa = XmlDocument.parse(d['xl/worksheets/sheet1.xml']!);
     final sst = XmlDocument.parse(d['xl/sharedStrings.xml']!);
+    final stil = XmlDocument.parse(d['xl/styles.xml']!);
+    final kitap = XmlDocument.parse(d['xl/workbook.xml']!);
     final yazilar = [
-      for (final si in sst.findAllElements('si')) si.findElements('t').first.innerText
+      for (final si in sst.findAllElements('si'))
+        si.findElements('t').first.innerText
     ];
-    expect(yazilar, contains('Hareket Geçmişi'));
-    expect(yazilar, contains('Ağ ürünleri & "kayıt" <cihazları>'));
-    expect(yazilar, contains('ÇİĞDEM ŞÜKRÜ İĞNE'));
-    expect(yazilar, contains('Kayıt yok'));
+    final xfler = stil
+        .findAllElements('cellXfs')
+        .single
+        .findElements('xf')
+        .toList();
+    final yazitipleri = stil.findAllElements('font').toList();
+    final dolgular = stil.findAllElements('fill').toList();
+    final kenarlar = stil.findAllElements('border').toList();
 
     XmlElement hucre(String ref) => sayfa
         .findAllElements('c')
         .firstWhere((c) => c.getAttribute('r') == ref);
-    String yaziOf(XmlElement c) =>
-        yazilar[int.parse(c.findElements('v').first.innerText)];
+    String deger(String ref) {
+      final c = hucre(ref);
+      final v = c.findElements('v').first.innerText;
+      return c.getAttribute('t') == 's' ? yazilar[int.parse(v)] : v;
+    }
 
-    // A1: büyük başlık
-    expect(hucre('A1').getAttribute('s'), '${XlsxStil.baslik.index}');
-    expect(yaziOf(hucre('A1')), 'Hareket Geçmişi');
-    // Özet: "Toplam" 12 sayı olarak
-    final b4 = hucre('B4');
-    expect(b4.getAttribute('t'), isNull);
-    expect(b4.findElements('v').first.innerText, '12');
-    // Bağlantı formülü + hazır sonuç
-    final link = sayfa.findAllElements('f').single;
-    expect(link.innerText,
+    XmlElement xf(String ref) =>
+        xfler[int.parse(hucre(ref).getAttribute('s') ?? '0')];
+    XmlElement yazi(String ref) =>
+        yazitipleri[int.parse(xf(ref).getAttribute('fontId')!)];
+    bool kalin(String ref) => yazi(ref).findElements('b').isNotEmpty;
+    String boyut(String ref) =>
+        yazi(ref).findElements('sz').first.getAttribute('val')!;
+    String? zemin(String ref) => dolgular[int.parse(xf(ref).getAttribute('fillId')!)]
+        .findAllElements('fgColor')
+        .firstOrNull
+        ?.getAttribute('rgb');
+    XmlElement kenar(String ref) =>
+        kenarlar[int.parse(xf(ref).getAttribute('borderId')!)];
+    bool cerceveli(String ref) =>
+        kenar(ref).findElements('left').single.getAttribute('style') == 'thin';
+
+    // Başlık: kalın 16
+    expect(deger('A1'), 'Hareket Geçmişi');
+    expect(kalin('A1'), isTrue);
+    expect(boyut('A1'), '16');
+    // Alt başlık gri, altında çizgi (tablo genişliğince)
+    expect(yazi('A2').findElements('color').single.getAttribute('rgb'),
+        'FF616161');
+    expect(kenar('E2').findElements('bottom').single.getAttribute('style'),
+        'thin');
+    // Özet kutuları: yan yana, yeşil; değer sayı, kalın 14
+    expect(deger('A4'), 'Toplam');
+    expect(deger('B4'), 'Dönem');
+    expect(zemin('A4'), 'FFE8F5E9');
+    expect(hucre('A5').getAttribute('t'), isNull);
+    expect(deger('A5'), '12');
+    expect(kalin('A5'), isTrue);
+    expect(boyut('A5'), '14');
+    expect(zemin('B5'), 'FFE8F5E9');
+    // Bölüm başlığı yeşil, bütün tablo genişliğince
+    expect(deger('A7'), 'KAMERA MONTAJ EKİBİ DEPOSU');
+    expect(zemin('A7'), 'FFC8E6C9');
+    expect(zemin('E7'), 'FFC8E6C9');
+    expect(deger('A8'), 'Ağ ürünleri & "kayıt" <cihazları>');
+    // Tablo başlığı: gri, kalın, çerçeveli
+    expect(deger('A9'), 'Tarih');
+    expect(deger('E9'), 'Konum');
+    expect(zemin('A9'), 'FFE0E0E0');
+    expect(kalin('A9'), isTrue);
+    expect(cerceveli('A9'), isTrue);
+    // Satırlar: çerçeveli; ilki beyaz, ikincisi açık gri
+    expect(cerceveli('A10'), isTrue);
+    expect(zemin('A10'), isNull);
+    expect(zemin('A11'), 'FFF5F5F5');
+    expect(cerceveli('C11'), isTrue); // boş hücre de çizgili
+    expect(deger('D10'), '1');
+    expect(deger('D11'), '2.5');
+    expect(deger('B11'), 'ÇİĞDEM ŞÜKRÜ İĞNE');
+    // Bağlantı: formül + hazır sonuç, mavi altı çizili, çerçeve korunur
+    final link = hucre('E10');
+    expect(link.getAttribute('t'), 'str');
+    expect(link.findElements('f').single.innerText,
         'HYPERLINK("https://maps.google.com/?q=39.6,27.9","Haritada aç")');
-    final linkHucre = link.parent! as XmlElement;
-    expect(linkHucre.getAttribute('t'), 'str');
-    expect(linkHucre.findElements('v').first.innerText, 'Haritada aç');
-    // Ondalık sayı
-    expect(sayfa.findAllElements('v').any((v) => v.innerText == '2.5'), isTrue);
-    // Sütun genişlikleri en az 14
+    expect(link.findElements('v').single.innerText, 'Haritada aç');
+    expect(yazi('E10').findElements('u').isNotEmpty, isTrue);
+    expect(cerceveli('E10'), isTrue);
+    // Boş bölüm
+    expect(deger('A13'), 'Boş bölüm');
+    expect(deger('A14'), 'Kayıt yok');
+    // Tek tablo: başlık satırı sabit (9. satırın altından), yazdırmada tekrar
+    final pane = sayfa.findAllElements('pane').single;
+    expect(pane.getAttribute('ySplit'), '9');
+    expect(pane.getAttribute('state'), 'frozen');
+    expect(kitap.findAllElements('definedName').single.innerText,
+        "'Rapor'!\$9:\$9");
+    // Yazdırma: sayfa genişliğine sığdır, alt bilgi
+    final ps = sayfa.findAllElements('pageSetup').single;
+    expect(ps.getAttribute('fitToWidth'), '1');
+    expect(ps.getAttribute('fitToHeight'), '0');
+    expect(sayfa.findAllElements('oddFooter').single.innerText,
+        '&R&8DEPO YÖNETİM SİSTEMİ · Sayfa &P / &N');
+    // Sütun genişlikleri en az 14, ürün sütunu 30
     final cols = sayfa.findAllElements('col').toList();
     expect(cols.length, 5);
     for (final c in cols) {
       expect(double.parse(c.getAttribute('width')!) >= 14, isTrue);
     }
-    // Ürün sütunu 30
     expect(cols[1].getAttribute('width'), '30.00');
+    // Biçim tekrarlanmaz (her birleşim bir kez)
+    expect(xfler.length, lessThan(20));
   });
 
   test('sayfa adı ve boş kitap', () {

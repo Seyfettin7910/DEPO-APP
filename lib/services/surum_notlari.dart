@@ -36,6 +36,22 @@ class NotMaddesi {
 
 const surumNotlari = <SurumNotu>[
   SurumNotu(
+    surum: '1.30.5',
+    tarih: '27.10.2026',
+    bolumler: [
+      NotBolumu('Değişen', [
+        NotMaddesi(
+          'Excel görünümü PDF gibi',
+          'Gri tablo başlığı, çizgili tablo, bir beyaz bir gri satırlar, '
+              'yeşil özet ve bölüm başlıkları.',
+          'Tek tablolu raporda aşağı kaydırınca sütun başlıkları sabit kalır; '
+              'yazdırınca sayfa genişliğine sığar, başlık her sayfada tekrarlanır, '
+              'altta "Sayfa x / y" yazar.',
+        ),
+      ]),
+    ],
+  ),
+  SurumNotu(
     surum: '1.30.4',
     tarih: '27.10.2026',
     bolumler: [
@@ -51,10 +67,10 @@ const surumNotlari = <SurumNotu>[
         NotMaddesi(
           'Excel raporları',
           'Excel 2007 artık "okunamayan içerik buldu" demeden açıyor.',
-          'Raporların görünümü aynı (kalın başlık, renkli satırlar, '
-              'bağlantılar). Excel 2007 ve sonrası, LibreOffice, Google Sheets '
-              've telefon Excel\'inde açılır.',
+          'Excel 2007 ve sonrası, LibreOffice, Google Sheets ve telefon '
+              'Excel\'inde açılır.',
         ),
+
       ]),
     ],
   ),
