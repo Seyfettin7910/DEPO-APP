@@ -33,10 +33,12 @@ class ExcelRaporService {
   static const _ayirici = XlsxBicim(altCizgi: _gri400);
   static const _altBaslikAyirici =
       XlsxBicim(boyut: 9, yaziRengi: _gri700, altCizgi: _gri400);
-  static const _ozetEtiket =
-      XlsxBicim(boyut: 8, yaziRengi: _gri700, dolgu: _yesil50);
-  static const _ozetDeger =
-      XlsxBicim(kalin: true, boyut: 14, dolgu: _yesil50);
+  // 1.30.6: her özet kutusu ayrı çerçeveli (Seyfettin'in Excel 2007'de
+  // çizdiği gibi): etiketin üstü ve yanları, rakamın altı ve yanları.
+  static const _ozetEtiket = XlsxBicim(
+      boyut: 8, yaziRengi: _gri700, dolgu: _yesil50, kutu: XlsxKutu.ust);
+  static const _ozetDeger = XlsxBicim(
+      kalin: true, boyut: 14, dolgu: _yesil50, kutu: XlsxKutu.alt);
   static const _bolum = XlsxBicim(kalin: true, boyut: 11, dolgu: _yesil100);
   static const _aciklama = XlsxBicim(boyut: 9, yaziRengi: _gri800);
   static const _kayitYok = XlsxBicim(boyut: 9, yaziRengi: _gri600);

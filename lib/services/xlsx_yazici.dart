@@ -29,6 +29,7 @@ class XlsxBicim {
     this.dolgu,
     this.kenarlik = false,
     this.altCizgi,
+    this.kutu,
     this.kaydir = false,
   });
 
@@ -46,6 +47,10 @@ class XlsxBicim {
   /// Yalnız altta ince çizgi (ayırıcı); rengi.
   final String? altCizgi;
 
+  /// Alt alta iki hücreden oluşan kutunun (özet: etiket + rakam) çerçevesi:
+  /// üst parça sol / sağ / üst, alt parça sol / sağ / alt çizgili (siyah).
+  final XlsxKutu? kutu;
+
   /// Yazı hücreye sığmazsa alt satıra kayar; dikeyde ortalanır.
   final bool kaydir;
 
@@ -59,11 +64,14 @@ class XlsxBicim {
         dolgu: dolgu,
         kenarlik: kenarlik,
         altCizgi: altCizgi,
+        kutu: kutu,
         kaydir: kaydir,
       );
 
   String get _yaziAnahtari => '$kalin|$boyut|$yaziRengi|$altiCizili';
-  String get _kenarAnahtari => kenarlik ? 'tum' : (altCizgi ?? '');
+  String get _kenarAnahtari => kenarlik
+      ? 'tum'
+      : (kutu != null ? 'kutu_${kutu!.name}' : (altCizgi ?? ''));
   String get _anahtar =>
       '$_yaziAnahtari|$dolgu|$_kenarAnahtari|$kaydir';
 
@@ -74,6 +82,9 @@ class XlsxBicim {
   @override
   int get hashCode => _anahtar.hashCode;
 }
+
+/// Kutu çerçevesinin parçası (bkz. [XlsxBicim.kutu]).
+enum XlsxKutu { ust, alt }
 
 /// Tıklanabilir bağlantı hücresi (HYPERLINK formülüyle).
 class XlsxBaglanti {
@@ -454,6 +465,13 @@ String _stiller(List<XlsxBicim> bicimler) {
       const c = '<color rgb="FF9E9E9E"/>';
       s.write('<border><left style="thin">$c</left><right style="thin">$c'
           '</right><top style="thin">$c</top><bottom style="thin">$c</bottom>'
+          '<diagonal/></border>');
+    } else if (k.startsWith('kutu_')) {
+      // Excel'in "otomatik" (siyah) çizgisi
+      const c = '<color indexed="64"/>';
+      final ust = k == 'kutu_ust';
+      s.write('<border><left style="thin">$c</left><right style="thin">$c'
+          '</right>${ust ? '<top style="thin">$c</top><bottom/>' : '<top/><bottom style="thin">$c</bottom>'}'
           '<diagonal/></border>');
     } else {
       s.write('<border><left/><right/><top/><bottom style="thin">'

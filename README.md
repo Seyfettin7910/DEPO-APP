@@ -5,6 +5,9 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.30.6 – Excel özet kutuları çerçeveli
+- `XlsxBicim.kutu` (`XlsxKutu.ust` / `.alt`): özet etiketinin üstü ve yanları, rakamının altı ve yanları ince siyah (Excel "otomatik") çizgi; her kutu ayrı. Seyfettin'in Excel 2007'de elle çizdiği biçim.
+
 ## 1.30.5 – Excel görünümü PDF gibi
 - Excel görünümü PDF'e benzetildi (Excel 2007'de açık gri başlık neredeyse görünmüyordu): `XlsxBicim` (kalın, boyut, yazı rengi, altı çizili, dolgu, çerçeve, alt çizgi, kaydırma; birleşimler styles.xml'e bir kez yazılır), başlık 16 pt, gri alt başlık + çizgi, yan yana yeşil özet kutuları, yeşil bölüm başlığı, gri / çerçeveli tablo başlığı, çerçeveli ve bir beyaz bir açık gri satırlar. Tek tablolu raporda başlık satırı dondurulur ve yazdırmada her sayfada tekrarlanır (`_xlnm.Print_Titles`); yazdırma sayfa genişliğine sığar, yatay rapor yatay basılır, alt bilgi "DEPO YÖNETİM SİSTEMİ · Sayfa x / y". CI'da `tool/xlsx_denetim.py` örnek dosyayı openpyxl ile hücre hücre denetler.
 

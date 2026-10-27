@@ -36,6 +36,16 @@ class NotMaddesi {
 
 const surumNotlari = <SurumNotu>[
   SurumNotu(
+    surum: '1.30.6',
+    tarih: '27.10.2026',
+    bolumler: [
+      NotBolumu('Değişen', [
+        NotMaddesi('Excel özet kutuları',
+            'Her özet kutusu (Toplam, Giriş, Servis…) ayrı çerçeveli.'),
+      ]),
+    ],
+  ),
+  SurumNotu(
     surum: '1.30.5',
     tarih: '27.10.2026',
     bolumler: [

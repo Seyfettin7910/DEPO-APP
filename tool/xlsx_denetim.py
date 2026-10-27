@@ -38,6 +38,8 @@ kontrol(ws["A2"].font.color is not None and ws["A2"].font.color.rgb.endswith("61
 kontrol(ws["E2"].border.bottom.style == "thin", "alt başlığın altında çizgi")
 kontrol(ws["A4"].value == "Toplam" and ws["B4"].value == "Dönem", "özet etiketleri yan yana")
 kontrol(renk(ws["A4"]) == "E8F5E9", f"özet kutusu yeşil ({renk(ws['A4'])})")
+kontrol(ws["A4"].border.top.style == "thin" and ws["B4"].border.left.style == "thin" and ws["A4"].border.bottom.style is None, "özet etiketi: üst ve yanlar çizgili")
+kontrol(ws["A5"].border.bottom.style == "thin" and ws["B5"].border.right.style == "thin" and ws["A5"].border.top.style is None, "özet rakamı: alt ve yanlar çizgili")
 kontrol(ws["A5"].value == 12 and ws["A5"].font.b and ws["A5"].font.sz == 14, "özet değeri sayı, kalın 14")
 kontrol(ws["A7"].value == "KAMERA MONTAJ EKİBİ DEPOSU", f"bölüm başlığı ({ws['A7'].value})")
 kontrol(renk(ws["A7"]) == "C8E6C9" and renk(ws["E7"]) == "C8E6C9", "bölüm başlığı yeşil, tablo genişliğince")

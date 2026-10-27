@@ -173,6 +173,23 @@ void main() {
     expect(kalin('A5'), isTrue);
     expect(boyut('A5'), '14');
     expect(zemin('B5'), 'FFE8F5E9');
+    // 1.30.6: her özet kutusu çerçeveli (etiket: üst + yanlar, rakam: alt +
+    // yanlar)
+    String? cizgi(String ref, String yon) =>
+        kenar(ref).findElements(yon).single.getAttribute('style');
+    for (final r in ['A4', 'B4']) {
+      expect(cizgi(r, 'top'), 'thin');
+      expect(cizgi(r, 'left'), 'thin');
+      expect(cizgi(r, 'right'), 'thin');
+      expect(cizgi(r, 'bottom'), isNull);
+    }
+    for (final r in ['A5', 'B5']) {
+      expect(cizgi(r, 'bottom'), 'thin');
+      expect(cizgi(r, 'left'), 'thin');
+      expect(cizgi(r, 'right'), 'thin');
+      expect(cizgi(r, 'top'), isNull);
+    }
+
     // Bölüm başlığı yeşil, bütün tablo genişliğince
     expect(deger('A7'), 'KAMERA MONTAJ EKİBİ DEPOSU');
     expect(zemin('A7'), 'FFC8E6C9');
