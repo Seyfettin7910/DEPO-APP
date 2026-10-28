@@ -9,7 +9,7 @@
 # Ayın ilk gününde (ve elle / bu dosya değişince) "geri yükleme denemesi":
 # yedek GitHub'dan indirilir, şifresi açılır, boş bir veritabanına yüklenir,
 # tablo satır sayıları döküm anındakilerle karşılaştırılır.
-# Yedeği elle açma / geri yükleme: YEDEK.md
+# Yedeği elle açma / geri yükleme: YEDEK.md (Windows: Gpg4win)
 #
 # Gerekli secret'lar (yalnız Seyfettin girer, hiçbir yerde açık yazılmaz):
 #   SUPABASE_DB_URL      Session pooler adresi, ŞİFRESİZ (port 5432)
