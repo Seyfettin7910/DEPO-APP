@@ -31,6 +31,7 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 
 ## Sıradaki ara sürüm (28.10.2026, Seyfettin'in kararı; "yap" bekliyor)
 - [ ] **Yazıdan okumaya geçiş 3 sn → 5 sn** (barkod görülmezse kamera barkodu daha uzun dener; 1.29.2'de 3 sn yapılmıştı; önce 4, sonra "5 bile olur" dendi).
+- [ ] **Seri no önündeki "]C1" gibi ekler (28.10.2026, Seyfettin'in fotoğrafı: "Kayıtlı cihaz yok: ]C1FB6637822"):** "]C1" barkod türü işareti (AIM kodu; GS1-128 / FNC1'li Code 128), seri no'nun parçası değil. Okunan kodun başındaki `]` + harf + rakam (]C1, ]C0, ]d2, ]Q3, ]e0…) ve görünmez GS (ayırıcı) karakterleri atılır; GS1 biçimindeyse (AI 21 = seri no) içinden seri no alınır. Bütün kamera ekranları ve barkod okuyucu (USB) girişi; testleri `seriAyikla` testlerine.
 - [ ] **Okuma kaynağı göstergesi:** okuma kabul edilince çerçevenin hemen üstünde 1,5 sn küçük etiket: "✓ Barkod" (çizgi barkod), "✓ Karekod" (koli dahil), "✓ Yazı (S/N)" (pembe). Kayıtlara / senkrona / rapora GEÇMEZ, yalnız ekranda. Bütün kamera ekranlarında. (Amaç: hangi etiketlerin barkoddan okunamadığını sahada görmek.)
 - [ ] **Okuma sayıları ("kapının ölçüsü"), göstergeyle aynı pakette, SENKRONLU** (amaç: hangi telefon modelinde okuma zayıf, cihaza özel iyileştirme):
   - Sayılanlar: kabul edilen okumalar kaynağa göre (barkod / karekod / yazı); yok sayılan kodlar sebebe göre (ürün barkodu, MAC, web adresi, sipariş / kutu kodu, kayıtlı değil…); "Doğru mu?" Evet / Hayır; kameranın 30 sn'de durması; ortalama okuma süresi (kamera açılışı / son okumadan kabul edilen okumaya).
