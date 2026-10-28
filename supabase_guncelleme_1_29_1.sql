@@ -1,4 +1,4 @@
--- DEPO OTOMASYON SİSTEMİ 1.29.1: eski kayıtlardaki yazılar BÜYÜK HARF
+-- DEPO YÖNETİM SİSTEMİ 1.29.1: eski kayıtlardaki yazılar BÜYÜK HARF
 -- Supabase > SQL Editor'da çalıştırın (Ctrl+A ile hepsini seçip Run).
 -- Tekrar çalıştırmak zararsızdır: yalnız küçük harf kalan kayıtlar değişir.
 -- Bütün telefonlar 1.29.1'e geçtikten sonra bir kez daha çalıştırmak iyi olur
@@ -6,7 +6,8 @@
 --
 -- * Yalnız kullanıcıların yazdığı / otomatik dolan metinler: ad, konum,
 --   açıklama, not, nerede kullanıldı, il / ilçe / mahalle, firma, ihale,
---   kategori, plaka. Türkçe kural: i → İ, ı → I (plakada i → I).
+--   kategori, plaka. Türkçe kural: i → İ, ı → I (plakada ve 1.29.3'ten beri
+--   ürün / model adında Latin kural: i → I, ör. hikvision → HIKVISION).
 -- * Seri no, barkod, kurum kodu, e-posta ve uygulamanın iç kodları
 --   (tip, durum, tutanak, birim…) DEĞİŞMEZ. Hiçbir kayıt silinmez.
 -- * Değişen kayıtların güncellenme zamanı ilerletilir; telefonlar yeni
@@ -31,7 +32,7 @@ declare
   -- tablo -> Türkçe kurallı sütunlar
   liste text[][] := array[
     array['depolar', 'ad'], array['depolar', 'konum'],
-    array['urunler', 'ad'], array['urunler', 'kategori'],
+    array['urunler', 'kategori'],
     array['araclar', 'ad'], array['araclar', 'aciklama'],
     array['kullanicilar', 'ad'],
     array['cihazlar', 'kullanim_yeri'], array['cihazlar', 'firma'],
@@ -63,6 +64,14 @@ begin
       toplam := toplam + n;
     end if;
   end loop;
+
+  -- Ürün / model adı: Latin kuralı (i → I; 1.29.3)
+  update public.urunler set ad = depo_latin_buyuk(ad),
+    updated_at = greatest(updated_at + 1,
+      (extract(epoch from clock_timestamp()) * 1000)::bigint)
+  where ad is distinct from depo_latin_buyuk(ad);
+  get diagnostics n = row_count;
+  toplam := toplam + n;
 
   -- Plaka: Latin kuralı (i → I)
   update public.araclar set plaka = depo_latin_buyuk(plaka),
