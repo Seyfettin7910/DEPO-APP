@@ -29,7 +29,6 @@ class ExcelRaporService {
   static const _yesil100 = 'C8E6C9'; // bölüm başlığı
 
   static const _baslik = XlsxBicim(kalin: true, boyut: 16);
-  static const _altBaslik = XlsxBicim(boyut: 9, yaziRengi: _gri700);
   static const _ayirici = XlsxBicim(altCizgi: _gri400);
   static const _altBaslikAyirici =
       XlsxBicim(boyut: 9, yaziRengi: _gri700, altCizgi: _gri400);
