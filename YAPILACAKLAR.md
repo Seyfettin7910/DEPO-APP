@@ -30,7 +30,7 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 - [ ] 1.30.6: Excel'de her özet kutusu ayrı çerçeveli mi.
 
 ## Sıradaki ara sürüm (28.10.2026, Seyfettin'in kararı; "yap" bekliyor)
-- [ ] **Yazıdan okumaya geçiş 3 sn → 4 sn** (barkod görülmezse kamera barkodu daha uzun dener; 1.29.2'de 3 sn yapılmıştı).
+- [ ] **Yazıdan okumaya geçiş 3 sn → 5 sn** (barkod görülmezse kamera barkodu daha uzun dener; 1.29.2'de 3 sn yapılmıştı; önce 4, sonra "5 bile olur" dendi).
 - [ ] **Okuma kaynağı göstergesi:** okuma kabul edilince çerçevenin hemen üstünde 1,5 sn küçük etiket: "✓ Barkod" (çizgi barkod), "✓ Karekod" (koli dahil), "✓ Yazı (S/N)" (pembe). Kayıtlara / senkrona / rapora GEÇMEZ, yalnız ekranda. Bütün kamera ekranlarında. (Amaç: hangi etiketlerin barkoddan okunamadığını sahada görmek.)
 - [ ] **Okuma sayıları ("kapının ölçüsü"), göstergeyle aynı pakette, SENKRONLU** (amaç: hangi telefon modelinde okuma zayıf, cihaza özel iyileştirme):
   - Sayılanlar: kabul edilen okumalar kaynağa göre (barkod / karekod / yazı); yok sayılan kodlar sebebe göre (ürün barkodu, MAC, web adresi, sipariş / kutu kodu, kayıtlı değil…); "Doğru mu?" Evet / Hayır; kameranın 30 sn'de durması; ortalama okuma süresi (kamera açılışı / son okumadan kabul edilen okumaya).
