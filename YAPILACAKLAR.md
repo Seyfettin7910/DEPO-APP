@@ -29,10 +29,8 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 - [ ] 1.30.5: Excel görünümü PDF gibi mi (Excel 2007'de: gri / çerçeveli tablo başlığı, bir beyaz bir gri satırlar, yeşil özet ve bölüm başlıkları); aşağı kaydırınca başlık sabit mi; yazdırma önizlemesinde sayfaya sığıyor mu, başlık her sayfada, altta "Sayfa x / y".
 - [ ] 1.30.6: Excel'de her özet kutusu ayrı çerçeveli mi.
 
-## Final paketi (toplanıyor; tek güncellemede yapılacak, "yap" bekliyor)
-İhtiyaçlar ekran ekran toplanıyor: Okut · Depolar · Ürünler · Ara ve cihaz kartı · Raporlar · Ayarlar ve bildirimler · Bilgisayar (web) ve iPhone · Sistem.
-
-### Okut
+## Sıradaki ara sürüm (28.10.2026, Seyfettin'in kararı; "yap" bekliyor)
+- [ ] **Yazıdan okumaya geçiş 3 sn → 4 sn** (barkod görülmezse kamera barkodu daha uzun dener; 1.29.2'de 3 sn yapılmıştı).
 - [ ] **Okuma kaynağı göstergesi:** okuma kabul edilince çerçevenin hemen üstünde 1,5 sn küçük etiket: "✓ Barkod" (çizgi barkod), "✓ Karekod" (koli dahil), "✓ Yazı (S/N)" (pembe). Kayıtlara / senkrona / rapora GEÇMEZ, yalnız ekranda. Bütün kamera ekranlarında. (Amaç: hangi etiketlerin barkoddan okunamadığını sahada görmek.)
 - [ ] **Okuma sayıları ("kapının ölçüsü"), göstergeyle aynı pakette, SENKRONLU** (amaç: hangi telefon modelinde okuma zayıf, cihaza özel iyileştirme):
   - Sayılanlar: kabul edilen okumalar kaynağa göre (barkod / karekod / yazı); yok sayılan kodlar sebebe göre (ürün barkodu, MAC, web adresi, sipariş / kutu kodu, kayıtlı değil…); "Doğru mu?" Evet / Hayır; kameranın 30 sn'de durması; ortalama okuma süresi (kamera açılışı / son okumadan kabul edilen okumaya).
@@ -42,6 +40,13 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
   - Görünüm: Raporlar → "Okuma istatistikleri" (internet gerekir, sunucudan anlık okunur, giriş kayıtları gibi): telefon modeline göre tablo (okuma sayısı, yazıdan %, yok sayılan %, "Hayır" %, ortalama süre), tarih aralığı; PDF / Excel. Telefonda Ayarlar'da yalnız henüz gönderilmemiş (bugünkü) sayılar; geçmiş günler Raporlar'da.
   - **Gönderilen günler telefondan silinir** (sunucu "aldım" deyince; gönderilemeyen gün silinmez, sonra tekrar denenir). Telefonda ekstra veri birikmez.
   - Gerekli: telefon modeli için `device_info_plus` paketi.
+
+
+## Final paketi (toplanıyor; tek güncellemede yapılacak, "yap" bekliyor)
+İhtiyaçlar ekran ekran toplanıyor: Okut · Depolar · Ürünler · Ara ve cihaz kartı · Raporlar · Ayarlar ve bildirimler · Bilgisayar (web) ve iPhone · Sistem.
+
+### Okut
+- (Okuma kaynağı göstergesi ve okuma sayıları sıradaki ara sürüme alındı.)
 
 ### Depolar
 - (Araçta hızlı bakış: vazgeçildi; dokununca stok ekranı zaten açılıyor.)
