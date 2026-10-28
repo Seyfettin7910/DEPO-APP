@@ -140,6 +140,7 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 - [ ] **Veritabanı yedeği** (bugün hiç yedek yok; Supabase ücretsiz planında indirilebilir yedek yok):
   - **Gece otomatik yedek:** her gece 03:00 GitHub Actions, Supabase'in döküm aracıyla tam döküm (bütün tablolar, hareketler, giriş kayıtları, kullanıcı hesapları `auth` dahil) → **şifreli (AES-256)**. Depo herkese açık olduğu için şifresiz yedek asla bırakılmaz.
   - **Saklama yeri: İKİSİ DE** (Seyfettin'in kararı, 23.10.2026): **Google Drive** (Seyfettin'in kişisel hesabı, 200 GB; `Depo Yedekleri/YYYY-AA/depo_YYYY-AA-GG_0300.enc`) + **gizli GitHub deposu** (ör. `DEPO-APP-yedek`). Biri bozulur / izin düşerse öbürü kalır. Boyut: günlük birkaç MB, yılda 1-2 GB.
+  - **Kurulum durumu (28.10.2026):** gizli depo **DEPO-APP-yedek** açıldı; DEPO-APP Secrets'ta **YEDEK_DEPO_TOKEN** var (yalnız DEPO-APP-yedek, Contents: Read and write, süresiz). Kalan: **SUPABASE_DB_URL** (Session pooler URI, port 5432; şifrede @ # / ? % : & olmasın), **YEDEK_SIFRESI**, Drive (rclone); sonra "yap" → `yedek.yml` akışı. Seyfettin evden devam edecek.
   - Drive bağlantısı bir kez, bilgisayardan: rclone ile Google onayı → çıkan anahtar GitHub Secrets'a (Seyfettin girer). Adımlar zamanı gelince yazılacak.
   - Secrets (yalnız Seyfettin girer): veritabanı şifresi, yedek şifresi, Drive anahtarı. **Yedek şifresi ayrıca kağıda / güvenli yere yazılır** (kaybolursa yedek açılmaz).
   - Saklama (öneri, karar bekliyor): son 30 gün günlük + 12 ay aylık; eskiler kendiliğinden silinir.
@@ -159,7 +160,7 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 - [ ] **KVKK (BEKLEMEDE — program kabul edilip gerçek kullanıma geçilince; deneme sürecinde değil, Seyfettin'in kararı):**
   - Giriş ekranında (Android, iPhone, web) kısa satır: "Sistemin sağlıklı yürütülebilmesi için kullanıcı, giriş ve işlem konumu bilgileriniz kaydedilmektedir. Aydınlatma Metni" → tam metin sayfası (veri sorumlusu: Belediye; veriler ve amaçlar; aktarım: sunucu hizmeti; hukuki sebep; kullanıcı hakları ve başvuru). "Kabul ediyorum" kutusu YOK (aydınlatma ≠ rıza). Taslak hazırlanır, belediyenin KVKK sorumlusu onaylar.
   - Giriş kayıtları / hesap işlemleri için saklama süresi (belediyenin saklama-imha politikasına göre), süresi dolanlar kendiliğinden silinir.
-  - Sunucunun yeri (yurt dışı aktarım) → Türkiye / belediye sunucusu kararıyla birlikte.
+  - Sunucunun yeri (yurt dışı aktarım): **Supabase projesi Seul'de (ap-northeast-2, Güney Kore)** → Türkiye / belediye sunucusu kararıyla birlikte.
   - Yedekler şu an Seyfettin'in kişisel Drive'ında (şifreli) + gizli GitHub deposunda; gerçek kullanımda belediyenin hesabına / sunucusuna taşınır; yedeklerin saklama süresi de aydınlatma metnine.
   - Belediyenin KVKK sorumlusuna bilgi (VERBİS envanteri onların işi). Not alanlarına vatandaş adı / telefonu yazılmaması kullanım kuralı.
 - [ ] Eski `depo-takip.apk` ve `Depo-Otomasyon-Sistemi.apk` adlarını kaldırma (herkes 1.30.4+ olunca; 1.30.4'ten beri asıl ad `Depo-Yonetim-Sistemi.apk`).
