@@ -182,30 +182,38 @@ jobs:
           DOSYA: ${{ steps.ad.outputs.dosya }}
         run: |
           set -euo pipefail
+          # Her adım hata verirse ne olduğunu açıkça yaz
+          adim() {
+            local ne="$1"; shift
+            if ! cikti=$("$@" 2>&1); then
+              echo "::error title=GitHub yedeği::$ne başarısız: $(echo "$cikti" | tail -c 400 | tr '\n' ' ')"
+              exit 1
+            fi
+          }
           # Depo boşsa sürüm açılamaz: ilk dosyayı koy
           if ! cikti=$(gh api "repos/$YEDEK_DEPO/commits?per_page=1" 2>&1); then
             if echo "$cikti" | grep -qi 'empty'; then
               icerik=$(printf '%s\n' '# DEPO-APP yedekleri' '' \
                 'Şifreli veritabanı yedekleri Releases altında.' \
                 'Açma ve geri yükleme: DEPO-APP deposundaki YEDEK.md.' | base64 -w0)
-              gh api -X PUT "repos/$YEDEK_DEPO/contents/README.md" \
-                -f message='Yedek deposu' -f content="$icerik" > /dev/null
+              adim "Boş depoya ilk dosya" gh api -X PUT "repos/$YEDEK_DEPO/contents/README.md" \
+                -f message='Yedek deposu' -f content="$icerik"
             else
               echo "::error title=GitHub yedeği::DEPO-APP-yedek'e erişilemedi (YEDEK_DEPO_TOKEN?): $(echo "$cikti" | tail -c 300 | tr '\n' ' ')"
               exit 1
             fi
           fi
           if gh release view "$ETIKET" --repo "$YEDEK_DEPO" > /dev/null 2>&1; then
-            gh release upload "$ETIKET" "$DOSYA" --repo "$YEDEK_DEPO" --clobber
+            adim "Dosya yükleme" gh release upload "$ETIKET" "$DOSYA" --repo "$YEDEK_DEPO" --clobber
           else
-            gh release create "$ETIKET" "$DOSYA" --repo "$YEDEK_DEPO" \
+            adim "Sürüm açma" gh release create "$ETIKET" "$DOSYA" --repo "$YEDEK_DEPO" \
               --title "Yedek $GUN" --notes "Şifreli veritabanı yedeği. Açma: DEPO-APP/YEDEK.md"
           fi
-          gh release list --repo "$YEDEK_DEPO" --limit 1000 --json tagName -q '.[].tagName' \
-            | grep '^yedek-' > etiketler.txt || true
+          adim "Sürüm listesi" gh release list --repo "$YEDEK_DEPO" --limit 1000 --json tagName -q '.[].tagName'
+          echo "$cikti" | grep '^yedek-' > etiketler.txt || true
           python3 tool/yedek_saklama.py --bugun "$GUN" < etiketler.txt > sil.txt
           while read -r e; do
-            [ -n "$e" ] && gh release delete "$e" --repo "$YEDEK_DEPO" --cleanup-tag -y
+            [ -n "$e" ] && adim "Eski yedeği silme ($e)" gh release delete "$e" --repo "$YEDEK_DEPO" --cleanup-tag -y
           done < sil.txt
           kalan=$(( $(wc -l < etiketler.txt) - $(wc -l < sil.txt) ))
           echo "::notice title=GitHub yedeği::Yüklendi; $(wc -l < sil.txt) eski yedek silindi, $kalan gün duruyor"
