@@ -8,7 +8,7 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 - [x] **Supabase SQL:** `supabase_guncelleme_1_27_0.sql` çalıştırıldı.
 - [x] **Supabase SQL:** `supabase_guncelleme_1_29_0.sql` (anlık senkron) çalıştırıldı (12 tablo).
 - [x] **Supabase SQL:** `supabase_guncelleme_1_29_1.sql` (eski yazılar büyük harf) 21.10.2026'da, telefonlar 1.29.1'e geçmeden çalıştırıldı.
-- [ ] Aynı SQL **bir kez daha**: Seyfettin'in ve kardeşinin telefonu 1.29.1'e geçip ikisinde de "bekleyen yok" görününce (eski sürümle küçük harf yazılanlar için). Arkadaşlar ara ara deneme yapıyor (giriş kayıtlarında görünür); eski sürümle küçük harf yazarlarsa SQL tekrar çalıştırılır, zararsız.
+- [x] Aynı SQL **ikinci kez** 28.10.2026'da çalıştırıldı (ürün / model adı artık Latin kuralla: i → I). Arkadaşlar eski sürümle küçük harf yazarsa yine çalıştırılabilir, zararsız.
 - [ ] 1.26.0: Okut arka arkaya okutma (2 kayıtsız), hızlı işlemler, koli, 100/100, toplu montaj + Kaydet anındaki konum, Sonraki nokta, transfer "Arızalı", varsayılan giriş deposu, karışık model, depo ekranında Sayım.
 - [ ] 1.26.1: iPhone Safari (Ana Ekrana Ekle rehberi, Safari dışı uyarı, ses, görsel onay), giriş kayıtlarında tarayıcı.
 - [ ] 1.27.0: malzeme barkodu (kutu içeriği), 🔗+ malzeme ekle / yeni tanımla, giriş / transfer / montajda birlikte kayıt.
