@@ -6,6 +6,7 @@ import '../providers/app_providers.dart';
 import '../database/models.dart';
 import '../services/cihaz_tercihleri.dart';
 import '../services/gorunum_ayari.dart';
+import '../services/okuma_istatistigi.dart';
 import '../services/guncelleme_servisi.dart';
 import '../services/supabase_service.dart';
 import '../services/taslak_servisi.dart';
@@ -160,6 +161,27 @@ class AyarlarScreen extends ConsumerWidget {
           ]),
           const _Baslik('UYGULAMA'),
           _Kutu(children: [
+            // 1.31.0: telefonda biriken, henüz gönderilmemiş okuma sayıları
+            ValueListenableBuilder<int>(
+              valueListenable: OkumaIstatistigi.degisti,
+              builder: (context, _, __) => FutureBuilder<GunlukSayac>(
+                future: OkumaIstatistigi.bugun(),
+                builder: (context, snap) {
+                  final b = snap.data;
+                  return _Satir(
+                    ikon: Icons.analytics_outlined,
+                    renk: Renkler.okut,
+                    zemin: Renkler.okutZemin,
+                    baslik: 'Okuma sayıları (bugün)',
+                    alt: b == null
+                        ? null
+                        : '${b.okuma} okuma · ${b.yokToplam} yok sayılan · '
+                            'akşam 17:00-17:30 gönderilir',
+                    onTap: () => _okumaSayilari(context),
+                  );
+                },
+              ),
+            ),
             _Satir(
               ikon: Icons.system_update_outlined,
               renk: Renkler.rapor,
@@ -375,4 +397,88 @@ class _VarsayilanDepoSatiriState extends ConsumerState<_VarsayilanDepoSatiri> {
       onTap: () => _sec(depolar),
     );
   }
+}
+
+/// 1.31.0: bugünün okuma sayıları ve gönderilmeyi bekleyen günler.
+Future<void> _okumaSayilari(BuildContext context) async {
+  final gunler = await OkumaIstatistigi.hepsi();
+  if (!context.mounted) return;
+  final bugunAnahtari = OkumaIstatistigi.gunAnahtari(DateTime.now());
+  final b = gunler[bugunAnahtari] ?? GunlukSayac();
+  final bekleyen = gunler.keys.where((g) => g != bugunAnahtari).length;
+  final ortSure = b.sureAdet == 0
+      ? '-'
+      : '${(b.sureToplamMs / b.sureAdet / 1000).toStringAsFixed(1)} sn';
+  final yazidan = b.okuma == 0 ? 0 : (b.yazi * 100 / b.okuma).round();
+  Widget satir(String a, String d) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(children: [
+          Expanded(child: Text(a)),
+          Text(d, style: const TextStyle(fontWeight: FontWeight.w600)),
+        ]),
+      );
+  var gonderiliyor = false;
+  await showDialog<void>(
+    context: context,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setState) => AlertDialog(
+        title: const Text('Okuma sayıları (bugün)'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              satir('Barkod', '${b.barkod}'),
+              satir('Karekod', '${b.karekod}'),
+              satir('Yazı (S/N)', '${b.yazi} (%$yazidan)'),
+              satir('"Doğru mu?" Evet / Hayır', '${b.evet} / ${b.hayir}'),
+              satir('Ortalama okuma süresi', ortSure),
+              satir('Kamera durdu (30 sn)', '${b.kameraDurdu}'),
+              if (b.yokSayilan.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                const Text('Yok sayılan kodlar',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                for (final e in b.yokSayilan.entries) satir(e.key, '${e.value}'),
+              ],
+              const SizedBox(height: 12),
+              Text(
+                'Sayılar telefonda birikir, her akşam 17:00-17:30 arası '
+                'sunucuya gönderilir; geçmiş günler gönderilince telefondan '
+                'silinir. Kişisel bilgi içermez.'
+                '${bekleyen == 0 ? '' : '\nGönderilmeyi bekleyen: $bekleyen gün.'}',
+                style: Theme.of(ctx).textTheme.bodySmall,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: gonderiliyor
+                ? null
+                : () async {
+                    setState(() => gonderiliyor = true);
+                    final messenger = ScaffoldMessenger.of(ctx);
+                    try {
+                      await OkumaIstatistigi.gonder(zorla: true);
+                      messenger.showSnackBar(const SnackBar(
+                          content: Text('Okuma sayıları gönderildi')));
+                      if (ctx.mounted) Navigator.pop(ctx);
+                    } catch (_) {
+                      messenger.showSnackBar(SnackBar(
+                          content: const Text('Gönderilemedi. İnternet '
+                              'bağlantısını ve 1.31.0 SQL\'inin '
+                              'çalıştırıldığını kontrol edin.'),
+                          backgroundColor: Colors.red.shade700));
+                      if (ctx.mounted) setState(() => gonderiliyor = false);
+                    }
+                  },
+            child: const Text('Şimdi gönder'),
+          ),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Kapat')),
+        ],
+      ),
+    ),
+  );
 }

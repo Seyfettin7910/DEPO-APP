@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/cihaz_tercihleri.dart';
 import '../services/etiket/etiket_kodu.dart';
 import '../services/kurum_barkodu.dart';
+import '../services/okuma_istatistigi.dart';
 import '../services/ses_servisi.dart';
 import '../services/sn_metni.dart';
 import '../services/tarayici.dart';
@@ -49,6 +50,11 @@ enum TaramaModu { barkod, karekod }
 ///   barkod okunmazsa çerçevedeki "S/N" satırı yazıdan okunur; iki kez aynı
 ///   okununca, yarım saniye içinde barkod okunmazsa kabul edilir (barkod
 ///   önceliği). Kayıtlı cihazla eşleşmezse "Doğru mu?" sorulur.
+/// - Okuma kaynağı (1.31.0): kabul edilen okumada çerçevenin hemen üstünde
+///   1,5 sn "✓ Barkod" / "✓ Karekod" / "✓ Yazı (S/N)" görünür (kayda geçmez).
+///   Okuma sayıları telefonda birikir ([OkumaIstatistigi]): kaynağa göre
+///   kabul, sebebine göre yok sayılan (aynı kod bu ekranda bir kez),
+///   "Doğru mu?" cevabı, kameranın durması, okuma süresi, yakınlık.
 /// - Düzen (1.29.2), yukarıdan aşağıya: sol üstte sayaç, ortada kaydırma
 ///   ipucu; pembe "Yazı da okunuyor" şeridi; çerçeve (küçülmez); altta
 ///   "15-25 cm uzakta tutun" (sığmazsa gizlenir); en altta 1x · 2x · 3x.
@@ -147,6 +153,42 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
   bool _metinBekliyor = false; // barkod önceliği için yarım saniye
   bool _metinIpucu = false;
 
+  // --- Okuma kaynağı göstergesi ve okuma sayıları (1.31.0) ---
+  OkumaKaynagi? _kaynak;
+  Timer? _kaynakZamanlayici;
+  DateTime _olcumBasi = DateTime.now(); // kamera açılışı / önceki kabul
+  final _sayilanYoklar = <String>{}; // aynı yok sayılan kod bir kez sayılır
+
+  static bool _karekodTuru(BarcodeFormat f) =>
+      f == BarcodeFormat.qrCode ||
+      f == BarcodeFormat.dataMatrix ||
+      f == BarcodeFormat.aztec ||
+      f == BarcodeFormat.pdf417;
+
+  /// Kabul edilen okuma: gösterge 1,5 sn + sayı.
+  void _kabulEdildi(OkumaKaynagi k) {
+    final simdi = DateTime.now();
+    OkumaIstatistigi.kabul(k,
+        sure: simdi.difference(_olcumBasi),
+        yakinlik: _seciciVar ? _seciliKademe : null);
+    _olcumBasi = simdi;
+    if (!mounted) return;
+    setState(() => _kaynak = k);
+    _kaynakZamanlayici?.cancel();
+    _kaynakZamanlayici = Timer(const Duration(milliseconds: 1500), () {
+      if (mounted) setState(() => _kaynak = null);
+    });
+  }
+
+  /// Yok sayılan kod (aynı değer bu ekranda bir kez sayılır).
+  void _yokSay(String deger, String sebep) {
+    if (_sayilanYoklar.add(deger)) OkumaIstatistigi.yokSayildi(sebep);
+  }
+
+  /// Ürün barkodunun sayımdaki sebebi (kısa).
+  String _urunBarkoduKategori(String v) =>
+      kurumBarkoduMu(v) ? 'stok kodu tanımsız' : 'fabrika barkodu';
+
   bool get _yaziAcik =>
       MetinOkuma.destekleniyor &&
       widget.yazidanOku &&
@@ -210,6 +252,7 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
 
   /// 30 sn kod yok: kamera durur (fener de söner), dokununca açılır.
   Future<void> _kameraDurdur() async {
+    OkumaIstatistigi.kameraDurdu();
     setState(() {
       _durduruldu = true;
       _metinIpucu = false;
@@ -307,6 +350,7 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
             ],
           ),
         );
+        if (evet != null) OkumaIstatistigi.dogruMu(evet);
         // "Hayır" da olsa aynı yazı çerçevede kaldıkça yeniden sorulmaz.
         _okunan = sn;
         _okunmaZamani = DateTime.now();
@@ -314,6 +358,7 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
       }
       _okunan = sn;
       _okunmaZamani = DateTime.now();
+      _kabulEdildi(OkumaKaynagi.yazi);
       widget.onDetect(BarcodeCapture(barcodes: [
         Barcode(rawValue: sn, format: BarcodeFormat.unknown),
       ]));
@@ -362,6 +407,7 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
     _kayip?.cancel();
     _ipucuZamanlayici?.cancel();
     _yanmaZamanlayici?.cancel();
+    _kaynakZamanlayici?.cancel();
     SesServisi.onay.removeListener(_onayGeldi);
     widget.controller.removeListener(_kameraDinle);
     WidgetsBinding.instance.removeObserver(this);
@@ -427,6 +473,14 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
   int _webDeneme = 0;
 
   bool get _seciciVar => !kIsWeb || _webAralik != null;
+
+  /// Şu an seçili yakınlık (1, 2, 3); iki parmakla ara değerdeyse null.
+  int? get _seciliKademe => kIsWeb
+      ? _kademe
+      : _dogrusal.entries
+          .where((e) => (e.value - _zoom).abs() < 0.03)
+          .map((e) => e.key)
+          .firstOrNull;
 
   Future<void> _kademeSec(int k) async {
     _etkinlik();
@@ -589,17 +643,21 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
         final sebep = gereksizSebep(v);
         if (sebep != null) {
           yokSayilan ??= '${_kisalt(v)} ($sebep)';
+          _yokSay(v, sebep);
           continue;
         }
         if (_kayitliOlmali(b, v)) {
           if (widget.bilinenMi == null && urunBarkoduTuru(b)) {
             yokSayilan ??= '${_kisalt(v)} (${_urunBarkoduSebebi(v)})';
+            _yokSay(v, _urunBarkoduKategori(v));
             continue;
           }
           if (_bilinenler[v] == false) {
             yokSayilan ??= urunBarkoduTuru(b)
                 ? '${_kisalt(v)} (${_urunBarkoduSebebi(v)})'
                 : '${_kisalt(v)} (kayıtlı değil: malzeme / lot / model kodu)';
+            _yokSay(
+                v, urunBarkoduTuru(b) ? _urunBarkoduKategori(v) : 'kayıtlı değil');
             continue;
           }
         }
@@ -672,6 +730,8 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
     _sonKabul = _okunmaZamani;
     _kayip?.cancel();
     setState(() => _aday = null);
+    _kabulEdildi(
+        _karekodTuru(kod.format) ? OkumaKaynagi.karekod : OkumaKaynagi.barkod);
     widget.onDetect(BarcodeCapture(barcodes: [kod]));
   }
 
@@ -690,6 +750,7 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
       _beklemede = false;
       _sonEtkinlik = DateTime.now();
       _metinAday = null;
+      _olcumBasi = DateTime.now();
       if ((_durduruldu || _metinIpucu) && mounted) {
         setState(() {
           _durduruldu = false;
@@ -723,6 +784,11 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
       if (!mounted || _aday != deger) return;
       if (!v && _kayitliOlmali(_adayKod ?? b, deger)) {
         setState(() => _aday = null);
+        _yokSay(
+            deger,
+            urunBarkoduTuru(_adayKod ?? b)
+                ? _urunBarkoduKategori(deger)
+                : 'kayıtlı değil');
         _ipucuGoster('Yok sayıldı: ${_kisalt(deger)} '
             '(${kurumBarkoduMu(deger) ? _urunBarkoduSebebi(deger) : 'kayıtlı değil: malzeme / lot / model kodu'})');
         return;
@@ -861,8 +927,20 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
               ),
             ),
           ),
+          // 1.31.0: okuma kaynağı (1,5 sn); varken ipucu / şerit gizlenir.
+          if (_kaynak != null)
+            Positioned(
+              left: 12,
+              right: 12,
+              top: math.max(pencere.top - 26, _satir - 2),
+              child: IgnorePointer(
+                child: Center(
+                  child: _KaynakEtiketi(_kaynak!),
+                ),
+              ),
+            ),
           // Çerçevenin hemen üstü: "Yok sayıldı" ipucu ya da pembe şerit.
-          if (_ipucu != null)
+          if (_ipucu != null && _kaynak == null)
             Positioned(
               left: 12,
               right: 12,
@@ -888,7 +966,7 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
                 ),
               ),
             ),
-          if (_metinIpucu && _ipucu == null && !_durduruldu)
+          if (_metinIpucu && _ipucu == null && _kaynak == null && !_durduruldu)
             Positioned(
               left: 12,
               right: 12,
@@ -948,12 +1026,7 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
               bottom: kucuk ? 3 : 4,
               child: Center(
                 child: _YakinlikSecici(
-                  secili: kIsWeb
-                      ? _kademe
-                      : _dogrusal.entries
-                          .where((e) => (e.value - _zoom).abs() < 0.03)
-                          .map((e) => e.key)
-                          .firstOrNull,
+                  secili: _seciliKademe,
                   kucuk: kucuk,
                   onSec: _kademeSec,
                 ),
@@ -995,6 +1068,41 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
         ],
       );
     });
+  }
+}
+
+/// 1.31.0: "✓ Barkod" / "✓ Karekod" / "✓ Yazı (S/N)" etiketi.
+class _KaynakEtiketi extends StatelessWidget {
+  const _KaynakEtiketi(this.kaynak);
+  final OkumaKaynagi kaynak;
+
+  @override
+  Widget build(BuildContext context) {
+    final (renk, ikon) = switch (kaynak) {
+      OkumaKaynagi.barkod => (const Color(0xE62E7D32), Icons.view_week_outlined),
+      OkumaKaynagi.karekod => (const Color(0xE61565C0), Icons.qr_code_2),
+      OkumaKaynagi.yazi =>
+        (const Color(0xE6C2185B), Icons.document_scanner_outlined),
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      decoration: BoxDecoration(
+        color: renk,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(ikon, color: Colors.white, size: 14),
+          const SizedBox(width: 6),
+          Text('✓ ${kaynak.ad}',
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
   }
 }
 

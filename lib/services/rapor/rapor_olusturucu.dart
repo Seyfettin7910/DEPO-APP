@@ -4,6 +4,7 @@ import '../../database/app_database.dart';
 import '../../database/models.dart';
 import '../adres_servisi.dart';
 import '../giris_kaydi_servisi.dart';
+import '../okuma_istatistigi.dart';
 import '../konum_servisi.dart';
 import 'rapor_modeli.dart';
 import '../bolge_adi.dart';
@@ -1165,6 +1166,123 @@ class RaporOlusturucu {
           baslik: 'Tüm girişler (${rows.length})',
           satirlar: [for (final r in rows) satir(r)],
         ),
+      ],
+    );
+  }
+
+  // ------------------------------------------------------------------
+  // Okuma istatistikleri (1.31.0; sunucudan okunur, internet gerekir)
+  // ------------------------------------------------------------------
+  static Future<Rapor> okumaIstatistikleri(
+      {DateTime? baslangic, DateTime? bitis}) async {
+    final rows = await OkumaIstatistigi.sunucudanOku(
+        baslangic: baslangic, bitis: bitis);
+
+    // Telefon modeline göre topla
+    final modeller = <String, GunlukSayac>{};
+    final modelPlatform = <String, String>{};
+    final modelKurulum = <String, Set<String>>{};
+    final modelGun = <String, Set<String>>{};
+    final toplam = GunlukSayac();
+    for (final r in rows) {
+      final marka = ((r['marka'] as String?) ?? '').trim();
+      final model = ((r['model'] as String?) ?? '').trim();
+      final ad = [marka, model].where((x) => x.isNotEmpty).join(' ');
+      final anahtar = ad.isEmpty ? (r['platform'] as String? ?? '-') : ad;
+      final s = GunlukSayac.fromJson(r);
+      modeller.putIfAbsent(anahtar, GunlukSayac.new).ekle(s);
+      toplam.ekle(s);
+      modelPlatform[anahtar] = [
+        r['platform'] as String? ?? '',
+        if ((r['isletim_sistemi'] as String?) != null) r['isletim_sistemi'],
+      ].where((x) => '$x'.isNotEmpty).join(' · ');
+      modelKurulum.putIfAbsent(anahtar, () => {}).add('${r['kurulum_id']}');
+      modelGun.putIfAbsent(anahtar, () => {}).add('${r['gun']}');
+    }
+
+    String yuzde(int pay, int payda) =>
+        payda == 0 ? '-' : '%${(pay * 100 / payda).round()}';
+    String ortalama(GunlukSayac s) => s.sureAdet == 0
+        ? '-'
+        : '${(s.sureToplamMs / s.sureAdet / 1000).toStringAsFixed(1)} sn';
+
+    final satirlar = [
+      for (final e in modeller.entries)
+        [
+          e.key,
+          modelPlatform[e.key] ?? '',
+          e.value.okuma,
+          e.value.barkod,
+          e.value.karekod,
+          e.value.yazi,
+          yuzde(e.value.yazi, e.value.okuma),
+          e.value.yokToplam,
+          yuzde(e.value.yokToplam, e.value.okuma + e.value.yokToplam),
+          yuzde(e.value.hayir, e.value.evet + e.value.hayir),
+          ortalama(e.value),
+          e.value.kameraDurdu,
+          modelKurulum[e.key]!.length,
+          modelGun[e.key]!.length,
+        ],
+    ]..sort((a, b) => (b[2] as int).compareTo(a[2] as int));
+
+    final sebepler = <String, int>{};
+    for (final s in modeller.values) {
+      s.yokSayilan.forEach((k, v) => sebepler[k] = (sebepler[k] ?? 0) + v);
+    }
+    final sebepSatirlari = [
+      for (final e in sebepler.entries)
+        [e.key, e.value, yuzde(e.value, toplam.yokToplam)],
+    ]..sort((a, b) => (b[1] as int).compareTo(a[1] as int));
+
+    final yakinlik = <String, int>{};
+    for (final s in modeller.values) {
+      s.yakinlik.forEach((k, v) => yakinlik[k] = (yakinlik[k] ?? 0) + v);
+    }
+    final yakinlikToplam = yakinlik.values.fold(0, (t, n) => t + n);
+
+    return Rapor(
+      baslik: 'Okuma İstatistikleri',
+      altBaslik: '${_aralik(baslangic, bitis)} · ${_olusturma()}',
+      dosyaOn: 'okuma_istatistikleri',
+      ozet: [
+        MapEntry('Okuma', '${toplam.okuma}'),
+        MapEntry('Yazıdan', yuzde(toplam.yazi, toplam.okuma)),
+        MapEntry('Yok sayılan', '${toplam.yokToplam}'),
+        MapEntry('"Doğru mu?" Hayır', yuzde(toplam.hayir, toplam.evet + toplam.hayir)),
+        MapEntry('Ort. okuma süresi', ortalama(toplam)),
+        MapEntry('Telefon modeli', '${modeller.length}'),
+      ],
+      sutunlar: const [
+        'Telefon modeli', 'Platform', 'Okuma', 'Barkod', 'Karekod', 'Yazı',
+        'Yazıdan %', 'Yok sayılan', 'Yok sayılan %', '"Hayır" %',
+        'Ort. süre', 'Kamera durdu', 'Telefon', 'Gün'
+      ],
+      genislikler: const [22, 24, 8, 8, 8, 7, 9, 10, 10, 9, 9, 10, 8, 6],
+      bolumler: [
+        RaporBolumu(
+          baslik: 'Telefon modeline göre',
+          aciklama: 'Yazıdan % yüksekse o telefonda barkod zor okunuyor; '
+              '"Hayır" % yazıdan okumanın yanılma payı; süre kamera '
+              'açılışından ya da önceki okumadan kabule.',
+          satirlar: satirlar,
+        ),
+        RaporBolumu(
+          baslik: 'Yok sayılma sebepleri',
+          sutunlar: const ['Sebep', 'Adet', 'Pay'],
+          genislikler: const [30, 10, 10],
+          satirlar: sebepSatirlari,
+        ),
+        if (yakinlik.isNotEmpty)
+          RaporBolumu(
+            baslik: 'Okumada kullanılan yakınlık',
+            sutunlar: const ['Yakınlık', 'Okuma', 'Pay'],
+            genislikler: const [14, 10, 10],
+            satirlar: [
+              for (final k in (yakinlik.keys.toList()..sort()))
+                [k, yakinlik[k]!, yuzde(yakinlik[k]!, yakinlikToplam)],
+            ],
+          ),
       ],
     );
   }

@@ -31,7 +31,7 @@ jobs:
           if [ -n "$uyarilar" ]; then echo "::warning title=Analiz uyarıları::$uyarilar"; fi
           exit $durum
       - name: Testler (Okut kuralları vb.)
-        run: flutter test test/okut_listesi_test.dart test/bolge_adi_test.dart test/sn_metni_test.dart test/urun_adi_test.dart test/kurum_barkodu_test.dart test/xlsx_yazici_test.dart
+        run: flutter test test/okut_listesi_test.dart test/bolge_adi_test.dart test/sn_metni_test.dart test/urun_adi_test.dart test/kurum_barkodu_test.dart test/xlsx_yazici_test.dart test/seri_ayikla_test.dart test/okuma_istatistigi_test.dart
       # Ubuntu 26 görüntüsünde sistem Python'una pip ile kurulamıyor
       # (externally-managed); ayrı Python (Excel denetimi ve duman testi).
       - uses: actions/setup-python@v5

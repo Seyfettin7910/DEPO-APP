@@ -5,6 +5,14 @@ uygulaması. iOS, Android ve Windows'ta tek kod tabanından çalışır.
 
 
 
+## 1.31.0 – Okuma kaynağı göstergesi, okuma istatistikleri, "]C1" öneki
+- **Supabase SQL:** `supabase_guncelleme_1_31_0.sql` (`okuma_istatistikleri`; senkron ve Realtime dışında). Çalıştırılana kadar sayılar telefonda bekler.
+- `HedefliTarayici`: kabul edilen okumada çerçevenin üstünde 1,5 sn "✓ Barkod / Karekod / Yazı (S/N)" (`_KaynakEtiketi`; karekod = QR / DataMatrix / Aztec / PDF417). Sayılar: kaynağa göre kabul, sebebine göre yok sayılan (aynı değer ekran başına bir kez), "Doğru mu?" Evet / Hayır, kamera durdu, okuma süresi (kamera açılışı / önceki kabulden; 2 dk'dan uzunsa sayılmaz), yakınlık (1x / 2x / 3x).
+- `lib/services/okuma_istatistigi.dart`: `GunlukSayac` (gün başına), SharedPreferences'ta birikir (3 sn'de bir / arka plana giderken diske; `reload` + birleştirme, arka plan göreviyle çakışmasın). `gonder`: geçmiş günler her fırsatta, bugün yalnız 17:00-17:30 (bir kez); `upsert` (id = kurulum kimliği + gün, toplam yazılır), geçmiş günler gönderilince silinir. Ana ekran açılışında + 5 dk'da bir + dönüşte, Android arka plan görevinde. `device_info_plus`: marka, model, işletim sistemi. Testleri `test/okuma_istatistigi_test.dart`.
+- Raporlar → "Okuma istatistikleri" (`RaporOlusturucu.okumaIstatistikleri`): telefon modeline göre tablo, yok sayılma sebepleri, yakınlık; PDF / Excel. Ayarlar → "Okuma sayıları (bugün)" + "Şimdi gönder".
+- `barkodIsaretiniAt` / `gs1SeriNo` (kod_yardimci): baştaki AIM işareti (`]C1`, `]d2`, `]Q3`…) ve GS ayırıcıları atılır; GS1'de AI 21 (seri no) alınır. `seriAyikla` başında çağrılır (kamera ve elle / okuyucu girişi). Testleri `test/seri_ayikla_test.dart`.
+- Yazıdan okumaya geçiş 3 sn'de kaldı.
+
 ## 1.30.6 – Excel özet kutuları çerçeveli
 - `XlsxBicim.kutu` (`XlsxKutu.ust` / `.alt`): özet etiketinin üstü ve yanları, rakamının altı ve yanları ince siyah (Excel "otomatik") çizgi; her kutu ayrı. Seyfettin'in Excel 2007'de elle çizdiği biçim.
 

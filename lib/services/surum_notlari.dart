@@ -36,6 +36,36 @@ class NotMaddesi {
 
 const surumNotlari = <SurumNotu>[
   SurumNotu(
+    surum: '1.31.0',
+    tarih: '28.10.2026',
+    bolumler: [
+      NotBolumu('Yeni', [
+        NotMaddesi(
+          'Okuma kaynağı',
+          'Okuma kabul edilince çerçevenin üstünde "✓ Barkod", "✓ Karekod" ya da "✓ Yazı (S/N)".',
+          'Hangi etiketlerin barkoddan okunamayıp yazıdan okunduğunu sahada '
+              'görmek için. Kayda geçmez, yalnız ekranda 1,5 saniye görünür.',
+        ),
+        NotMaddesi(
+          'Okuma istatistikleri',
+          'Raporlar → "Okuma istatistikleri": telefon modeline göre okuma sayıları.',
+          'Barkod / karekod / yazıdan okuma, yok sayılan kodlar ve sebepleri, '
+              '"Doğru mu?" cevapları, ortalama okuma süresi. Sayılar telefonda '
+              'birikir, her akşam 17:00-17:30 arası gönderilir. Kişisel bilgi '
+              'içermez. Bugünkü sayılar: Ayarlar → "Okuma sayıları (bugün)".',
+        ),
+      ]),
+      NotBolumu('Düzeltilen', [
+        NotMaddesi(
+          'Seri no önündeki "]C1"',
+          'Bazı barkodlarda seri noyla birlikte okunan "]C1" gibi işaretler atılıyor.',
+          'Bu işaret barkodun türünü gösterir, seri noya ait değildir. GS1 '
+              'barkodlarda seri no alanı ayrıca bulunur.',
+        ),
+      ]),
+    ],
+  ),
+  SurumNotu(
     surum: '1.30.6',
     tarih: '27.10.2026',
     bolumler: [

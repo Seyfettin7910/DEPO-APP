@@ -146,6 +146,13 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
               onTap: () => Navigator.pop(ctx, 'giris'),
             ),
             ListTile(
+              leading: const Icon(Icons.analytics_outlined),
+              title: const Text('Okuma istatistikleri'),
+              subtitle: Text('Telefon modeline göre barkod / karekod / yazıdan '
+                  'okuma, yok sayılan, okuma süresi · $aralik'),
+              onTap: () => Navigator.pop(ctx, 'okuma'),
+            ),
+            ListTile(
               leading: const Icon(Icons.history),
               title: const Text('Hareket geçmişi'),
               subtitle: Text(
@@ -235,6 +242,10 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
           rapor = await RaporOlusturucu.girisKayitlari(
               baslangic: _tarihAraligi?.start, bitis: _bitisGunSonu());
           break;
+        case 'okuma':
+          rapor = await RaporOlusturucu.okumaIstatistikleri(
+              baslangic: _tarihAraligi?.start, bitis: _bitisGunSonu());
+          break;
         case 'hareketler':
           rapor = await RaporOlusturucu.hareketler(db,
               baslangic: _tarihAraligi?.start, bitis: _bitisGunSonu());
@@ -250,7 +261,10 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
         content: Text(tur == 'giris'
             ? 'Giriş kayıtları alınamadı. İnternet bağlantısını kontrol edin '
                 '(sunucuda 1.18.0 SQL\'i çalıştırılmış olmalı).'
-            : 'Rapor hazırlanamadı: $e'),
+            : tur == 'okuma'
+                ? 'Okuma istatistikleri alınamadı. İnternet bağlantısını '
+                    'kontrol edin (sunucuda 1.31.0 SQL\'i çalıştırılmış olmalı).'
+                : 'Rapor hazırlanamadı: $e'),
         backgroundColor: Colors.red.shade700,
       ));
     }

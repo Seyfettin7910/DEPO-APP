@@ -129,11 +129,66 @@ final _seriOnEki = RegExp(
     caseSensitive: false);
 final _bosluklar = RegExp(r'\s+');
 
+// 1.31.0: barkod türü işareti (AIM kodu) — "]C1" GS1-128, "]d2" GS1
+// DataMatrix, "]Q3" GS1 QR, "]e0" GS1 DataBar, "]E0" EAN… Seri no'nun
+// parçası değildir; bazı telefonlarda okuyucu başa ekler.
+final _aimOnEki = RegExp(r'^\][A-Za-z][0-9A-Za-z]');
+const _gs1Isaretleri = {']C1', ']d2', ']Q3', ']e0', ']J1'};
+const _gs = '\u001D'; // GS1 alan ayırıcısı (görünmez)
+
+/// Okunan koddan barkod türü işaretini ve görünmez GS ayırıcılarını atar.
+/// GS1 biçimindeyse (ör. "]C121GA4562378": 21 = seri no alanı) seri no
+/// alanını döner; bulamazsa işaretsiz kodu döner.
+String barkodIsaretiniAt(String deger) {
+  var s = deger.trim();
+  final m = _aimOnEki.firstMatch(s);
+  final isaret = m?.group(0);
+  if (isaret != null) s = s.substring(isaret.length);
+  final gs1 = _gs1Isaretleri.contains(isaret) || s.contains(_gs);
+  if (gs1) {
+    final sn = gs1SeriNo(s);
+    if (sn != null) return sn;
+  }
+  return s.replaceAll(_gs, '').trim();
+}
+
+/// GS1 öğe dizisinden seri no alanını (AI 21) çıkarır; yoksa null.
+/// Sabit uzunluklu öğeler (00, 01, 02, 11-17, 20) atlanır; değişken
+/// uzunluklular GS'ye ya da sona kadar sürer.
+String? gs1SeriNo(String veri) {
+  const sabit = {
+    '00': 18, '01': 14, '02': 14, '11': 6, '12': 6, '13': 6, '15': 6,
+    '16': 6, '17': 6, '20': 2,
+  };
+  var i = 0;
+  while (i + 2 <= veri.length) {
+    if (veri[i] == _gs) {
+      i++;
+      continue;
+    }
+    final ai = veri.substring(i, i + 2);
+    if (!RegExp(r'^\d\d$').hasMatch(ai)) return null;
+    final uzunluk = sabit[ai];
+    if (uzunluk != null) {
+      i += 2 + uzunluk;
+      continue;
+    }
+    // Değişken uzunluklu: GS'ye ya da sona kadar
+    final son = veri.indexOf(_gs, i + 2);
+    final deger = veri.substring(i + 2, son < 0 ? veri.length : son);
+    if (ai == '21') return deger.trim().isEmpty ? null : deger.trim();
+    if (son < 0) return null;
+    i = son + 1;
+  }
+  return null;
+}
+
 /// Barkodun içindeki seri noyu ayıklar: "S/N:22440W0015776" → seri no;
-/// "22440W0015776 EU/3.0" gibi sonda ek bilgi varsa yalnızca seri no.
+/// "22440W0015776 EU/3.0" gibi sonda ek bilgi varsa yalnızca seri no;
+/// 1.31.0: başta barkod türü işareti ("]C1…") varsa atılır.
 /// Çok satırlı (koli) kodlara dokunmaz.
 String seriAyikla(String deger) {
-  var s = deger.trim();
+  var s = barkodIsaretiniAt(deger);
   if (s.contains('\n') || s.contains('\r')) return s;
   s = s.replaceFirst(_seriOnEki, '').trim();
   if (s.contains(' ')) {

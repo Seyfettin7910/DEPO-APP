@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/app_providers.dart';
+import '../services/okuma_istatistigi.dart';
 import '../services/bildirim/arka_plan.dart';
 import '../services/bildirim/bildirim_ayarlari.dart';
 import '../services/bildirim/bildirim_gosterici.dart';
@@ -73,6 +74,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     WidgetsBinding.instance.addObserver(this);
     unawaited(_acilisSirasi());
     GuncellemeServisi.baslat();
+    // 1.31.0: okuma sayıları (akşam 17:00-17:30 ve geçmiş günler)
+    OkumaIstatistigi.baslat();
 
     // Bildirimler: izin (Android 13+), uygulama kapalıyken arka plan
     // kontrolü ve "uygulama açık" işareti (arka plan görevi o sırada durur).
@@ -136,11 +139,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         if (mounted) unawaited(ref.read(syncServiceProvider).syncNow());
       }());
       unawaited(GuncellemeServisi.kontrolEt());
+      unawaited(OkumaIstatistigi.gonder());
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.detached ||
         state == AppLifecycleState.hidden) {
       _arkaPlandaydi = true;
       unawaited(onPlandaIsaretle(false));
+      unawaited(OkumaIstatistigi.kaydet());
     }
   }
 

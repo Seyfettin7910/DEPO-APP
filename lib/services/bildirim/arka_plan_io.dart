@@ -8,6 +8,7 @@ import 'package:workmanager/workmanager.dart';
 import '../../database/app_database.dart';
 import '../../database/platform/db_fabrika.dart';
 import '../guncelleme_servisi.dart';
+import '../okuma_istatistigi.dart';
 import '../supabase_service.dart';
 import '../sync_service.dart';
 import 'bildirim_gosterici.dart';
@@ -60,6 +61,13 @@ void arkaPlanGirisi() {
         debugPrint('Arka plan senkronu: $e');
       }
       await BildirimMotoru.calistir(db, benimId: SupabaseService.kullanici?.id);
+      // 1.31.0: okuma sayıları (akşam 17:00-17:30 bugün, her zaman geçmiş
+      // günler)
+      try {
+        await OkumaIstatistigi.gonder().timeout(const Duration(seconds: 45));
+      } catch (e) {
+        debugPrint('Okuma sayıları: $e');
+      }
       // Veritabanı KAPATILMAZ: Android'de uygulamayla aynı bağlantıyı
       // paylaşır; kapatmak arka planda açık duran uygulamanın bağlantısını
       // da kapatıyordu ("database_closed" hatası).

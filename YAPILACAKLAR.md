@@ -28,26 +28,14 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 - [ ] 1.30.4: yeni ad (simge altında "Depo Yönetim", giriş ekranı, web sekmesi, PDF); güncelleme eski sürümden sorunsuz geliyor mu; **Excel raporu Excel 2007'de uyarısız açılıyor mu** (kalın başlık, renkli satırlar, bağlantı tıklanıyor mu), telefonda paylaşma ve bilgisayarda indirme.
 - [ ] 1.30.5: Excel görünümü PDF gibi mi (Excel 2007'de: gri / çerçeveli tablo başlığı, bir beyaz bir gri satırlar, yeşil özet ve bölüm başlıkları); aşağı kaydırınca başlık sabit mi; yazdırma önizlemesinde sayfaya sığıyor mu, başlık her sayfada, altta "Sayfa x / y".
 - [ ] 1.30.6: Excel'de her özet kutusu ayrı çerçeveli mi.
-
-## Sıradaki ara sürüm (28.10.2026, Seyfettin'in kararı; "yap" bekliyor)
-- [ ] **Yazıdan okumaya geçiş 3 sn → 5 sn** (barkod görülmezse kamera barkodu daha uzun dener; 1.29.2'de 3 sn yapılmıştı; önce 4, sonra "5 bile olur" dendi).
-- [ ] **Seri no önündeki "]C1" gibi ekler (28.10.2026, Seyfettin'in fotoğrafı: "Kayıtlı cihaz yok: ]C1FB6637822"):** "]C1" barkod türü işareti (AIM kodu; GS1-128 / FNC1'li Code 128), seri no'nun parçası değil. Okunan kodun başındaki `]` + harf + rakam (]C1, ]C0, ]d2, ]Q3, ]e0…) ve görünmez GS (ayırıcı) karakterleri atılır; GS1 biçimindeyse (AI 21 = seri no) içinden seri no alınır. Bütün kamera ekranları ve barkod okuyucu (USB) girişi; testleri `seriAyikla` testlerine.
-- [ ] **Okuma kaynağı göstergesi:** okuma kabul edilince çerçevenin hemen üstünde 1,5 sn küçük etiket: "✓ Barkod" (çizgi barkod), "✓ Karekod" (koli dahil), "✓ Yazı (S/N)" (pembe). Kayıtlara / senkrona / rapora GEÇMEZ, yalnız ekranda. Bütün kamera ekranlarında. (Amaç: hangi etiketlerin barkoddan okunamadığını sahada görmek.)
-- [ ] **Okuma sayıları ("kapının ölçüsü"), göstergeyle aynı pakette, SENKRONLU** (amaç: hangi telefon modelinde okuma zayıf, cihaza özel iyileştirme):
-  - Sayılanlar: kabul edilen okumalar kaynağa göre (barkod / karekod / yazı); yok sayılan kodlar sebebe göre (ürün barkodu, MAC, web adresi, sipariş / kutu kodu, kayıtlı değil…); "Doğru mu?" Evet / Hayır; kameranın 30 sn'de durması; ortalama okuma süresi (kamera açılışı / son okumadan kabul edilen okumaya).
-  - Telefon bilgisi: model (ör. Xiaomi 2201117TG), Android / iOS sürümü, uygulama sürümü, tarayıcı (web), kamera yakınlığı (1x / 2x / 3x). Telefon başına sabit bir kurulum kimliği.
-  - Kayıt biçimi: telefon başına günde bir satır, sunucuda yeni tablo `okuma_istatistikleri` (Supabase SQL gerekir). Kişisel veri yok; telefon bazında (kullanıcıya bağlanmaz, aksi istenmedikçe).
-  - **Anlık senkrona GİRMEZ (Seyfettin'in kararı):** sayılar gün boyu telefonda birikir, **günde bir kez akşam ~17:00-18:00** sunucuya gönderilir (arka plan görevi; o saatte gönderilemezse uygulama sonraki açıldığında önceki günler gönderilir). Yalnız gönderilir, telefonlara geri çekilmez; Realtime yayınına eklenmez → pil, internet ve senkron yükü yok.
-  - Görünüm: Raporlar → "Okuma istatistikleri" (internet gerekir, sunucudan anlık okunur, giriş kayıtları gibi): telefon modeline göre tablo (okuma sayısı, yazıdan %, yok sayılan %, "Hayır" %, ortalama süre), tarih aralığı; PDF / Excel. Telefonda Ayarlar'da yalnız henüz gönderilmemiş (bugünkü) sayılar; geçmiş günler Raporlar'da.
-  - **Gönderilen günler telefondan silinir** (sunucu "aldım" deyince; gönderilemeyen gün silinmez, sonra tekrar denenir). Telefonda ekstra veri birikmez.
-  - Gerekli: telefon modeli için `device_info_plus` paketi.
-
+- [ ] **Supabase SQL:** `supabase_guncelleme_1_31_0.sql` (okuma_istatistikleri) çalıştırılacak.
+- [ ] 1.31.0: okuma kaynağı göstergesi ("✓ Barkod / Karekod / Yazı (S/N)" 1,5 sn); Ayarlar → "Okuma sayıları (bugün)" artıyor mu, "Şimdi gönder"; akşam 17:00-17:30 kendiliğinden gidiyor mu, ertesi gün geçmiş gün gidip telefondan siliniyor mu; Raporlar → "Okuma istatistikleri"; "]C1FB6637822" artık FB6637822 olarak okunuyor mu. (Yazıdan okuma süresi 3 sn'de kaldı; istatistiklere göre yeniden bakılabilir.)
 
 ## Final paketi (toplanıyor; tek güncellemede yapılacak, "yap" bekliyor)
 İhtiyaçlar ekran ekran toplanıyor: Okut · Depolar · Ürünler · Ara ve cihaz kartı · Raporlar · Ayarlar ve bildirimler · Bilgisayar (web) ve iPhone · Sistem.
 
 ### Okut
-- (Okuma kaynağı göstergesi ve okuma sayıları sıradaki ara sürüme alındı.)
+- (Okuma kaynağı göstergesi ve okuma sayıları 1.31.0 ara sürümünde geldi.)
 
 ### Depolar
 - (Araçta hızlı bakış: vazgeçildi; dokununca stok ekranı zaten açılıyor.)
