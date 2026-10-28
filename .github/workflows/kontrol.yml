@@ -37,6 +37,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Yedek saklama kuralı (30 gün + 12 ay)
+        run: python3 tool/yedek_saklama.py --test
       - name: Excel çıktısını bağımsız okuyucuyla denetle (openpyxl)
         run: |
           pip install --quiet openpyxl==3.1.5

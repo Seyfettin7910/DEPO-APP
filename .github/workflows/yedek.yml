@@ -1,0 +1,363 @@
+# Veritabanı yedeği (DEPO YÖNETİM SİSTEMİ)
+#
+# Her gece Supabase veritabanının tam dökümünü alır, YEDEK_SIFRESI ile
+# AES-256 şifreler ve iki ayrı yere koyar:
+#   1) gizli GitHub deposu Seyfettin7910/DEPO-APP-yedek  → Releases (gün başına bir sürüm)
+#   2) Google Drive  → DEPO-APP-yedek/YYYY-AA/ klasörü
+# Saklama: son 30 gün her gece + 12 ay boyunca her ayın ilk yedeği
+#          (kural: tool/yedek_saklama.py). Eskiler iki yerden de silinir.
+# Ayın ilk gününde (ve elle / bu dosya değişince) "geri yükleme denemesi":
+# yedek GitHub'dan indirilir, şifresi açılır, boş bir veritabanına yüklenir,
+# tablo satır sayıları döküm anındakilerle karşılaştırılır.
+# Yedeği elle açma / geri yükleme: YEDEK.md
+#
+# Gerekli secret'lar (yalnız Seyfettin girer, hiçbir yerde açık yazılmaz):
+#   SUPABASE_DB_URL      Session pooler adresi, ŞİFRESİZ (port 5432)
+#   SUPABASE_DB_SIFRESI  veritabanı şifresi
+#   YEDEK_SIFRESI        yedek dosyalarının şifresi (kâğıtta da yazılı)
+#   YEDEK_DEPO_TOKEN     yalnız DEPO-APP-yedek, Contents: Read and write
+#   RCLONE_CONFIG        "rclone config show gdrive" çıktısı (yoksa Drive atlanır)
+name: Veritabanı yedeği
+
+on:
+  schedule:
+    - cron: '17 0 * * *'   # her gece 03:17 (Türkiye); tam saatte GitHub geç başlatabiliyor
+  workflow_dispatch:
+    inputs:
+      deneme:
+        description: 'Geri yükleme denemesi de yapılsın'
+        type: boolean
+        default: true
+  push:
+    paths:
+      - '.github/workflows/yedek.yml'
+      - 'tool/yedek_*'
+
+concurrency:
+  group: yedek
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: write   # zamanlanmış görevin 60 gün sessizlikte kapanmaması için
+
+env:
+  YEDEK_DEPO: Seyfettin7910/DEPO-APP-yedek
+  DRIVE_KLASOR: 'gdrive:DEPO-APP-yedek'
+
+jobs:
+  yedek:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      gun: ${{ steps.ad.outputs.gun }}
+      etiket: ${{ steps.ad.outputs.etiket }}
+      dosya: ${{ steps.ad.outputs.dosya }}
+      ayin_ilki: ${{ steps.ad.outputs.ayin_ilki }}
+      github_tamam: ${{ steps.github.outputs.tamam }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Secret'ları denetle
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          SUPABASE_DB_SIFRESI: ${{ secrets.SUPABASE_DB_SIFRESI }}
+          YEDEK_SIFRESI: ${{ secrets.YEDEK_SIFRESI }}
+          YEDEK_DEPO_TOKEN: ${{ secrets.YEDEK_DEPO_TOKEN }}
+          DRIVE_AYARI: ${{ secrets.RCLONE_CONFIG }}
+        run: |
+          eksik=""
+          for s in SUPABASE_DB_URL SUPABASE_DB_SIFRESI YEDEK_SIFRESI YEDEK_DEPO_TOKEN; do
+            [ -n "${!s}" ] || eksik="$eksik $s"
+          done
+          if [ -n "$eksik" ]; then
+            echo "::error title=Yedek::Eksik secret:$eksik (Settings > Secrets and variables > Actions)"
+            exit 1
+          fi
+          if [[ "$SUPABASE_DB_URL" =~ ://[^/@]*:[^/@]*@ ]]; then
+            echo "::error title=Yedek::SUPABASE_DB_URL içinde şifre var; şifresiz adres girilmeli, şifre SUPABASE_DB_SIFRESI'nde"
+            exit 1
+          fi
+          [ -n "$DRIVE_AYARI" ] || echo "::warning title=Yedek::RCLONE_CONFIG yok, Drive adımı atlanacak"
+
+      - name: Ad ve tarih
+        id: ad
+        run: |
+          gun=$(TZ=Europe/Istanbul date +%Y-%m-%d)
+          saat=$(TZ=Europe/Istanbul date +%H%M)
+          {
+            echo "gun=$gun"
+            echo "etiket=yedek-$gun"
+            echo "dosya=depo_${gun}_${saat}.tar.gpg"
+            if [ "$(TZ=Europe/Istanbul date +%d)" = "01" ]; then echo "ayin_ilki=true"; else echo "ayin_ilki=false"; fi
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Veritabanı dökümü
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          PGPASSWORD: ${{ secrets.SUPABASE_DB_SIFRESI }}
+        run: |
+          set -euo pipefail
+          mkdir -p yedek
+          # Sunucuyla aynı ana sürümün araçları (pg_dump eski sürüm sunucuyu dökemez)
+          pg() {
+            local surum="$1"; shift
+            docker run --rm --network host -e PGPASSWORD -e PGSSLMODE=require \
+              -e PGCONNECT_TIMEOUT=30 -v "$PWD:/is" -w /is "postgres:$surum" "$@"
+          }
+          docker pull -q postgres:17 > /dev/null
+          if ! surum_num=$(pg 17 psql "$DB_URL" -tAc 'show server_version_num' 2> baglanti.txt); then
+            echo "::error title=Yedek::Veritabanına bağlanılamadı: $(tail -c 400 baglanti.txt | tr '\n' ' ')"
+            exit 1
+          fi
+          ana=$(( surum_num / 10000 ))
+          [ "$ana" = 17 ] || docker pull -q "postgres:$ana" > /dev/null
+
+          if ! pg "$ana" pg_dump "$DB_URL" -Fc -n public -f yedek/public.dump 2> dokum.txt; then
+            echo "::error title=Yedek::Döküm alınamadı: $(tail -c 600 dokum.txt | tr '\n' ' ')"
+            exit 1
+          fi
+          # Kullanıcı hesapları (auth) — alınamazsa yedek yine de devam eder, uyarı verilir
+          if pg "$ana" pg_dump "$DB_URL" -Fc -n auth -f yedek/auth.dump 2> auth.txt; then
+            auth=var
+          else
+            auth=yok
+            sudo rm -f yedek/auth.dump
+            echo "::warning title=Yedek::Kullanıcı hesapları (auth) dökülemedi: $(tail -c 300 auth.txt | tr '\n' ' ')"
+          fi
+
+          pg "$ana" psql "$DB_URL" -tA -F'|' -v ON_ERROR_STOP=1 -f tool/yedek_sayim.sql > yedek/sayim.txt
+          [ "$auth" = var ] || sed -i '/^auth\./d' yedek/sayim.txt
+          if ! grep -q '^public\.stok_hareketleri|' yedek/sayim.txt; then
+            echo "::error title=Yedek::Sayımda stok_hareketleri tablosu yok, döküm eksik olabilir"
+            exit 1
+          fi
+
+          sudo chown -R "$(id -u):$(id -g)" yedek
+          {
+            echo "tarih=$(TZ=Europe/Istanbul date '+%Y-%m-%d %H:%M:%S %z')"
+            echo "sunucu_surum_num=$surum_num"
+            echo "sunucu_ana_surum=$ana"
+            echo "kullanici_hesaplari=$auth"
+            echo "kaynak=$GITHUB_REPOSITORY@$GITHUB_SHA"
+          } > yedek/bilgi.txt
+          (cd yedek && sha256sum ./*.dump sayim.txt bilgi.txt > ozet.sha256)
+
+          tablo=$(grep -c '^public\.' yedek/sayim.txt)
+          hareket=$(grep '^public\.stok_hareketleri|' yedek/sayim.txt | cut -d'|' -f2)
+          boyut=$(du -ch yedek/*.dump | tail -1 | cut -f1)
+          echo "::notice title=Döküm::$tablo tablo, $hareket stok hareketi, $boyut (kullanıcı hesapları: $auth, PostgreSQL $ana)"
+          {
+            echo "### Döküm"
+            echo "PostgreSQL $ana · $boyut · kullanıcı hesapları: $auth"
+            echo
+            echo "| Tablo | Satır |"; echo "|---|---:|"
+            sed 's/|/ | /; s/^/| /; s/$/ |/' yedek/sayim.txt
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Şifrele (AES-256)
+        env:
+          YEDEK_SIFRESI: ${{ secrets.YEDEK_SIFRESI }}
+          DOSYA: ${{ steps.ad.outputs.dosya }}
+        run: |
+          set -euo pipefail
+          tar -C yedek -cf yedek.tar .
+          printf '%s' "$YEDEK_SIFRESI" | gpg --batch --yes --quiet --pinentry-mode loopback \
+            --passphrase-fd 0 --symmetric --cipher-algo AES256 \
+            --s2k-mode 3 --s2k-digest-algo SHA512 --s2k-count 65011712 \
+            -o "$DOSYA" yedek.tar
+          # Şifreli dosya gerçekten açılıyor mu?
+          printf '%s' "$YEDEK_SIFRESI" | gpg --batch --quiet --pinentry-mode loopback \
+            --passphrase-fd 0 -d "$DOSYA" | cmp - yedek.tar
+          rm -rf yedek yedek.tar
+          echo "::notice title=Şifreli dosya::$DOSYA ($(du -h "$DOSYA" | cut -f1))"
+
+      - name: GitHub'a yükle (DEPO-APP-yedek)
+        id: github
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.YEDEK_DEPO_TOKEN }}
+          GUN: ${{ steps.ad.outputs.gun }}
+          ETIKET: ${{ steps.ad.outputs.etiket }}
+          DOSYA: ${{ steps.ad.outputs.dosya }}
+        run: |
+          set -euo pipefail
+          # Depo boşsa sürüm açılamaz: ilk dosyayı koy
+          if ! cikti=$(gh api "repos/$YEDEK_DEPO/commits?per_page=1" 2>&1); then
+            if echo "$cikti" | grep -qi 'empty'; then
+              icerik=$(printf '%s\n' '# DEPO-APP yedekleri' '' \
+                'Şifreli veritabanı yedekleri Releases altında.' \
+                'Açma ve geri yükleme: DEPO-APP deposundaki YEDEK.md.' | base64 -w0)
+              gh api -X PUT "repos/$YEDEK_DEPO/contents/README.md" \
+                -f message='Yedek deposu' -f content="$icerik" > /dev/null
+            else
+              echo "::error title=GitHub yedeği::DEPO-APP-yedek'e erişilemedi (YEDEK_DEPO_TOKEN?): $(echo "$cikti" | tail -c 300 | tr '\n' ' ')"
+              exit 1
+            fi
+          fi
+          if gh release view "$ETIKET" --repo "$YEDEK_DEPO" > /dev/null 2>&1; then
+            gh release upload "$ETIKET" "$DOSYA" --repo "$YEDEK_DEPO" --clobber
+          else
+            gh release create "$ETIKET" "$DOSYA" --repo "$YEDEK_DEPO" \
+              --title "Yedek $GUN" --notes "Şifreli veritabanı yedeği. Açma: DEPO-APP/YEDEK.md"
+          fi
+          gh release list --repo "$YEDEK_DEPO" --limit 1000 --json tagName -q '.[].tagName' \
+            | grep '^yedek-' > etiketler.txt || true
+          python3 tool/yedek_saklama.py --bugun "$GUN" < etiketler.txt > sil.txt
+          while read -r e; do
+            [ -n "$e" ] && gh release delete "$e" --repo "$YEDEK_DEPO" --cleanup-tag -y
+          done < sil.txt
+          kalan=$(( $(wc -l < etiketler.txt) - $(wc -l < sil.txt) ))
+          echo "::notice title=GitHub yedeği::Yüklendi; $(wc -l < sil.txt) eski yedek silindi, $kalan gün duruyor"
+          echo "tamam=true" >> "$GITHUB_OUTPUT"
+
+      - name: Google Drive'a yükle
+        id: drive
+        continue-on-error: true
+        env:
+          DRIVE_AYARI: ${{ secrets.RCLONE_CONFIG }}
+          GUN: ${{ steps.ad.outputs.gun }}
+          DOSYA: ${{ steps.ad.outputs.dosya }}
+        run: |
+          set -euo pipefail
+          if [ -z "$DRIVE_AYARI" ]; then
+            echo "::warning title=Drive yedeği::RCLONE_CONFIG yok, atlandı"
+            exit 0
+          fi
+          curl -fsSL https://rclone.org/install.sh | sudo bash > /dev/null 2>&1 \
+            || sudo apt-get install -y -qq rclone > /dev/null
+          mkdir -p ~/.config/rclone
+          ( umask 077; printf '%s\n' "$DRIVE_AYARI" > ~/.config/rclone/rclone.conf )
+          ay=${GUN:0:7}
+          if ! rclone copyto "$DOSYA" "$DRIVE_KLASOR/$ay/$DOSYA" 2> drive.txt; then
+            echo "::error title=Drive yedeği::Yüklenemedi (bağlantı yenilenmeli olabilir): $(tail -c 400 drive.txt | tr '\n' ' ')"
+            exit 1
+          fi
+          rclone lsf -R --files-only "$DRIVE_KLASOR" > drive_liste.txt
+          python3 tool/yedek_saklama.py --bugun "$GUN" < drive_liste.txt > sil.txt
+          while read -r p; do
+            [ -n "$p" ] && rclone deletefile "$DRIVE_KLASOR/$p"
+          done < sil.txt
+          rclone rmdirs "$DRIVE_KLASOR" --leave-root
+          rm -f ~/.config/rclone/rclone.conf
+          echo "::notice title=Drive yedeği::Yüklendi ($ay/$DOSYA); $(wc -l < sil.txt) eski dosya silindi"
+
+      - name: Zamanlanmış görevi canlı tut
+        if: github.event_name == 'schedule'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/$GITHUB_REPOSITORY/actions/workflows/yedek.yml/enable"
+
+      - name: Sonuç
+        if: always()
+        env:
+          GITHUB_SONUC: ${{ steps.github.outcome }}
+          DRIVE_SONUC: ${{ steps.drive.outcome }}
+        run: |
+          echo "GitHub: $GITHUB_SONUC · Drive: $DRIVE_SONUC"
+          if [ "$GITHUB_SONUC" != success ] && [ "$DRIVE_SONUC" != success ]; then
+            echo "::error title=Yedek::Yedek HİÇBİR yere yüklenemedi"; exit 1
+          fi
+          if [ "$GITHUB_SONUC" != success ]; then
+            echo "::error title=Yedek::GitHub'a yüklenemedi (Drive'da var)"; exit 1
+          fi
+          if [ "$DRIVE_SONUC" != success ]; then
+            echo "::error title=Yedek::Drive'a yüklenemedi (GitHub'da var)"; exit 1
+          fi
+
+  deneme:
+    name: Geri yükleme denemesi
+    needs: yedek
+    if: >-
+      always() && needs.yedek.outputs.github_tamam == 'true' &&
+      (github.event_name == 'push' ||
+       (github.event_name == 'workflow_dispatch' && inputs.deneme) ||
+       (github.event_name == 'schedule' && needs.yedek.outputs.ayin_ilki == 'true'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Yedeği GitHub'dan indir ve aç
+        env:
+          GH_TOKEN: ${{ secrets.YEDEK_DEPO_TOKEN }}
+          YEDEK_SIFRESI: ${{ secrets.YEDEK_SIFRESI }}
+          ETIKET: ${{ needs.yedek.outputs.etiket }}
+          DOSYA: ${{ needs.yedek.outputs.dosya }}
+        run: |
+          set -euo pipefail
+          gh release download "$ETIKET" --repo "$YEDEK_DEPO" -p "$DOSYA" -D indirilen
+          if ! printf '%s' "$YEDEK_SIFRESI" | gpg --batch --quiet --pinentry-mode loopback \
+              --passphrase-fd 0 -d "indirilen/$DOSYA" > yedek.tar; then
+            echo "::error title=Deneme::Şifre açılamadı"; exit 1
+          fi
+          mkdir acik && tar -C acik -xf yedek.tar
+          (cd acik && sha256sum --quiet -c ozet.sha256) || { echo "::error title=Deneme::Dosya bozuk (özet tutmuyor)"; exit 1; }
+          sha256sum "indirilen/$DOSYA" | cut -d' ' -f1 > github_ozet.txt
+
+      - name: Drive kopyası GitHub'dakiyle aynı mı
+        continue-on-error: true
+        env:
+          DRIVE_AYARI: ${{ secrets.RCLONE_CONFIG }}
+          GUN: ${{ needs.yedek.outputs.gun }}
+          DOSYA: ${{ needs.yedek.outputs.dosya }}
+        run: |
+          set -euo pipefail
+          [ -n "$DRIVE_AYARI" ] || { echo "Drive ayarı yok, atlandı"; exit 0; }
+          curl -fsSL https://rclone.org/install.sh | sudo bash > /dev/null 2>&1 \
+            || sudo apt-get install -y -qq rclone > /dev/null
+          mkdir -p ~/.config/rclone
+          ( umask 077; printf '%s\n' "$DRIVE_AYARI" > ~/.config/rclone/rclone.conf )
+          drive=$(rclone cat "$DRIVE_KLASOR/${GUN:0:7}/$DOSYA" | sha256sum | cut -d' ' -f1)
+          rm -f ~/.config/rclone/rclone.conf
+          if [ "$drive" = "$(cat github_ozet.txt)" ]; then
+            echo "::notice title=Deneme::Drive kopyası GitHub'dakiyle birebir aynı"
+          else
+            echo "::error title=Deneme::Drive kopyası GitHub'dakinden farklı"; exit 1
+          fi
+
+      - name: Boş veritabanına geri yükle ve say
+        run: |
+          set -euo pipefail
+          ana=$(grep '^sunucu_ana_surum=' acik/bilgi.txt | cut -d= -f2)
+          docker run -d --name deneme -e POSTGRES_PASSWORD=deneme -v "$PWD:/is" -w /is "postgres:$ana" > /dev/null
+          for i in $(seq 90); do
+            docker exec deneme pg_isready -h 127.0.0.1 -U postgres -q && break
+            sleep 1
+          done
+          q() { docker exec -i deneme psql -U postgres -d postgres -v ON_ERROR_STOP=1 -q "$@"; }
+          # Supabase'in hazır rolleri ve eklenti şeması (izinler / sahiplik yüklenmez)
+          q <<'SQL'
+          do $$ declare r text; begin
+            foreach r in array array['anon','authenticated','service_role','authenticator',
+                'supabase_admin','supabase_auth_admin','supabase_storage_admin',
+                'dashboard_user','pgbouncer'] loop
+              if not exists (select 1 from pg_roles where rolname = r) then
+                execute format('create role %I nologin', r);
+              end if;
+            end loop; end $$;
+          create schema if not exists extensions;
+          create extension if not exists "uuid-ossp" with schema extensions;
+          create extension if not exists pgcrypto with schema extensions;
+          SQL
+          : > geri_hata.txt
+          for d in auth public; do
+            [ -f "acik/$d.dump" ] || continue
+            docker exec deneme pg_restore -U postgres -d postgres --no-owner --no-privileges \
+              "acik/$d.dump" 2>> geri_hata.txt || true
+          done
+          hata=$(grep 'ERROR:' geri_hata.txt | grep -vc 'schema "public" already exists' || true)
+          [ "$hata" = 0 ] || echo "::warning title=Deneme::Geri yüklemede $hata uyarı (veri sayımı yine de belirleyici): $(grep 'ERROR:' geri_hata.txt | grep -v 'schema "public"' | head -3 | tr '\n' ' ')"
+
+          docker exec deneme psql -U postgres -d postgres -tA -F'|' -v ON_ERROR_STOP=1 \
+            -f tool/yedek_sayim.sql > geri_ham.txt
+          awk -F'|' 'NR==FNR{a[$1];next} ($1 in a)' acik/sayim.txt geri_ham.txt | sort > geri.txt
+          sort acik/sayim.txt > once.txt
+          if diff once.txt geri.txt > fark.txt; then
+            echo "::notice title=Geri yükleme denemesi::BAŞARILI — $(wc -l < once.txt) tablonun satır sayıları döküm anıyla birebir aynı"
+            echo "### Geri yükleme denemesi: BAŞARILI ($(wc -l < once.txt) tablo birebir aynı)" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::error title=Geri yükleme denemesi::Satır sayıları tutmuyor: $(tr '\n' ' ' < fark.txt | tail -c 600)"
+            exit 1
+          fi
