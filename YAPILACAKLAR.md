@@ -149,7 +149,7 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
   - **Ayda bir geri yükleme denemesi:** son yedek boş veritabanına yüklenir, satır sayıları karşılaştırılır (belediye sunucusuna geçişte de aynı adım).
   - **Uygulamadan Excel dökümü** (her tablo bir sayfa; geri yükleme için değil, inceleme / el kopyası): bu pakette mi rollerle Final'de mi, karar bekliyor. Roller gelince yalnız yönetici.
   - Program belediyeye geçince yedek yeri belediyenin hesabına / sunucusuna taşınır (KVKK ve sunucu maddeleriyle).
-- [ ] **Belediye sunucusuna geçiş** (alan adı → web + APK → veritabanı). Gerekli bilgi: sunucu Windows mu Linux mu, internete çıkışı ve dışarıdan erişimi var mı.
+- [ ] **Belediye sunucusuna geçiş — KARAR VERİLDİ (01.11.2026): Daire başkanı onayladı, program belediye sunucularına taşınacak.** (alan adı → web + APK → veritabanı). Gerekli bilgi: sunucu Windows mu Linux mu, internete çıkışı ve dışarıdan erişimi var mı.
 
 ## Bekleyenler
 - [ ] **Etiket engelini zorunlu yapmak** (1.22.0'da isteğe bağlı): uyum sorunu çıkmazsa ayar kaldırılıp kural zorunlu hale getirilir.
