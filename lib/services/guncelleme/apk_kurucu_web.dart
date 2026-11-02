@@ -5,7 +5,7 @@ Future<bool> indiriliyorMu(String surum) async => false;
 
 Future<String> apkIndir(String url, String surum,
         void Function(int alinan, int? toplam) ilerleme,
-        {bool sadeceWifi = false}) =>
+        {bool sadeceWifi = false, bool hemen = false}) =>
     throw UnsupportedError('Web\'de APK indirilmez');
 
 Future<bool> kurulumIzniVar() async => false;

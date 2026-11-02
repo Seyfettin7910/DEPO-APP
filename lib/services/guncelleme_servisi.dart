@@ -420,7 +420,8 @@ class GuncellemeServisi {
     // Wi-Fi bekleyen indirme varsa iptal edip her ağda yeniden başlat.
     await apk.duraklamisIseIptal(hedef);
     return apk.apkIndir(
-        apkLinki, hedef, (a, t) => ilerleme.value = (a, t ?? _apkBoyutu));
+        apkLinki, hedef, (a, t) => ilerleme.value = (a, t ?? _apkBoyutu),
+        hemen: true);
   }
 
   // ------------------------------------------------------------------
@@ -485,6 +486,10 @@ class _GuncellemePenceresiState extends State<_GuncellemePenceresi>
   bool _uzunSurdu = false;
   Timer? _kurulumZamanlayici;
 
+  // 1.32.1: indirme hiç başlamazsa "Tarayıcıdan indir" düğmesi
+  Timer? _tarayiciZamanlayici;
+  bool _tarayiciGoster = false;
+
   // Kurulum onayı (sistem ekranı) takibi
   StreamSubscription<Map<String, dynamic>>? _olayAboneligi;
   bool _onayBekliyor = false;
@@ -512,6 +517,7 @@ class _GuncellemePenceresiState extends State<_GuncellemePenceresi>
     WidgetsBinding.instance.removeObserver(this);
     _kurulumZamanlayici?.cancel();
     _onayZamanlayici?.cancel();
+    _tarayiciZamanlayici?.cancel();
     _olayAboneligi?.cancel();
     super.dispose();
   }
@@ -604,6 +610,17 @@ class _GuncellemePenceresiState extends State<_GuncellemePenceresi>
     setState(() {
       _asama = _Asama.indiriliyor;
       _hata = null;
+      _tarayiciGoster = false;
+    });
+    // İndirme yöneticisi 10 sn'de başlamazsa uygulama kendisi indirir;
+    // o da başlamazsa (15 sn'de hâlâ 0 bayt) tarayıcıdan indirme önerilir.
+    _tarayiciZamanlayici?.cancel();
+    _tarayiciZamanlayici = Timer(const Duration(seconds: 15), () {
+      if (mounted &&
+          _asama == _Asama.indiriliyor &&
+          GuncellemeServisi.ilerleme.value.$1 <= 0) {
+        setState(() => _tarayiciGoster = true);
+      }
     });
     try {
       _yol = await GuncellemeServisi._simdiIndir(widget.hedef);
@@ -708,6 +725,15 @@ class _GuncellemePenceresiState extends State<_GuncellemePenceresi>
                 const SizedBox(height: 6),
                 Text('İndirme bitince kurulum kendiliğinden başlar.',
                     textAlign: TextAlign.center, style: kucuk),
+                if (_tarayiciGoster && d.$1 <= 0) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    'İndirme başlamadı. "Tarayıcıdan indir"e dokunun; inen '
+                    'dosyayı açıp "Güncelle"yi seçin (veriler silinmez).',
+                    textAlign: TextAlign.center,
+                    style: kucuk,
+                  ),
+                ],
               ],
             );
           },
@@ -768,7 +794,17 @@ class _GuncellemePenceresiState extends State<_GuncellemePenceresi>
             label: Text(widget.zorunlu ? 'Güncelle' : 'Şimdi güncelle'),
           ),
         ],
-      _Asama.indiriliyor => const [],
+      _Asama.indiriliyor => _tarayiciGoster
+          ? [
+              FilledButton.icon(
+                onPressed: () => launchUrl(
+                    Uri.parse(GuncellemeServisi.apkLinki),
+                    mode: LaunchMode.externalApplication),
+                icon: const Icon(Icons.open_in_browser),
+                label: const Text('Tarayıcıdan indir'),
+              ),
+            ]
+          : const [],
       _Asama.izin => [
           FilledButton(
             onPressed: apk.kurulumIzniIste,
@@ -782,6 +818,13 @@ class _GuncellemePenceresiState extends State<_GuncellemePenceresi>
                 ]
               : const [],
       _Asama.hata => [
+          if (_android)
+            TextButton(
+              onPressed: () => launchUrl(
+                  Uri.parse(GuncellemeServisi.apkLinki),
+                  mode: LaunchMode.externalApplication),
+              child: const Text('Tarayıcıdan indir'),
+            ),
           FilledButton(onPressed: _kur, child: const Text('Tekrar dene')),
         ],
     };

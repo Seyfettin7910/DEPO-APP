@@ -36,6 +36,21 @@ class NotMaddesi {
 
 const surumNotlari = <SurumNotu>[
   SurumNotu(
+    surum: '1.32.1',
+    tarih: '02.11.2026',
+    bolumler: [
+      NotBolumu('Düzeltilen', [
+        NotMaddesi(
+          'Güncelleme inmiyordu',
+          '"İndirme başlıyor..." ekranında takılma giderildi.',
+          'Bazı telefonlarda indirme "Sırada" bekleyip hiç başlamıyordu. '
+              'Artık 10 saniyede başlamazsa uygulama kendisi indirir; o da '
+              'olmazsa "Tarayıcıdan indir" düğmesi çıkar.',
+        ),
+      ]),
+    ],
+  ),
+  SurumNotu(
     surum: '1.32.0',
     tarih: '02.11.2026',
     bolumler: [

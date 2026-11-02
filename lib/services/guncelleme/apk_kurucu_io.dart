@@ -20,6 +20,11 @@ const _anahtarSurum = 'guncelleme_indirme_surum';
 
 String _ad(String surum) => 'Depo-Yonetim-Sistemi-$surum.apk';
 
+/// 1.32.1: "Şimdi güncelle"de indirme yöneticisi bu sürede hiç bayt
+/// indirmezse (bazı telefonlarda "Sırada"da takılı kalıyor) bırakılır,
+/// uygulama içinden indirilir. (Seyfettin: 20 sn çok, 10 sn.)
+const baslamaBeklemesi = Duration(seconds: 10);
+
 Future<SharedPreferences?> _prefs() async {
   try {
     return await SharedPreferences.getInstance();
@@ -114,9 +119,11 @@ Future<void> _eskileriTemizle(String surum) async {
 
 /// APK'yı indirir; [ilerleme] (inen bayt, toplam bayt / bilinmiyorsa null).
 /// [sadeceWifi]: mobil veriye geçilirse indirme duraklar, Wi-Fi gelince sürer.
+/// [hemen]: kullanıcı "Şimdi güncelle" dedi; indirme yöneticisi
+/// [baslamaBeklemesi] içinde başlamazsa uygulama içinden indirilir.
 Future<String> apkIndir(
     String url, String surum, void Function(int alinan, int? toplam) ilerleme,
-    {bool sadeceWifi = false}) async {
+    {bool sadeceWifi = false, bool hemen = false}) async {
   final p = await _prefs();
   int? id;
 
@@ -154,10 +161,25 @@ Future<String> apkIndir(
     await p?.setString(_anahtarSurum, surum);
   }
 
+  final baslangic = DateTime.now();
   while (true) {
     final d = await _durum(id);
     final durum = d?['durum'];
     if (durum == 'bitti') return d!['yol'] as String;
+    // Elle istenen indirme 10 sn'de başlamadıysa indirme yöneticisini
+    // bırak, uygulama içinden indir. (Arka plandaki "yalnız Wi-Fi"
+    // indirmesi Wi-Fi beklerken haklı olarak durur; ona dokunulmaz.)
+    final simdiyeKadar = (d?['alinan'] as num?)?.toInt() ?? 0;
+    if (hemen &&
+        simdiyeKadar <= 0 &&
+        durum != 'hata' &&
+        DateTime.now().difference(baslangic) >= baslamaBeklemesi) {
+      try {
+        await _kanal.invokeMethod('indirmeIptal', {'id': id});
+      } catch (_) {}
+      await _kaydiSil();
+      return _dogrudanIndir(url, surum, ilerleme);
+    }
     if (durum == 'hata') {
       await _kaydiSil();
       throw HttpException('İndirme hatası (${d?['sebep']})');
