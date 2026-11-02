@@ -163,6 +163,11 @@ class MobileScannerHandler(
                 }
                 result.success(null)
             }
+            "metinZorla" -> {
+                val ms = call.argument<Int>("ms") ?: 3000
+                mobileScanner?.metinZorlaBitis = android.os.SystemClock.elapsedRealtime() + ms
+                result.success(null)
+            }
             "hizAyarla" -> {
                 call.argument<Int>("ms")?.let { mobileScanner?.hizAyarla(it.toLong()) }
                 result.success(null)

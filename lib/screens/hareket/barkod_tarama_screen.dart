@@ -95,6 +95,9 @@ class _BarkodTaramaScreenState extends ConsumerState<BarkodTaramaScreen> {
 
   bool _mesgul = false;
   bool _coklu = false;
+
+  /// 1.33.0: kayıtsız seri kartı ("… kayıtlı değil · Depoya giriş / Ara / Atla")
+  String? _kayitsizKart;
   String? _sonKod;
   DateTime _sonZaman = DateTime.fromMillisecondsSinceEpoch(0);
 
@@ -399,26 +402,18 @@ class _BarkodTaramaScreenState extends ConsumerState<BarkodTaramaScreen> {
   void _sonucuIsle(OkutSonucu sonuc, String kod, CihazBilgi? bilgi) {
     if (bilgi != null) _bilgiler[bilgi.cihaz.seriNo] = bilgi;
     final ad = bilgi == null ? kod : '${bilgi.urunAdi} · ${bilgi.cihaz.seriNo}';
+    if (sonuc != OkutSonucu.ilkKayitsiz && _kayitsizKart != null && mounted) {
+      setState(() => _kayitsizKart = null);
+    }
     switch (sonuc) {
       case OkutSonucu.kartAc:
         SesServisi.basari();
         unawaited(_ac(CihazDetayScreen(cihazId: bilgi!.cihaz.id)));
       case OkutSonucu.ilkKayitsiz:
+        // 1.33.0: sessiz bildirim yerine kart: Depoya giriş / Ara / Atla
         SesServisi.hata();
-        _bilgi(
-          'Kayıtlı cihaz yok: $kod\n'
-          'Bir kayıtsız daha okutursanız liste başlar.',
-          renk: Colors.red.shade700,
-          sn: 6,
-          aksiyon: SnackBarAction(
-            label: 'Depoya ekle',
-            textColor: Colors.white,
-            onPressed: () async {
-              final ok = await _ac<bool>(TopluGirisScreen(onceSeriNolari: [kod]));
-              if (ok == true) _liste.saymayiSifirla();
-            },
-          ),
-        );
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        setState(() => _kayitsizKart = kod);
       case OkutSonucu.topluBasladi:
         SesServisi.hata();
         _degisti();
@@ -574,7 +569,87 @@ class _BarkodTaramaScreenState extends ConsumerState<BarkodTaramaScreen> {
               ),
             ),
           ),
+        if (_kayitsizKart != null)
+          Align(alignment: Alignment.bottomCenter, child: _kayitsizKarti()),
       ],
+    );
+  }
+
+  /// 1.33.0: kayıtsız seri no okununca: Depoya giriş (seri dolu gelir) /
+  /// Ara / Atla. Arka arkaya ikinci kayıtsız okutulursa liste başlar.
+  Widget _kayitsizKarti() {
+    final kod = _kayitsizKart!;
+    void kapat() {
+      setState(() => _kayitsizKart = null);
+      _liste.saymayiSifirla();
+    }
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.all(8),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+      decoration: BoxDecoration(
+        color: Colors.red.shade800,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: const [BoxShadow(blurRadius: 6, color: Colors.black45)],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text.rich(
+            TextSpan(children: [
+              TextSpan(
+                  text: kod,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+              const TextSpan(text: '  kayıtlı değil'),
+            ]),
+            style: const TextStyle(color: Colors.white, fontSize: 16),
+          ),
+          const SizedBox(height: 2),
+          const Text(
+            'Yeni cihazsa depoya girin. Arka arkaya bir kayıtsız daha '
+            'okutursanız liste başlar.',
+            style: TextStyle(color: Colors.white70, fontSize: 12),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.red.shade800),
+                  icon: const Icon(Icons.add_box_outlined, size: 18),
+                  label: const Text('Depoya giriş'),
+                  onPressed: () async {
+                    setState(() => _kayitsizKart = null);
+                    final ok = await _ac<bool>(
+                        TopluGirisScreen(onceSeriNolari: [kod]));
+                    if (ok == true) _liste.saymayiSifirla();
+                  },
+                ),
+              ),
+              const SizedBox(width: 6),
+              TextButton.icon(
+                style: TextButton.styleFrom(foregroundColor: Colors.white),
+                icon: const Icon(Icons.search, size: 18),
+                label: const Text('Ara'),
+                onPressed: () {
+                  kapat();
+                  unawaited(_ac<Object?>(CihazAraScreen(ilkSorgu: kod)));
+                },
+              ),
+              TextButton(
+                style: TextButton.styleFrom(foregroundColor: Colors.white70),
+                onPressed: kapat,
+                child: const Text('Atla'),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 

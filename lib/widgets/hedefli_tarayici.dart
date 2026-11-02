@@ -50,6 +50,13 @@ enum TaramaModu { barkod, karekod }
 ///   barkod okunmazsa çerçevedeki "S/N" satırı yazıdan okunur; iki kez aynı
 ///   okununca, yarım saniye içinde barkod okunmazsa kabul edilir (barkod
 ///   önceliği). Kayıtlı cihazla eşleşmezse "Doğru mu?" sorulur.
+/// - Kayıtsız seri (1.33.0): yalnız rakamlı / tireli kodlar (lot, malzeme
+///   kodu da öyle) kayıt kontrolü olan ekranlarda kayıtlı değilse yok
+///   sayılır. Yok sayılınca yazı tanıma bu karede de 3 sn çalışır: etikette
+///   "SN:" yanında aynı değer görülürse barkod KESİN SERİ sayılıp hemen kabul
+///   edilir ("Doğru mu?" sorulmaz; iki kaynak aynı). "Lot No", "Material
+///   Code", "Model" yanında görülürse ipucu o sebebi yazar. İpucuna
+///   dokunulunca "Seri no olarak kullanılsın mı?" sorulur (her zaman çıkış).
 /// - Okuma kaynağı (1.31.0): kabul edilen okumada çerçevenin hemen üstünde
 ///   1,5 sn "✓ Barkod" / "✓ Karekod" / "✓ Yazı (S/N)" görünür (kayda geçmez).
 ///   Okuma sayıları telefonda birikir ([OkumaIstatistigi]): kaynağa göre
@@ -127,6 +134,18 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
   // Yok sayılan kod ipucu ("Yok sayıldı: … (MAC adresi)")
   String? _ipucu;
   Timer? _ipucuZamanlayici;
+
+  // 1.33.0: dokunulabilir ipucu ("Seri no ise dokunun") için yok sayılan kod
+  Barcode? _ipucuKod;
+
+  // 1.33.0: kayıtsız barkod ↔ etiketteki "SN:" yazısı. Yok sayılan kayıtsız
+  // kodlar (değer → barkod, zaman) birkaç saniye tutulur; yazı tanıma
+  // bunlardan birini "SN:" yanında görürse kesin seri sayılır.
+  final _seriAdaylari = <String, (Barcode, DateTime)>{};
+  EtiketOkumasi? _etiket;
+  DateTime _etiketZamani = DateTime.fromMillisecondsSinceEpoch(0);
+  DateTime _sonZorlama = DateTime.fromMillisecondsSinceEpoch(0);
+  static const _etiketGecerlilik = Duration(seconds: 4);
 
   // Tek parmakla yatay kaydırma: Barkod ⇄ Karekod
   double _kaydirma = 0;
@@ -273,13 +292,17 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
   // ------------------------------------------------ yazıdan okuma (S/N)
 
   void _metinGeldi(List<String> satirlar) {
-    if (!mounted || _metinSoruluyor || _metinBekliyor || _durduruldu ||
-        !_yaziAcik) {
-      return;
-    }
+    if (!mounted || _durduruldu || !_yaziAcik || _metinSoruluyor) return;
     // Yalnız ekranda görünen (en üstteki) kamera.
     if (!(ModalRoute.of(context)?.isCurrent ?? true)) return;
-    final sn = snAyikla(satirlar);
+    // 1.33.0: etiketin özeti; yok sayılan kayıtsız barkod "SN:" yanındaysa
+    // kesin seri olarak hemen kabul edilir.
+    final etiket = etiketOku(satirlar);
+    _etiket = etiket;
+    _etiketZamani = DateTime.now();
+    if (_kesinSeriyiKabulEt(etiket)) return;
+    if (_metinBekliyor) return;
+    final sn = etiket.sn;
     if (sn == null) return;
     final simdi = DateTime.now();
     if (sn == _okunan &&
@@ -305,6 +328,130 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
       _etkinlik();
       unawaited(_metinOnayla(sn));
     });
+  }
+
+  /// Son birkaç saniyedeki etiket yazısına göre kodun türü (yoksa null).
+  EtiketKodTuru? _etiketTuru(String kod) {
+    final e = _etiket;
+    if (e == null ||
+        DateTime.now().difference(_etiketZamani) > _etiketGecerlilik) {
+      return null;
+    }
+    return e.tur(kod);
+  }
+
+  /// Barkod görülse de yazı tanıma 3 sn çalışsın (en fazla saniyede bir istenir).
+  void _metinZorla() {
+    if (!_yaziAcik) return;
+    final simdi = DateTime.now();
+    if (simdi.difference(_sonZorlama) < const Duration(seconds: 1)) return;
+    _sonZorlama = simdi;
+    unawaited(MetinOkuma.zorla(const Duration(seconds: 3)));
+  }
+
+  /// Kayıtlı olması gereken ama kayıtlı olmayan kod yok sayılırken: aday
+  /// olarak tutulur (yazıyla eşleşirse kesin seri), sebebi etiketten bulunur.
+  String _kayitsizSebep(Barcode b, String v) {
+    _seriAdaylari[v] = (b, DateTime.now());
+    _metinZorla();
+    final tur = _etiketTuru(v);
+    return tur == null || tur == EtiketKodTuru.seri ? 'kayıtlı değil' : tur.ad;
+  }
+
+  /// Yazıda "SN:" yanında görülen değer, az önce yok sayılan bir barkodla
+  /// aynıysa o barkod hemen kabul edilir. Lot / malzeme / model ise ipucu
+  /// düzeltilir.
+  bool _kesinSeriyiKabulEt(EtiketOkumasi e) {
+    final simdi = DateTime.now();
+    _seriAdaylari
+        .removeWhere((_, x) => simdi.difference(x.$2) > _etiketGecerlilik);
+    if (_seriAdaylari.isEmpty) return false;
+    for (final x in _seriAdaylari.entries) {
+      final tur = e.tur(x.key);
+      if (tur == EtiketKodTuru.seri) {
+        _seriAdaylari.clear();
+        _kodKabulEt(x.value.$1);
+        return true;
+      }
+    }
+    final ipucuKod = _ipucuKod?.rawValue?.trim();
+    if (ipucuKod != null && _ipucu != null) {
+      final tur = e.tur(ipucuKod);
+      if (tur != null && tur != EtiketKodTuru.seri) {
+        _ipucuGoster('Yok sayıldı: ${_kisalt(ipucuKod)} (${tur.ad})',
+            kod: _ipucuKod);
+      }
+    }
+    return false;
+  }
+
+  /// Kayıtsız kodu seri no olarak kabul eder (yazıyla doğrulandı ya da
+  /// kullanıcı "Evet" dedi). Ekran kayıtsız seri kartını açar.
+  void _kodKabulEt(Barcode b) {
+    final v = b.rawValue?.trim() ?? '';
+    if (v.isEmpty || !mounted) return;
+    _bilinenler[v] = true; // bu ekranda artık beklemeden okunur
+    final simdi = DateTime.now();
+    _okunan = v;
+    _okunmaZamani = simdi;
+    _sonKabul = simdi;
+    _metinAday = null;
+    _kayip?.cancel();
+    _ipucuZamanlayici?.cancel();
+    setState(() {
+      _aday = null;
+      _ipucu = null;
+      _ipucuKod = null;
+    });
+    _kabulEdildi(
+        _karekodTuru(b.format) ? OkumaKaynagi.karekod : OkumaKaynagi.barkod);
+    widget.onDetect(BarcodeCapture(barcodes: [b]));
+  }
+
+  /// İpucuna dokunuldu: "Seri no olarak kullanılsın mı?"
+  Future<void> _seriOlarakSor(Barcode b) async {
+    final v = b.rawValue?.trim() ?? '';
+    if (v.isEmpty || _metinSoruluyor || !mounted) return;
+    _metinSoruluyor = true; // soru açıkken okuma durur
+    _etkinlik();
+    try {
+      final evet = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          icon: const Icon(Icons.qr_code_2),
+          title: const Text('Seri no olarak kullanılsın mı?'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SelectableText(
+                v,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1),
+              ),
+              const SizedBox(height: 12),
+              const Text('Bu kod sistemde kayıtlı değil. Etiketteki seri no '
+                  '(SN / S/N) ile aynıysa "Evet"e dokunun. Lot no, malzeme '
+                  'kodu ya da model kodu ise "Hayır".'),
+            ],
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Hayır')),
+            FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Evet, seri no')),
+          ],
+        ),
+      );
+      if (evet == true && mounted) _kodKabulEt(b);
+    } finally {
+      _metinSoruluyor = false;
+      _sonEtkinlik = DateTime.now();
+    }
   }
 
   Future<void> _metinOnayla(String sn) async {
@@ -599,11 +746,24 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
   bool _taninan(String v) =>
       EtiketKodu.coz(v) != null || seriNolariAyir(v).length > 1;
 
-  void _ipucuGoster(String metin) {
-    if (_ipucu != metin && mounted) setState(() => _ipucu = metin);
+  /// [kod] verilirse ipucu dokunulabilir ("Seri no ise dokunun") ve biraz
+  /// daha uzun kalır.
+  void _ipucuGoster(String metin, {Barcode? kod}) {
+    if ((_ipucu != metin || _ipucuKod?.rawValue != kod?.rawValue) && mounted) {
+      setState(() {
+        _ipucu = metin;
+        _ipucuKod = kod;
+      });
+    }
     _ipucuZamanlayici?.cancel();
-    _ipucuZamanlayici = Timer(const Duration(seconds: 2), () {
-      if (mounted) setState(() => _ipucu = null);
+    _ipucuZamanlayici =
+        Timer(Duration(seconds: kod == null ? 2 : 5), () {
+      if (mounted) {
+        setState(() {
+          _ipucu = null;
+          _ipucuKod = null;
+        });
+      }
     });
   }
 
@@ -632,6 +792,7 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
     // 1) Seri no olamayacak kodları ayıkla; webde çerçeve dışını at.
     final adaylar = <(Barcode, Offset?)>[];
     String? yokSayilan;
+    Barcode? yokKod; // dokunulabilir ipucu (kayıtsız, seri olabilir)
     for (final ham in capture.barcodes) {
       final b = _ayikla(ham);
       final v = b.rawValue?.trim() ?? '';
@@ -647,17 +808,28 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
           continue;
         }
         if (_kayitliOlmali(b, v)) {
+          // 1.33.0: etikette "SN:" yanında görüldüyse kesin seri.
+          if (!urunBarkoduTuru(b) &&
+              _etiketTuru(v) == EtiketKodTuru.seri) {
+            _bilinenler[v] = true;
+          }
           if (widget.bilinenMi == null && urunBarkoduTuru(b)) {
             yokSayilan ??= '${_kisalt(v)} (${_urunBarkoduSebebi(v)})';
             _yokSay(v, _urunBarkoduKategori(v));
             continue;
           }
           if (_bilinenler[v] == false) {
-            yokSayilan ??= urunBarkoduTuru(b)
-                ? '${_kisalt(v)} (${_urunBarkoduSebebi(v)})'
-                : '${_kisalt(v)} (kayıtlı değil: malzeme / lot / model kodu)';
-            _yokSay(
-                v, urunBarkoduTuru(b) ? _urunBarkoduKategori(v) : 'kayıtlı değil');
+            if (urunBarkoduTuru(b)) {
+              yokSayilan ??= '${_kisalt(v)} (${_urunBarkoduSebebi(v)})';
+              _yokSay(v, _urunBarkoduKategori(v));
+            } else {
+              final sebep = _kayitsizSebep(b, v);
+              if (yokSayilan == null) {
+                yokSayilan = '${_kisalt(v)} ($sebep)';
+                yokKod = b;
+              }
+              _yokSay(v, sebep);
+            }
             continue;
           }
         }
@@ -665,7 +837,9 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
       adaylar.add((b, m));
     }
     if (adaylar.isEmpty) {
-      if (yokSayilan != null) _ipucuGoster('Yok sayıldı: $yokSayilan');
+      if (yokSayilan != null) {
+        _ipucuGoster('Yok sayıldı: $yokSayilan', kod: yokKod);
+      }
       return;
     }
 
@@ -783,14 +957,27 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
       _bilinenler[deger] = v;
       if (!mounted || _aday != deger) return;
       if (!v && _kayitliOlmali(_adayKod ?? b, deger)) {
+        final kod = _adayKod ?? b;
+        // 1.33.0: yazıda "SN:" yanında görüldüyse kesin seri: kabul.
+        if (!urunBarkoduTuru(kod) &&
+            _etiketTuru(deger) == EtiketKodTuru.seri) {
+          _kodKabulEt(kod);
+          return;
+        }
         setState(() => _aday = null);
-        _yokSay(
-            deger,
-            urunBarkoduTuru(_adayKod ?? b)
-                ? _urunBarkoduKategori(deger)
-                : 'kayıtlı değil');
-        _ipucuGoster('Yok sayıldı: ${_kisalt(deger)} '
-            '(${kurumBarkoduMu(deger) ? _urunBarkoduSebebi(deger) : 'kayıtlı değil: malzeme / lot / model kodu'})');
+        if (urunBarkoduTuru(kod) || kurumBarkoduMu(deger)) {
+          _yokSay(
+              deger,
+              urunBarkoduTuru(kod)
+                  ? _urunBarkoduKategori(deger)
+                  : 'kayıtlı değil');
+          _ipucuGoster(
+              'Yok sayıldı: ${_kisalt(deger)} (${_urunBarkoduSebebi(deger)})');
+        } else {
+          final sebep = _kayitsizSebep(kod, deger);
+          _yokSay(deger, sebep);
+          _ipucuGoster('Yok sayıldı: ${_kisalt(deger)} ($sebep)', kod: kod);
+        }
         return;
       }
       _adayGereken = v ? 1 : 2;
@@ -940,7 +1127,7 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
               ),
             ),
           // Çerçevenin hemen üstü: "Yok sayıldı" ipucu ya da pembe şerit.
-          if (_ipucu != null && _kaynak == null)
+          if (_ipucu != null && _kaynak == null && _ipucuKod == null)
             Positioned(
               left: 12,
               right: 12,
@@ -961,6 +1148,48 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                           color: Color(0xFFBDBDBD), fontSize: 12),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          // 1.33.0: kayıtsız kod: dokununca "Seri no olarak kullanılsın mı?"
+          if (_ipucu != null && _kaynak == null && _ipucuKod != null)
+            Positioned(
+              left: 12,
+              right: 12,
+              top: math.max(pencere.top - 34, _satir - 2),
+              child: Center(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => _seriOlarakSor(_ipucuKod!),
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.black87,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white38),
+                    ),
+                    child: Text.rich(
+                      TextSpan(children: [
+                        TextSpan(
+                          text: _ipucu!,
+                          style: const TextStyle(color: Color(0xFFBDBDBD)),
+                        ),
+                        const TextSpan(
+                          text: '\nSeri no ise dokunun',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              decoration: TextDecoration.underline,
+                              decorationColor: Colors.white),
+                        ),
+                      ]),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 12),
                     ),
                   ),
                 ),

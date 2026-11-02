@@ -11,6 +11,7 @@ import 'models.dart';
 import '../services/bolge_adi.dart' show trBuyuk;
 import '../services/kurum_barkodu.dart';
 import '../services/zimmet_onayi.dart';
+import '../services/sn_metni.dart' show seriAnahtari;
 
 export 'etiket_modelleri.dart';
 
@@ -1104,6 +1105,21 @@ class AppDatabase {
   // ---------------------------------------------------------------------
   String _normSeri(String s) => s.trim().toUpperCase();
 
+  /// Tam eşleşme bulunamazsa boşluk / önek farkıyla kayıtlı seriyi arar.
+  Future<List<Map<String, Object?>>> _seriyleSatir(
+      DatabaseExecutor db, String select, String seriNo) async {
+    final rows = await db.rawQuery(
+        '$select WHERE c.seri_no = ? COLLATE NOCASE AND c.deleted = 0 LIMIT 1',
+        [_normSeri(seriNo)]);
+    if (rows.isNotEmpty) return rows;
+    final anahtar = seriAnahtari(seriNo);
+    if (anahtar.isEmpty) return rows;
+    return db.rawQuery(
+        "$select WHERE REPLACE(REPLACE(UPPER(c.seri_no), ' ', ''), char(9), '') = ? "
+        'AND c.deleted = 0 LIMIT 1',
+        [anahtar]);
+  }
+
   static const _cihazBilgiSelect = '''
       SELECT c.id AS id, c.urun_id AS urun_id, c.seri_no AS seri_no,
              c.depo_id AS depo_id, c.durum AS durum, c.arac_id AS arac_id,
@@ -1131,10 +1147,8 @@ class AppDatabase {
   /// Okutulan/yazılan seri numarasına ait cihazı bulur (büyük-küçük harf duyarsız).
   Future<Cihaz?> seriNoIleCihazBul(String seriNo) async {
     final db = await _database;
-    final rows = await db.query('cihazlar',
-        where: 'seri_no = ? COLLATE NOCASE AND deleted = 0',
-        whereArgs: [_normSeri(seriNo)],
-        limit: 1);
+    final rows =
+        await _seriyleSatir(db, 'SELECT c.* FROM cihazlar c', seriNo);
     if (rows.isEmpty) return null;
     return Cihaz.fromMap(rows.first);
   }
@@ -2171,9 +2185,7 @@ class AppDatabase {
   /// Kurum etiketi (karekod veya kod) okutulduysa etiketin cihazı döner.
   Future<CihazBilgi?> seriNoIleCihazBilgi(String seriNo) async {
     final db = await _database;
-    final rows = await db.rawQuery(
-        '$_cihazBilgiSelect WHERE c.seri_no = ? COLLATE NOCASE AND c.deleted = 0 LIMIT 1',
-        [_normSeri(seriNo)]);
+    final rows = await _seriyleSatir(db, _cihazBilgiSelect, seriNo);
     if (rows.isNotEmpty) return CihazBilgi.fromRow(rows.first);
     final okuma = EtiketKodu.coz(seriNo);
     if (okuma == null) return null;

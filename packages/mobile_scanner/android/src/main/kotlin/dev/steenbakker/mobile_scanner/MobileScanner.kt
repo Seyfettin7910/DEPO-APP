@@ -103,6 +103,9 @@ class MobileScanner(
     var metinCallback: ((List<String>) -> Unit)? = null
     @Volatile private var sonKodZamani = 0L
     @Volatile private var sonMetinZamani = 0L
+    // 1.33.0: Dart, kayıtsız bir barkodu yok sayınca bu ana kadar barkod
+    // görülse de yazı okunur (etiketteki "SN:" ile barkodu eşleştirmek için).
+    @Volatile var metinZorlaBitis = 0L
     private val metinMesgul = AtomicBoolean(false)
     private var metinOkuyucu: TextRecognizer? = null
 
@@ -114,7 +117,16 @@ class MobileScanner(
     private fun metinSirasi(): Boolean {
         if (!metinAcik || metinCallback == null) return false
         val simdi = SystemClock.elapsedRealtime()
-        if (simdi - sonKodZamani < metinBekleme) return false
+        if (simdi - sonKodZamani < metinBekleme && simdi >= metinZorlaBitis) return false
+        if (simdi - sonMetinZamani < metinAralik) return false
+        return !metinMesgul.get()
+    }
+
+    /** Barkod görülen karede de yazı okunsun mu (Dart istediyse)? */
+    private fun metinZorlaSirasi(): Boolean {
+        if (!metinAcik || metinCallback == null) return false
+        val simdi = SystemClock.elapsedRealtime()
+        if (simdi >= metinZorlaBitis) return false
         if (simdi - sonMetinZamani < metinAralik) return false
         return !metinMesgul.get()
     }
@@ -123,7 +135,7 @@ class MobileScanner(
      * Karenin çerçeve içi kısmını yazı tanımaya verir. [birak] kare kopyalanır
      * kopyalanmaz çağrılır (kamera beklemez).
      */
-    private fun metinOku(imageProxy: ImageProxy, birak: () -> Unit) {
+    private fun metinOku(imageProxy: ImageProxy, genis: Boolean = false, birak: () -> Unit) {
         if (!metinMesgul.compareAndSet(false, true)) {
             birak()
             return
@@ -147,7 +159,9 @@ class MobileScanner(
                 val t0 = (pencere?.getOrNull(1) ?: 0.42f) * y
                 val r0 = (pencere?.getOrNull(2) ?: 0.85f) * g
                 val b0 = (pencere?.getOrNull(3) ?: 0.58f) * y
-                val pay = (b0 - t0) * 0.35f
+                // Barkodla eşleştirmede (genis) barkodun üstündeki "SN:" ve
+                // altındaki "Lot / Material Code" satırları da girsin.
+                val pay = (b0 - t0) * (if (genis) 1.0f else 0.35f)
                 val l = l0.toInt().coerceIn(0, g - 1)
                 val t = (t0 - pay).toInt().coerceIn(0, y - 1)
                 val r = r0.toInt().coerceIn(l + 1, g)
@@ -313,7 +327,8 @@ class MobileScanner(
 
                     if (barcodeMap.isEmpty()) {
                         if (metinSirasi()) {
-                            metinOku(imageProxy) { releaseFrame() }
+                            metinOku(imageProxy,
+                                genis = SystemClock.elapsedRealtime() < metinZorlaBitis) { releaseFrame() }
                         } else {
                             releaseFrame()
                         }
@@ -324,6 +339,7 @@ class MobileScanner(
                     val portrait = (camera?.cameraInfo?.sensorRotationDegrees ?: 0) % 180 == 0
 
                     if (!returnImage) {
+                        val metinDe = metinZorlaSirasi()
                         try {
                             mobileScannerCallback(
                                 barcodeMap,
@@ -331,7 +347,11 @@ class MobileScanner(
                                 if (portrait) inputImage.width else inputImage.height,
                                 if (portrait) inputImage.height else inputImage.width)
                         } finally {
-                            releaseFrame()
+                            if (metinDe) {
+                                metinOku(imageProxy, genis = true) { releaseFrame() }
+                            } else {
+                                releaseFrame()
+                            }
                         }
                         return@addOnSuccessListener
                     }

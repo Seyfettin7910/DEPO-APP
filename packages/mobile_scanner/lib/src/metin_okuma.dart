@@ -52,6 +52,16 @@ abstract final class MetinOkuma {
     } on Object catch (_) {}
   }
 
+  /// 1.33.0: [sure] boyunca çerçevede barkod olsa da yazı okunur (kayıtsız
+  /// barkodu etiketteki "SN:" yazısıyla eşleştirmek için; çerçeve dikeyde
+  /// genişletilir).
+  static Future<void> zorla(Duration sure) async {
+    if (!destekleniyor) return;
+    try {
+      await _kanal.invokeMethod<void>('metinZorla', {'ms': sure.inMilliseconds});
+    } on Object catch (_) {}
+  }
+
   /// Barkod okuma aralığı (ms): küçük = sık okuma, büyük = az pil.
   static Future<void> hizAyarla(int ms) async {
     if (!destekleniyor) return;

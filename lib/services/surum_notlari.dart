@@ -36,6 +36,40 @@ class NotMaddesi {
 
 const surumNotlari = <SurumNotu>[
   SurumNotu(
+    surum: '1.33.0',
+    tarih: '02.11.2026',
+    bolumler: [
+      NotBolumu('Yeni', [
+        NotMaddesi(
+          'Kayıtsız seri kartı',
+          'Okut\'ta kayıtlı olmayan seri no okununca kart açılır: Depoya giriş / Ara / Atla.',
+          '"Depoya giriş" seri no dolu olarak açılır. Arka arkaya bir kayıtsız '
+              'daha okutursanız eskisi gibi liste başlar.',
+        ),
+        NotMaddesi(
+          'Seri no ise dokunun',
+          '"Yok sayıldı" yazısına dokununca "Seri no olarak kullanılsın mı?" sorulur.',
+          'Etiket ne olursa olsun takılı kalınmaz: ekrandaki numarayı '
+              'etiketteki seri no ile karşılaştırıp "Evet"e dokunun.',
+        ),
+      ]),
+      NotBolumu('Düzeltilen', [
+        NotMaddesi(
+          'Yalnız rakamlı seri no',
+          'Hikvision gibi yalnız rakamlı SN barkodu kayıtlı değilse de okunuyor.',
+          'Yazıdan da oku açıksa barkodun yanındaki "SN:" yazısı da okunur; '
+              'aynıysa seri no kesin sayılır, soru sorulmaz. Lot no, malzeme '
+              'kodu ve model kodu barkodları yine yok sayılır, sebebi doğru '
+              'yazılır (ör. "Yok sayıldı: 317500403 (malzeme kodu)").',
+        ),
+        NotMaddesi(
+          'Seri no eşleşmesi',
+          'Boşluklu ya da "SN:" önekiyle yazılmış seri no da kayıtlı cihazı buluyor.',
+        ),
+      ]),
+    ],
+  ),
+  SurumNotu(
     surum: '1.32.1',
     tarih: '02.11.2026',
     bolumler: [

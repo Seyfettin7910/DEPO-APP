@@ -18,7 +18,10 @@ import '../../widgets/sag_tik.dart';
 /// Sonuçta cihazın hangi modele ait olduğu ve şu an hangi depoda / hangi
 /// araçta olduğu görünür. Arama kutusu boşken model bazlı adetler listelenir.
 class CihazAraScreen extends ConsumerStatefulWidget {
-  const CihazAraScreen({super.key});
+  const CihazAraScreen({super.key, this.ilkSorgu});
+
+  /// 1.33.0: Okut'taki kayıtsız seri kartından "Ara" ile gelinince.
+  final String? ilkSorgu;
 
   @override
   ConsumerState<CihazAraScreen> createState() => _CihazAraScreenState();
@@ -27,6 +30,16 @@ class CihazAraScreen extends ConsumerStatefulWidget {
 class _CihazAraScreenState extends ConsumerState<CihazAraScreen> {
   final _ctrl = TextEditingController();
   String _sorgu = '';
+
+  @override
+  void initState() {
+    super.initState();
+    final q = widget.ilkSorgu?.trim() ?? '';
+    if (q.isNotEmpty) {
+      _ctrl.text = q;
+      _sorgu = q;
+    }
+  }
 
   @override
   void dispose() {
