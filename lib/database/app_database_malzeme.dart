@@ -213,6 +213,9 @@ extension MalzemeVeritabani on AppDatabase {
     String? il,
     String? ilce,
     String? mahalle,
+    // 1.32.0: Belediye zimmetinden kullanımda (bkz. zimmet_onayi.dart)
+    String? zimmetYeri,
+    String? onayEvrakSayisi,
   }) async {
     final db = await _database;
     await db.transaction((txn) => _malzemeHareketiTxn(
@@ -230,6 +233,8 @@ extension MalzemeVeritabani on AppDatabase {
           il: il,
           ilce: ilce,
           mahalle: mahalle,
+          zimmetYeri: zimmetYeri,
+          onayEvrakSayisi: onayEvrakSayisi,
         ));
     _notify();
   }
@@ -249,6 +254,8 @@ extension MalzemeVeritabani on AppDatabase {
     String? il,
     String? ilce,
     String? mahalle,
+    String? zimmetYeri,
+    String? onayEvrakSayisi,
   }) async {
     final kalemler = {
       for (final e in miktarlar.entries)
@@ -270,6 +277,14 @@ extension MalzemeVeritabani on AppDatabase {
     // Konum varsa yer boş bırakılabilir (internet gelince konumdan dolar).
     if (islem == MalzemeIslemi.kullanim && yer.isEmpty && enlem == null) {
       throw StateError('Nerede kullanıldığını yazın');
+    }
+    // 1.32.0: Belediye zimmetinden kullanımda yer seçimi / onay zorunlu.
+    final zimmet = islem == MalzemeIslemi.kullanim &&
+        await _zimmetDeposuTxn(txn, kaynakDepoId);
+    if (zimmet) {
+      final hata = zimmetSecimiHatasi(
+          zimmet: true, yer: zimmetYeri, evrakSayisi: onayEvrakSayisi);
+      if (hata != null) throw StateError(hata);
     }
     final simdi = DateTime.now();
 
@@ -319,6 +334,10 @@ extension MalzemeVeritabani on AppDatabase {
             il: il,
             ilce: ilce,
             mahalle: mahalle,
+            zimmetYeri: zimmet ? zimmetYeri : null,
+            onayEvrakSayisi: zimmet && zimmetYeri == zimmetYeriKirsal
+                ? trBuyuk(onayEvrakSayisi!.trim())
+                : null,
             updatedAt: simdi,
           ).toMap(),
         );

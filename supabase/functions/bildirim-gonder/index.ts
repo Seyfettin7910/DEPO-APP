@@ -260,6 +260,35 @@ async function calistir(db: SupabaseClient, ayar: Record<string, string>) {
     });
   }
 
+  // 4b) 1.32.0: Başkanlık onayı olmadan kırsal mahallede kullanma girişimleri
+  //     (1.32.0 SQL'i çalıştırılmadıysa atlanır)
+  if (ayar.imlec_zimmet === undefined) {
+    const r = await db.from("zimmet_girisimleri").select("synced_at")
+      .order("synced_at", { ascending: false }).limit(1);
+    ayar.imlec_zimmet = String(r.data?.[0]?.synced_at ?? 0);
+    if (!r.error) await ayarYaz(db, "imlec_zimmet", ayar.imlec_zimmet);
+  }
+  const zimmetSorgu = await db.from("zimmet_girisimleri")
+    .select("id, tarih, kullanici_id, icerik, kullanim_yeri, mahalle, synced_at")
+    .gt("synced_at", Number(ayar.imlec_zimmet)).eq("deleted", 0)
+    .order("synced_at").limit(500);
+  const hamZimmet: Satir[] = zimmetSorgu.error ? [] : (zimmetSorgu.data ?? []);
+  let zimmetImlec = Number(ayar.imlec_zimmet);
+  for (const g of hamZimmet) zimmetImlec = Math.max(zimmetImlec, Number(g.synced_at));
+  let zimmetOlaylari: Satir[] = [];
+  const tazeZimmet = hamZimmet.filter((g) => ms - Number(g.tarih) < 3 * GUN);
+  if (tazeZimmet.length) {
+    const eklenen = v<Satir[]>(await db.from("push_islenen")
+      .upsert(tazeZimmet.map((g) => ({ anahtar: `z:${g.id}` })), { onConflict: "anahtar", ignoreDuplicates: true })
+      .select("anahtar"));
+    const yeni = new Set(eklenen.map((x) => x.anahtar));
+    zimmetOlaylari = tazeZimmet.filter((g) => yeni.has(`z:${g.id}`));
+  }
+  if (zimmetOlaylari.length) {
+    const kisi = await sozluk(db, "kullanicilar", "id, ad", zimmetOlaylari.map((g) => g.kullanici_id));
+    zimmetOlaylari = zimmetOlaylari.map((g) => ({ ...g, kullanici: kisi.get(g.kullanici_id)?.ad ?? "" }));
+  }
+
   // 4) Yeni giriş kayıtları
   const girisSorgu = await db.from("giris_kayitlari").select("*")
     .gt("id", Number(ayar.imlec_giris)).order("id").limit(500);
@@ -270,6 +299,7 @@ async function calistir(db: SupabaseClient, ayar: Record<string, string>) {
     await ayarYaz(db, "imlec_hareket", String(yeniImlec));
     await ayarYaz(db, "imlec_giris", String(girisImlec));
     if (!etiketSorgu.error) await ayarYaz(db, "imlec_etiket", String(etiketImlec));
+    if (!zimmetSorgu.error) await ayarYaz(db, "imlec_zimmet", String(zimmetImlec));
     return { abone: 0, hareket: hareketler.length };
   }
 
@@ -412,6 +442,13 @@ async function calistir(db: SupabaseClient, ayar: Record<string, string>) {
           [h.aciklama, h.urun_adi, h.kullanici].filter(Boolean).join(" · "));
       }
     }
+    if (acikMi(a, "zimmetOnaysiz")) {
+      for (const g of zimmetOlaylari.filter((g) => String(g.kullanici_id) !== benim).slice(0, 3)) {
+        ekle("zimmetOnaysiz", `Onaysız zimmet kullanımı: ${g.kullanici || "-"}`,
+          [g.icerik, [g.mahalle, g.kullanim_yeri].filter(Boolean).join(" · "),
+            "Başkanlık onayı yok, kaydedilmedi"].filter(Boolean).join("\n"));
+      }
+    }
 
     if (acikMi(a, "kritikStok")) {
       const simdiki = new Map(kritik.map((k) => [`kritik:${k.urunId}:${k.toplam === 0 ? "tukendi" : "kritik"}`, k]));
@@ -533,6 +570,7 @@ async function calistir(db: SupabaseClient, ayar: Record<string, string>) {
   await ayarYaz(db, "imlec_hareket", String(yeniImlec));
   await ayarYaz(db, "imlec_giris", String(girisImlec));
   if (!etiketSorgu.error) await ayarYaz(db, "imlec_etiket", String(etiketImlec));
+  if (!zimmetSorgu.error) await ayarYaz(db, "imlec_zimmet", String(zimmetImlec));
   // Eski işaretleri temizle
   await db.from("push_islenen").delete().lt("tarih", new Date(ms - 5 * GUN).toISOString());
   await db.from("push_gorulen").delete().like("anahtar", "ozet:%").lt("tarih", new Date(ms - 10 * GUN).toISOString());

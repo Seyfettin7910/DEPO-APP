@@ -36,6 +36,36 @@ class NotMaddesi {
 
 const surumNotlari = <SurumNotu>[
   SurumNotu(
+    surum: '1.32.0',
+    tarih: '02.11.2026',
+    bolumler: [
+      NotBolumu('Yeni', [
+        NotMaddesi(
+          'Belediye Zimmeti',
+          'BELEDİYE ZİMMETİ deposundaki ürün montaja çıkarken "Nereye takılıyor?" sorulur.',
+          '"Belediye hizmet yerine" → kaydedilir. "Kırsal mahalleye" → '
+              'Başkanlık onayı var mı? Varsa onay yazısının evrak sayısı '
+              'yazılır (zorunlu) ve kaydedilir. Yoksa "Bu ürün kırsal '
+              'mahallede Başkanlık onayı olmadan kullanılamaz" uyarısı çıkar, '
+              'montaj kaydedilmez; okutulanlar listede kalır, onay gelince '
+              'kaydedilebilir.',
+        ),
+        NotMaddesi(
+          'Onaysız zimmet kullanımı bildirimi',
+          'Onay olmadan kırsal mahalleye takılmak istenirse bildirim gelir.',
+          'Varsayılan kapalı: almak isteyen Bildirim ayarları → "Belediye '
+              'zimmeti" bölümünden açar.',
+        ),
+        NotMaddesi(
+          'Belediye zimmeti raporu',
+          'Raporlar → "Belediye zimmeti – kırsal mahalle".',
+          'Başkanlık onayıyla kırsal mahallede kullanılan ürünler (evrak '
+              'sayısıyla) ve onay olmadığı için kaydedilmeyen girişimler.',
+        ),
+      ]),
+    ],
+  ),
+  SurumNotu(
     surum: '1.31.0',
     tarih: '28.10.2026',
     bolumler: [

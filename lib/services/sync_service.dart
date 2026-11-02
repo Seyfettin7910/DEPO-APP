@@ -66,6 +66,7 @@ class SyncService {
     'servis_kayitlari',
     'etiketler',
     'etiket_hareketleri',
+    'zimmet_girisimleri',
   ];
 
   /// Sonradan eklenen tablolar ve onları oluşturan Supabase SQL sürümü.
@@ -76,6 +77,7 @@ class SyncService {
     'kurum_ayarlari': '1.22.0',
     'etiketler': '1.22.0',
     'etiket_hareketleri': '1.22.0',
+    'zimmet_girisimleri': '1.32.0',
   };
 
   /// Sonradan eklenen sütunlar ve SQL sürümü. Sunucuda henüz yoksa o sütun
@@ -83,6 +85,10 @@ class SyncService {
   /// gönderilmeye başlar.
   static const _yeniKolonlar = {
     'urunler': {'kutu_icerigi': '1.27.0', 'birlesti_id': '1.30.0'},
+    'kullanim_kayitlari': {
+      'zimmet_yeri': '1.32.0',
+      'onay_evrak_sayisi': '1.32.0',
+    },
   };
   static final _eksikKolonlar = <String, Set<String>>{};
 

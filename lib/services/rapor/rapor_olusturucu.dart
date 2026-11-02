@@ -1024,6 +1024,84 @@ class RaporOlusturucu {
   }
 
   // ------------------------------------------------------------------
+  // 1.32.0: Belediye zimmeti — kırsal mahallede kullanım
+  // ------------------------------------------------------------------
+  static Future<Rapor> zimmetKirsal(AppDatabase db,
+      {DateTime? baslangic, DateTime? bitis}) async {
+    final kullanimlar = await db.zimmetKirsalKullanimlari(
+        baslangic: baslangic, bitis: bitis);
+    final girisimler =
+        await db.zimmetGirisimleri(baslangic: baslangic, bitis: bitis);
+
+    String urunMetni(Map<String, Object?> r) {
+      final malzeme = r['cihaz_id'] == null && r['seri_takipli'] == 0;
+      final ad = (r['urun_adi'] as String?) ?? '-';
+      return malzeme
+          ? '$ad · ${(r['miktar'] as num?)?.toInt() ?? 0} ${r['birim'] ?? ''}'
+              .trim()
+          : ad;
+    }
+
+    String bolge(Map<String, Object?> r) => [
+          r['ilce'] as String? ?? '',
+          r['mahalle'] as String? ?? '',
+        ].where((x) => x.isNotEmpty).join(' / ');
+
+    return Rapor(
+      baslik: 'Belediye Zimmeti – Kırsal Mahallede Kullanım',
+      altBaslik: '${_aralik(baslangic, bitis)} · ${_olusturma()}',
+      dosyaOn: 'zimmet_kirsal_raporu',
+      ozet: [
+        MapEntry('Başkanlık onaylı kullanım', '${kullanimlar.length}'),
+        MapEntry('Onaysız girişim (kaydedilmedi)', '${girisimler.length}'),
+      ],
+      sutunlar: const [
+        'Tarih', 'Seri No', 'Ürün', 'Çıktığı depo', 'Nerede', 'İlçe / Mahalle',
+        'Evrak sayısı', 'Kullanıcı'
+      ],
+      genislikler: const [14, 16, 20, 15, 20, 18, 18, 12],
+      bolumler: [
+        RaporBolumu(
+          baslik: 'Başkanlık onayıyla kırsal mahallede kullanılanlar '
+              '(${kullanimlar.length})',
+          satirlar: [
+            for (final r in kullanimlar)
+              [
+                _tarihMs(r['tarih']),
+                r['seri_no'] ?? '',
+                urunMetni(r),
+                r['depo_adi'] ?? '',
+                r['kullanim_yeri'] ?? '',
+                bolge(r),
+                r['evrak'] ?? '',
+                r['kullanici'] ?? '',
+              ],
+          ],
+        ),
+        RaporBolumu(
+          baslik: 'Onay olmadığı için kaydedilmeyen girişimler '
+              '(${girisimler.length})',
+          sutunlar: const [
+            'Tarih', 'Ürünler', 'Depo', 'Nerede', 'İlçe / Mahalle', 'Kullanıcı'
+          ],
+          genislikler: const [14, 40, 15, 20, 18, 12],
+          satirlar: [
+            for (final r in girisimler)
+              [
+                _tarihMs(r['tarih']),
+                r['icerik'] ?? '',
+                r['depo_adi'] ?? '',
+                r['kullanim_yeri'] ?? '',
+                bolge(r),
+                r['kullanici'] ?? '',
+              ],
+          ],
+        ),
+      ],
+    );
+  }
+
+  // ------------------------------------------------------------------
   // Kurum etiketi durumu
   // ------------------------------------------------------------------
   static Future<Rapor> etiketDurumu(AppDatabase db) async {

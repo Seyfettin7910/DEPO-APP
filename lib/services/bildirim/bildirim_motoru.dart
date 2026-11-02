@@ -245,6 +245,38 @@ class BildirimMotoru {
     }
 
     // --------------------------------------------------------------
+    // 1.32.0: Başkanlık onayı olmadan kırsal mahallede kullanma girişimi
+    // (başkalarının yaptığı)
+    // --------------------------------------------------------------
+    final zimmetGorulen = (await db.bildirimGorulenler('z:')).toSet();
+    final zimmetOlaylari = <Map<String, Object?>>[];
+    for (final g in await db.bildirimZimmetGirisimleri(pencere.millisecondsSinceEpoch)) {
+      final anahtar = 'z:${g['id']}';
+      if (zimmetGorulen.contains(anahtar)) continue;
+      await db.bildirimGorulduIsaretle(anahtar, (g['tarih'] as num).toInt());
+      if (ilk) continue;
+      if (benimId != null && g['kullanici_id'] == benimId) continue;
+      zimmetOlaylari.add(g);
+    }
+    if (ayar.acikMi(BildirimTuru.zimmetOnaysiz)) {
+      for (final g in zimmetOlaylari.take(3)) {
+        final yer = [
+          (g['mahalle'] as String?) ?? '',
+          (g['kullanim_yeri'] as String?) ?? '',
+        ].where((x) => x.isNotEmpty).join(' · ');
+        yeni.add(_Yeni(
+          BildirimTuru.zimmetOnaysiz,
+          'Onaysız zimmet kullanımı: ${kim(g).isEmpty ? '-' : kim(g)}',
+          [
+            (g['icerik'] as String?) ?? '',
+            if (yer.isNotEmpty) yer,
+            'Başkanlık onayı yok, kaydedilmedi',
+          ].where((x) => x.isNotEmpty).join('\n'),
+        ));
+      }
+    }
+
+    // --------------------------------------------------------------
     // Durum olayları
     // --------------------------------------------------------------
 

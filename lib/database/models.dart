@@ -391,6 +391,10 @@ class KullanimKaydi {
   final String? tutanak;
   final DateTime? tutanakTarihi;
   final String? tutanakKullaniciId;
+  // 1.32.0: Belediye zimmetindeki ürün nereye takıldı (hizmet | kirsal) ve
+  // kırsalsa Başkanlık onayının evrak sayısı. Zimmet dışı kayıtlarda null.
+  final String? zimmetYeri;
+  final String? onayEvrakSayisi;
   final DateTime updatedAt;
   final bool dirty;
   final bool deleted;
@@ -410,6 +414,8 @@ class KullanimKaydi {
     this.tutanak,
     this.tutanakTarihi,
     this.tutanakKullaniciId,
+    this.zimmetYeri,
+    this.onayEvrakSayisi,
     required this.updatedAt,
     this.dirty = true,
     this.deleted = false,
@@ -430,6 +436,8 @@ class KullanimKaydi {
         tutanak: m['tutanak'] as String?,
         tutanakTarihi: _epochOrNull(m['tutanak_tarihi']),
         tutanakKullaniciId: m['tutanak_kullanici_id'] as String?,
+        zimmetYeri: m['zimmet_yeri'] as String?,
+        onayEvrakSayisi: m['onay_evrak_sayisi'] as String?,
         updatedAt: _epochToDate(m['updated_at'] as int),
         dirty: _intToBool(m['dirty'] as int),
         deleted: _intToBool(m['deleted'] as int),
@@ -450,6 +458,8 @@ class KullanimKaydi {
         'tutanak': tutanak,
         'tutanak_tarihi': tutanakTarihi?.millisecondsSinceEpoch,
         'tutanak_kullanici_id': tutanakKullaniciId,
+        'zimmet_yeri': zimmetYeri,
+        'onay_evrak_sayisi': onayEvrakSayisi,
         'updated_at': _dateToEpoch(updatedAt),
         'dirty': _boolToInt(dirty),
         'deleted': _boolToInt(deleted),

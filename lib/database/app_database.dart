@@ -10,12 +10,14 @@ import 'etiket_modelleri.dart';
 import 'models.dart';
 import '../services/bolge_adi.dart' show trBuyuk;
 import '../services/kurum_barkodu.dart';
+import '../services/zimmet_onayi.dart';
 
 export 'etiket_modelleri.dart';
 
 part 'app_database_etiket.dart';
 part 'app_database_malzeme.dart';
 part 'app_database_birlestir.dart';
+part 'app_database_zimmet.dart';
 
 const _uuid = Uuid();
 
@@ -101,6 +103,8 @@ CREATE TABLE kullanim_kayitlari (
   tutanak TEXT,
   tutanak_tarihi INTEGER,
   tutanak_kullanici_id TEXT,
+  zimmet_yeri TEXT,
+  onay_evrak_sayisi TEXT,
   updated_at INTEGER NOT NULL,
   dirty INTEGER NOT NULL DEFAULT 1,
   deleted INTEGER NOT NULL DEFAULT 0
@@ -401,7 +405,7 @@ class AppDatabase {
         : p.join(await getDatabasesPath(), 'depo_app.sqlite');
     _db = await openDatabase(
       path,
-      version: 14,
+      version: 15,
       onCreate: (db, version) async {
         for (final stmt in _createTablesSql.split(';')) {
           final trimmed = stmt.trim();
@@ -416,6 +420,7 @@ class AppDatabase {
         for (final t in _etiketTabloSql) {
           await db.execute(t);
         }
+        await db.execute(_zimmetTabloSql);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -492,6 +497,14 @@ class AppDatabase {
         if (oldVersion < 14) {
           // 1.30.0: ürün birleştirme (birleşen ürün → kalan ürün)
           await db.execute('ALTER TABLE urunler ADD COLUMN birlesti_id TEXT');
+        }
+        if (oldVersion < 15) {
+          // 1.32.0: belediye zimmeti için Başkanlık onayı
+          await db.execute(
+              'ALTER TABLE kullanim_kayitlari ADD COLUMN zimmet_yeri TEXT');
+          await db.execute(
+              'ALTER TABLE kullanim_kayitlari ADD COLUMN onay_evrak_sayisi TEXT');
+          await db.execute(_zimmetTabloSql);
         }
         if (oldVersion < 4) {
           // 1.4.0: araçlar seyyar depo olarak depolar tablosunda tutulur.
@@ -2232,6 +2245,8 @@ class AppDatabase {
     String? ilce,
     String? mahalle,
     String? tutanak,
+    String? zimmetYeri,
+    String? onayEvrakSayisi,
   }) async {
     final rows = await txn.query('cihazlar',
         where: 'id = ?', whereArgs: [cihazId], limit: 1);
@@ -2259,6 +2274,15 @@ class AppDatabase {
     // Hedefsiz "kullanım" = cihaz sahada kullanıldı: bulunduğu depo/araçtan
     // düşer, hiçbir stokta görünmez, nerede kullanıldığı kaydedilir.
     final sahada = tip == HareketTipi.kullanim && hedefDepoId == null;
+
+    // 1.32.0: Belediye zimmetindeki ürün sahada kullanılırken nereye
+    // takıldığı (ve kırsalsa Başkanlık onayının evrak sayısı) zorunlu.
+    final zimmet = sahada && await _zimmetDeposuTxn(txn, kaynakDepo);
+    if (zimmet) {
+      final hata = zimmetSecimiHatasi(
+          zimmet: true, yer: zimmetYeri, evrakSayisi: onayEvrakSayisi);
+      if (hata != null) throw StateError('${c.seriNo}: $hata');
+    }
 
     var guncelle = <String, Object?>{};
     switch (tip) {
@@ -2352,6 +2376,10 @@ class AppDatabase {
           tutanak: tutanak,
           tutanakTarihi: tutanak == null ? null : simdi,
           tutanakKullaniciId: tutanak == null ? null : kullaniciId,
+          zimmetYeri: zimmet ? zimmetYeri : null,
+          onayEvrakSayisi: zimmet && zimmetYeri == zimmetYeriKirsal
+              ? trBuyuk(onayEvrakSayisi!.trim())
+              : null,
           updatedAt: simdi,
         ).toMap(),
       );
@@ -2382,6 +2410,9 @@ class AppDatabase {
     // deposundan / aracından düşülür.
     Map<String, int> malzemeler = const {},
     String? malzemeDepoId,
+    // 1.32.0: Belediye zimmetinden sahada kullanımda (bkz. zimmet_onayi.dart)
+    String? zimmetYeri,
+    String? onayEvrakSayisi,
   }) async {
     if (tip == HareketTipi.girisi ||
         tip == HareketTipi.silme ||
@@ -2411,6 +2442,8 @@ class AppDatabase {
           ilce: ilce,
           mahalle: mahalle,
           tutanak: tutanak,
+          zimmetYeri: zimmetYeri,
+          onayEvrakSayisi: onayEvrakSayisi,
         );
         if (arizaKarari != null) {
           await _arizaKaydiAcTxn(txn,
@@ -2443,6 +2476,8 @@ class AppDatabase {
           il: il,
           ilce: ilce,
           mahalle: mahalle,
+          zimmetYeri: zimmetYeri,
+          onayEvrakSayisi: onayEvrakSayisi,
         );
       }
     });
@@ -2661,6 +2696,7 @@ class AppDatabase {
       'id', 'stok_hareket_id', 'arac_id', 'kullanim_yeri', 'not_',
       'enlem', 'boylam', 'konum_hassasiyet', 'il', 'ilce', 'mahalle',
       'tutanak', 'tutanak_tarihi', 'tutanak_kullanici_id',
+      'zimmet_yeri', 'onay_evrak_sayisi',
       'updated_at', 'deleted'
     ],
     'servis_kayitlari': [
@@ -2679,6 +2715,11 @@ class AppDatabase {
     'etiket_hareketleri': [
       'id', 'etiket_id', 'cihaz_id', 'islem', 'surum', 'aciklama',
       'kullanici_id', 'tarih', 'updated_at', 'deleted'
+    ],
+    // 1.32.0: Başkanlık onayı olmadan kırsal mahallede kullanma girişimleri
+    'zimmet_girisimleri': [
+      'id', 'kullanici_id', 'tarih', 'depo_id', 'icerik', 'kullanim_yeri',
+      'il', 'ilce', 'mahalle', 'enlem', 'boylam', 'updated_at', 'deleted'
     ],
   };
 

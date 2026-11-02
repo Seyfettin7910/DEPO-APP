@@ -127,6 +127,13 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
               onTap: () => Navigator.pop(ctx, 'hurda'),
             ),
             ListTile(
+              leading: const Icon(Icons.account_balance),
+              title: const Text('Belediye zimmeti – kırsal mahalle'),
+              subtitle: Text('Başkanlık onayıyla kullanılanlar (evrak sayısı) ve '
+                  'onaysız girişimler · $aralik'),
+              onTap: () => Navigator.pop(ctx, 'zimmet'),
+            ),
+            ListTile(
               leading: const Icon(Icons.local_shipping_outlined),
               title: const Text('Kullanım Raporu – Montajı Yapılanlar'),
               subtitle: Text('Montajı yapılan cihaz ve malzemeler, tutanak · $aralik'),
@@ -237,6 +244,10 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
           break;
         case 'etiket':
           rapor = await RaporOlusturucu.etiketDurumu(db);
+          break;
+        case 'zimmet':
+          rapor = await RaporOlusturucu.zimmetKirsal(db,
+              baslangic: _tarihAraligi?.start, bitis: _bitisGunSonu());
           break;
         case 'giris':
           rapor = await RaporOlusturucu.girisKayitlari(

@@ -8,6 +8,7 @@ import '../../database/models.dart';
 import '../../providers/app_providers.dart';
 import '../../services/ses_servisi.dart';
 import '../../services/taslak_servisi.dart';
+import '../../services/zimmet_onayi.dart';
 import '../../widgets/barkod_okuyucu_sayfasi.dart';
 import '../../widgets/depo_secici.dart';
 import '../../widgets/kod_yardimci.dart';
@@ -19,6 +20,7 @@ import '../../services/konum_servisi.dart';
 import '../../services/kurum_barkodu.dart';
 import '../../widgets/konum_seridi.dart';
 import '../../widgets/malzeme_etiketi.dart';
+import '../../widgets/zimmet_onayi_dialog.dart';
 
 /// Seri numarası olmayan, miktarla takip edilen malzemeler (kablo, adaptör…)
 /// için giriş, Araca Yükle, transfer, iade ve Montaj / Kullanıldı.
@@ -406,6 +408,51 @@ class _MalzemeIslemScreenState extends ConsumerState<MalzemeIslemScreen>
       _mesaj('Miktar girin', hata: true);
       return;
     }
+    // 1.32.0: Belediye Zimmeti deposundan kullanım → nereye / Başkanlık onayı
+    ZimmetSecimi? zimmetSecimi;
+    final kaynak = (ref.read(depolarStreamProvider).valueOrNull ?? <Depo>[])
+        .where((d) => d.id == _kaynakId)
+        .firstOrNull;
+    if (_islem == MalzemeIslemi.kullanim &&
+        kaynak != null &&
+        zimmetDeposuMu(kaynak.ad)) {
+      final urunler = {
+        for (final u in ref.read(urunlerStreamProvider).valueOrNull ?? <Urun>[])
+          u.id: u
+      };
+      final liste = [
+        for (final e in miktarlar.entries)
+          urunler[e.key] == null
+              ? '${e.value}'
+              : '${urunler[e.key]!.ad} · ${urunler[e.key]!.miktarMetni(e.value)}',
+      ];
+      final sonuc = await zimmetOnayiSor(context, urunler: liste);
+      if (!mounted || sonuc == null) return;
+      if (sonuc.engellendi) {
+        SesServisi.hata();
+        final p = _konum?.gosterilen;
+        try {
+          await ref.read(appDatabaseProvider).zimmetGirisimiKaydet(
+                kullaniciId:
+                    ref.read(aktifKullaniciIdProvider) ?? 'demo-kullanici',
+                depoId: kaynak.id,
+                icerik: liste.join(', '),
+                kullanimYeri: _yerCtrl.text,
+                il: _il,
+                ilce: _ilce,
+                mahalle: _mahalle,
+                enlem: p?.latitude,
+                boylam: p?.longitude,
+              );
+        } catch (_) {
+          // Girişim kaydı tutulamasa da kullanım zaten kaydedilmedi.
+        }
+        _mesaj('Kaydedilmedi: Başkanlık onayı yok. Onay yazısı gelince '
+            'kaydedebilirsiniz.', hata: true);
+        return;
+      }
+      zimmetSecimi = sonuc.secim;
+    }
     setState(() => _kaydediliyor = true);
     try {
       final (devam, k) = await _kaydetKonumu();
@@ -432,6 +479,8 @@ class _MalzemeIslemScreenState extends ConsumerState<MalzemeIslemScreen>
             il: k == null ? null : _il,
             ilce: k == null ? null : _ilce,
             mahalle: k == null ? null : _mahalle,
+            zimmetYeri: zimmetSecimi?.yer,
+            onayEvrakSayisi: zimmetSecimi?.evrakSayisi,
           );
       // İnternet varsa eksik bölge (il / ilçe / mahalle) hemen tamamlanır.
       if (k != null) unawaited(AdresTamamlayici.calistir(db));

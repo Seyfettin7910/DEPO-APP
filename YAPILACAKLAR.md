@@ -30,6 +30,8 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 - [ ] 1.30.6: Excel'de her özet kutusu ayrı çerçeveli mi.
 - [ ] **Supabase SQL:** `supabase_guncelleme_1_31_0.sql` (okuma_istatistikleri) çalıştırılacak.
 - [ ] 1.31.0: okuma kaynağı göstergesi ("✓ Barkod / Karekod / Yazı (S/N)" 1,5 sn); Ayarlar → "Okuma sayıları (bugün)" artıyor mu, "Şimdi gönder"; akşam 17:00-17:30 kendiliğinden gidiyor mu, ertesi gün geçmiş gün gidip telefondan siliniyor mu; Raporlar → "Okuma istatistikleri"; "]C1FB6637822" artık FB6637822 olarak okunuyor mu. (Yazıdan okuma süresi 3 sn'de kaldı; istatistiklere göre yeniden bakılabilir.)
+- [ ] **Supabase SQL:** `supabase_guncelleme_1_32_0.sql` (zimmet_yeri, onay_evrak_sayisi, zimmet_girisimleri) çalıştırılacak — telefonları 1.32.0'a geçirmeden önce.
+- [ ] 1.32.0: BELEDİYE ZİMMETİ'ndeki cihazı Montaj'da kaydet → "Nereye takılıyor?" çıkıyor mu; Hizmet yeri → kaydoluyor mu; Kırsal + Var → evrak sayısı boşken uyarı, doluyken kayıt; Kırsal + Yok → "onay olmadan kullanılamaz", kaydedilmiyor, liste duruyor mu; başka telefonda (Bildirim ayarları → "Belediye zimmeti" açık) bildirim geliyor mu; Raporlar → "Belediye zimmeti – kırsal mahalle" iki bölüm doğru mu; zimmet deposundan malzeme kullanımında da soruyor mu; başka depodan montajda HİÇ sormuyor mu.
 
 ## Final paketi (toplanıyor; tek güncellemede yapılacak, "yap" bekliyor)
 İhtiyaçlar ekran ekran toplanıyor: Okut · Depolar · Ürünler · Ara ve cihaz kartı · Raporlar · Ayarlar ve bildirimler · Bilgisayar (web) ve iPhone · Sistem.
@@ -136,11 +138,14 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 - Başlıklar: Yeni · Değişen · Düzeltilen (boş başlık yazılmaz). Teknik kelime yok; düğme adları ekrandaki gibi.
 
 ## Sırada
-- [ ] **1.32.0 — Belediye zimmeti için Başkanlık onayı (Seyfettin'in kararları, 02.11.2026; "yap" bekliyor):**
+- [x] **1.32.0 — Belediye zimmeti için Başkanlık onayı (Seyfettin'in kararları, 02.11.2026) — YAZILDI:**
   - Kural: Belediye hizmetindeki ürünün **kırsal mahallede** kullanımı **Başkanlık onayı** ister. Sert engel / kırsal mahalle listesi / konum hesabı YOK; ayrım **depo adına** göre: ürün **BELEDİYE ZİMMETİ** deposundan montaja (kullanıma) çıkarken onay penceresi açılır. (Depo adları sabit, değiştirmek Seyfettin'in elinde.)
   - Pencere: "Bu ürün Belediye Zimmeti'nde. Kırsal mahallede kullanımı Başkanlık onayı gerektirir." Seçenekler: ○ Belediye hizmet yerine takılıyor ○ Kırsal mahalleye takılıyor (onay var) → **evrak sayısı ZORUNLU**. Seçmeden devam edilemez.
   - Seçim + evrak sayısı kullanım (montaj) kaydına yazılır (silinemez, senkronlanır) → yeni sütunlar, SQL güncellemesi gerekir.
   - Rapor: "Kırsal mahallede kullanılan zimmet ürünleri" (ürün, seri no, mahalle, tarih, kim, evrak sayısı).
+  - Onay **yoksa**: "Bu ürün kırsal mahallede Başkanlık onayı olmadan kullanılamaz", montaj kaydedilmez; girişim `zimmet_girisimleri`'ne yazılır (değiştirilemez / silinemez) → bildirim **"Onaysız zimmet kullanımı girişimi"** (varsayılan KAPALI; isteyen Bildirim ayarlarından açar = geçici "alıcı seçimi"). Raporda ikinci bölüm: onaysız girişimler.
+  - Kural veritabanı katmanında da var (ekran atlansa bile yer seçimi / evrak olmadan zimmet ürünü sahada kaydedilemez).
+  - **Final'e kalanlar:** bildirim alıcılarının yönetici tarafından merkezi seçimi (Ayarlar → "Bildirim alıcıları", bildirim türü başına kişi); Daire Başkanı: yeni rol mü, Gözlemci + unvan mı (karar bekliyor; öneri: Gözlemci + unvan).
 - [ ] **Flexity'ye aktarım raporu — ASKIDA (23.10.2026, Seyfettin):** Flexity şu an dışarıdan Excel ile veri almıyor. Flexity toplu aktarımı açarsa yeniden ele alınır (gerekli: toplu aktarım şablonu / örnek dosya). Plan: idari işlerin Flexity'ye girdiği bilgiler (yeni alınan cihazlar, kurulum yeri, hurda…) doğrudan Flexity'nin beklediği sütunlarla Excel olarak.
 - [ ] **Veritabanı yedeği** (Supabase ücretsiz planında indirilebilir yedek yok) — **ÇALIŞIYOR (29.10.2026): `.github/workflows/yedek.yml` + `YEDEK.md`. İlk deneme: 18 tablo, 455 stok hareketi, kullanıcı hesapları dahil, PostgreSQL 17, şifreli 140 KB; GitHub + Drive'a yüklendi; geri yükleme denemesi BAŞARILI (19 tablo birebir), Drive kopyası GitHub'dakiyle aynı.** Not: YEDEK_DEPO_TOKEN'da Contents izni Read and write olmalı (ilk denemede eksikti, düzeltildi):
   - **Gece otomatik yedek:** her gece **03:17** (tam saatte GitHub geç başlatabildiği için) GitHub Actions, Supabase'in döküm aracıyla tam döküm (bütün tablolar, hareketler, giriş kayıtları, kullanıcı hesapları `auth` dahil) → **şifreli (AES-256)**. Depo herkese açık olduğu için şifresiz yedek asla bırakılmaz.

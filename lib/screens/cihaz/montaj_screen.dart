@@ -13,10 +13,12 @@ import '../../services/konum_izleyici.dart';
 import '../../services/konum_servisi.dart';
 import '../../services/ses_servisi.dart';
 import '../../services/taslak_servisi.dart';
+import '../../services/zimmet_onayi.dart';
 import '../../widgets/hedefli_tarayici.dart';
 import '../../widgets/kod_yardimci.dart';
 import '../../widgets/renkler.dart';
 import '../../widgets/konum_seridi.dart';
+import '../../widgets/zimmet_onayi_dialog.dart';
 import 'cihaz_detay_screen.dart';
 import '../../widgets/buyuk_harf.dart';
 
@@ -524,6 +526,18 @@ class _MontajScreenState extends ConsumerState<MontajScreen>
           hata: true);
       return;
     }
+    // 1.32.0: Belediye zimmetindeki ürün → nereye takılıyor / Başkanlık onayı
+    final zimmet = _zimmettekiler();
+    ZimmetSecimi? zimmetSecimi;
+    if (zimmet.urunler.isNotEmpty) {
+      final sonuc = await zimmetOnayiSor(context, urunler: zimmet.urunler);
+      if (!mounted || sonuc == null) return;
+      if (sonuc.engellendi) {
+        await _zimmetGirisimiKaydet(zimmet.depoId, zimmet.urunler);
+        return;
+      }
+      zimmetSecimi = sonuc.secim;
+    }
     setState(() => _kaydediliyor = true);
     try {
       KonumSonucu? k;
@@ -588,6 +602,8 @@ class _MontajScreenState extends ConsumerState<MontajScreen>
           il: bosIseNull(_ilCtrl),
           ilce: bosIseNull(_ilceCtrl),
           mahalle: bosIseNull(_mahalleCtrl),
+          zimmetYeri: zimmetSecimi?.yer,
+          onayEvrakSayisi: zimmetSecimi?.evrakSayisi,
         );
       } else {
       await db.cihazlariTopluHareketKaydet(
@@ -605,6 +621,8 @@ class _MontajScreenState extends ConsumerState<MontajScreen>
         tutanak: _tutanak,
         malzemeler: Map.of(_kullanilan),
         malzemeDepoId: _malzemeDepoId,
+        zimmetYeri: zimmetSecimi?.yer,
+        onayEvrakSayisi: zimmetSecimi?.evrakSayisi,
       );
       }
       // İnternet varsa eksik bölge (il / ilçe / mahalle) hemen tamamlanır.
@@ -632,6 +650,59 @@ class _MontajScreenState extends ConsumerState<MontajScreen>
         });
       }
     }
+  }
+
+  /// Belediye Zimmeti deposundan gelen cihazlar ve (malzeme o depodan
+  /// düşülecekse) kullanılan malzemeler.
+  ({String? depoId, List<String> urunler}) _zimmettekiler() {
+    final depolar = ref.read(depolarStreamProvider).valueOrNull ?? <Depo>[];
+    String? depoId;
+    final urunler = <String>[];
+    for (final b in _liste) {
+      if (!zimmetDeposuMu(b.depoAdi)) continue;
+      depoId ??= b.cihaz.depoId;
+      urunler.add('${b.urunAdi} · ${b.cihaz.seriNo}');
+    }
+    final malzemeDeposu =
+        depolar.where((d) => d.id == _malzemeDepoId).firstOrNull;
+    if (malzemeDeposu != null && zimmetDeposuMu(malzemeDeposu.ad)) {
+      for (final m in _malzemeler) {
+        final n = _kullanilan[m.urun.id] ?? 0;
+        if (n <= 0) continue;
+        depoId ??= malzemeDeposu.id;
+        urunler.add('${m.urun.ad} · ${m.urun.miktarMetni(n)}');
+      }
+    }
+    return (depoId: depoId, urunler: urunler);
+  }
+
+  /// Onay olmadığı için kaydedilmeyen montaj: girişim kaydedilir (isteyen
+  /// yöneticiye bildirim gider), okutulanlar listede kalır.
+  Future<void> _zimmetGirisimiKaydet(
+      String? depoId, List<String> urunler) async {
+    SesServisi.hata();
+    final p = _konum.gosterilen;
+    String? bos(TextEditingController c) =>
+        c.text.trim().isEmpty ? null : c.text.trim();
+    try {
+      await ref.read(appDatabaseProvider).zimmetGirisimiKaydet(
+            kullaniciId:
+                ref.read(aktifKullaniciIdProvider) ?? 'demo-kullanici',
+            depoId: depoId,
+            icerik: urunler.join(', '),
+            kullanimYeri: bos(_yerCtrl),
+            il: bos(_ilCtrl),
+            ilce: bos(_ilceCtrl),
+            mahalle: bos(_mahalleCtrl),
+            enlem: p?.latitude,
+            boylam: p?.longitude,
+          );
+    } catch (_) {
+      // Girişim kaydı tutulamasa da montaj zaten kaydedilmedi.
+    }
+    _mesaj('Kaydedilmedi: Başkanlık onayı yok. Okutulanlar listede duruyor; '
+        'onay yazısı gelince kaydedebilirsiniz.',
+        hata: true, sn: 6);
   }
 
   /// Aynı yerde bir sonraki noktaya geç: liste boşalır; yer ve tutanak kalır;

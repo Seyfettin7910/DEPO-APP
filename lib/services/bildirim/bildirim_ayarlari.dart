@@ -73,6 +73,12 @@ enum BildirimTuru {
     'Etiket uyuşmazlığı',
     'Yapıştırma doğrulamasında etiket ile cihaz eşleşmeyince',
     'Kurum etiketi',
+  ),
+  zimmetOnaysiz(
+    'Onaysız zimmet kullanımı girişimi',
+    'Belediye Zimmeti\'ndeki ürün Başkanlık onayı olmadan kırsal mahalleye '
+        'takılmak istenince (yöneticiler için)',
+    'Belediye zimmeti',
   );
 
   const BildirimTuru(this.etiket, this.aciklama, this.grup);
@@ -84,7 +90,8 @@ enum BildirimTuru {
   bool get varsayilan =>
       this != BildirimTuru.hataliSifre &&
       this != BildirimTuru.yeniIpGiris &&
-      this != BildirimTuru.etiketBasim;
+      this != BildirimTuru.etiketBasim &&
+      this != BildirimTuru.zimmetOnaysiz;
 }
 
 /// 1.19.0'daki türler: kayıtlı ayarda "bilinen" listesi yoksa bunlar
