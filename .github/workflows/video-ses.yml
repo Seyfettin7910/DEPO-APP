@@ -2,6 +2,8 @@ name: Video seslendirme (geçici)
 on:
   push:
     branches: [video-ses]
+permissions:
+  contents: write
 jobs:
   ses:
     runs-on: ubuntu-latest
@@ -12,8 +14,10 @@ jobs:
           python-version: '3.12'
       - run: pip install edge-tts
       - run: python tool/video_ses.py
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ses
-          path: out/
-          retention-days: 2
+      - name: Sesleri dala yaz
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add out
+          git commit -m "Seslendirme dosyaları"
+          git push
