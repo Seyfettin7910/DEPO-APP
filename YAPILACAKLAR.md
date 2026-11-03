@@ -163,6 +163,10 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
   - **Uygulamadan Excel dökümü** (her tablo bir sayfa; geri yükleme için değil, inceleme / el kopyası): bu pakette mi rollerle Final'de mi, karar bekliyor. Roller gelince yalnız yönetici.
   - Program belediyeye geçince yedek yeri belediyenin hesabına / sunucusuna taşınır (KVKK ve sunucu maddeleriyle).
 - [ ] **Belediye sunucusuna geçiş — KARAR VERİLDİ (01.11.2026): Daire başkanı onayladı, program belediye sunucularına taşınacak.** (alan adı → web + APK → veritabanı). Gerekli bilgi: sunucu Windows mu Linux mu, internete çıkışı ve dışarıdan erişimi var mı.
+  - **Mülkiyet (Seyfettin'in kararı 03.11.2026):** Proje belediyeye verilmez, yalnız **kullanım hakkı** verilir. Uygulama ticari olarak da düşünülüyor; belediye referans olacak. Sunumdaki "süresiz ve ücretsiz kullanım hakkı" cümlesi bu kararla uyumlu.
+  - **Güncellemeler GitHub'da kalır** (derleme ve yayın). Belediye altyapısına geçince depo **gizli** yapılır.
+  - **Gizli yapma yolu (öneri, "yap" bekliyor):** kaynak depo `DEPO-APP` → `DEPO-APP-kaynak` adıyla gizli; boşalan `DEPO-APP` adıyla yalnız APK ve web dosyalarını taşıyan **herkese açık dağıtım deposu** açılır, derleme orada yayınlar. APK linki, web adresi ve güncelleme kontrolü aynı kalır, telefonlara ayrı güncelleme gerekmez. Gizli depoda Actions ayda 2.000 dk ücretsiz (bir sürüm ~20-25 dk, gece yedeği ~5 dk/gün; yeter).
+  - **Ticari sürüm:** ayrı kopya / yeni proje açılacak. Konuşulacaklar: iki kopya mı tek çekirdek + müşteriye göre ayar mı; ad ve paket adı (com.example olmaz); belediyeye özgü kısımların (zimmet onayı, Flexity) ayara bağlanması; fikri haklar için belediyeyle yazılı protokol (FSEK md. 18) ve kamu görevlisi ticaret kısıtı (657 md. 28) kontrolü.
 
 ## Bekleyenler
 - [ ] **Etiket engelini zorunlu yapmak** (1.22.0'da isteğe bağlı): uyum sorunu çıkmazsa ayar kaldırılıp kural zorunlu hale getirilir.
