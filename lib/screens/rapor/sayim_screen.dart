@@ -7,6 +7,7 @@ import '../../database/models.dart';
 import '../../providers/app_providers.dart';
 import '../../services/rapor/rapor_olusturucu.dart';
 import '../../services/sayim_ozeti.dart';
+import '../../services/genel_sayim.dart';
 import '../../services/ses_servisi.dart';
 import '../../services/taslak_servisi.dart';
 import '../../widgets/depo_secici.dart';
@@ -21,7 +22,8 @@ import '../../widgets/buyuk_harf.dart';
 ///  - Bulunan: sistemde burada, okutuldu
 ///  - Eksik:   sistemde burada, okutulmadı
 ///  - Fazla:   okutuldu ama sistemde burada değil (başka yerde / kayıtsız)
-/// Sayım sistemde hiçbir şeyi değiştirmez; sonunda rapor alınır.
+/// Sayım stokta hiçbir şeyi değiştirmez. "Bitir" sonucu kaydeder (1.35.0,
+/// genel sayım) ve raporu açar.
 class SayimScreen extends ConsumerStatefulWidget {
   const SayimScreen({super.key, this.onceSeciliDepoId, this.taslaktan = false});
 
@@ -305,19 +307,75 @@ class _SayimScreenState extends ConsumerState<SayimScreen>
     }
   }
 
-  void _raporAl(String depoAdi, List<CihazBilgi> beklenen,
-      List<(Urun, int)> malzemeler) {
+  /// 1.35.0: "Bitir" sayımı kaydeder (genel sayım raporu için) ve bu
+  /// yerin raporunu açar. Kaydedilen sayım değiştirilemez.
+  Future<void> _bitir(Depo depo, List<CihazBilgi> beklenen,
+      List<SayimGrubu> gruplar, List<(Urun, int)> malzemeler) async {
+    final bulunan = gruplar.fold<int>(0, (t, g) => t + g.bulunan.length);
+    final eksik = gruplar.fold<int>(0, (t, g) => t + g.eksik.length);
+    final fazla = gruplar.fold<int>(0, (t, g) => t + g.fazla.length);
+    final onay = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: const Icon(Icons.assignment_turned_in_outlined,
+            color: Renkler.rapor),
+        title: const Text('Sayım bitirilsin mi?'),
+        content: Text(
+          '${depo.ad}\n'
+          'Olmalı ${beklenen.length} · Bulunan $bulunan · Eksik $eksik'
+          '${fazla > 0 ? ' · Fazla $fazla' : ''}\n\n'
+          '${_okunanlar.isEmpty ? 'Hiç okutma yapılmadı; bütün cihazlar eksik sayılacak.\n\n' : ''}'
+          'Sonuç kaydedilir ve Raporlar → "Genel sayım"da görünür. '
+          'Kaydedilen sayım değiştirilemez; aynı yer yeniden sayılırsa '
+          'genel sayımda sonuncusu geçerli olur.',
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Saymaya devam')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Bitir ve kaydet')),
+        ],
+      ),
+    );
+    if (onay != true || !mounted) return;
+
+    final malzemeSatirlari = [
+      for (final (u, sistemde) in malzemeler)
+        (u.ad, u.birim, sistemde, _malzemeSayim[u.id]),
+    ];
+    try {
+      await ref.read(appDatabaseProvider).sayimKaydet(
+            kullaniciId:
+                ref.read(aktifKullaniciIdProvider) ?? 'demo-kullanici',
+            depoId: depo.id,
+            depoAdi: depo.ad,
+            baslangic: _baslangic,
+            icerik: sayimIcerigi(
+              gruplar: gruplar,
+              sistemdekiYer: (seri) =>
+                  RaporOlusturucu.sistemdekiYer(_okunanlar[seri]),
+              malzeme: malzemeSatirlari,
+            ),
+          );
+    } catch (e) {
+      SesServisi.hata();
+      _mesaj('Sayım kaydedilemedi: $e', renk: Colors.red.shade700);
+      return;
+    }
+    await taslakTamamlandi();
+    if (!mounted) return;
+    SesServisi.basari();
     final rapor = RaporOlusturucu.sayim(
-      depoAdi: depoAdi,
+      depoAdi: depo.ad,
       beklenen: beklenen,
       okunanlar: Map.of(_okunanlar),
       baslangic: _baslangic,
-      malzemeler: [
-        for (final (u, sistemde) in malzemeler)
-          (u.ad, u.birim, sistemde, _malzemeSayim[u.id]),
-      ],
+      malzemeler: malzemeSatirlari,
     );
-    Navigator.of(context).push(
+    // Sayım bitti: ekran yerini rapora bırakır (geri tuşu bir önceki ekrana).
+    await Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => RaporOnizlemeScreen(rapor: rapor)));
   }
 
@@ -396,7 +454,7 @@ class _SayimScreenState extends ConsumerState<SayimScreen>
                 label: const Text('Bitir'),
                 onPressed: secili == null
                     ? null
-                    : () => _raporAl(secili.ad, beklenen, malzemeler),
+                    : () => _bitir(secili, beklenen, gruplar, malzemeler),
               ),
             ),
           ],
@@ -541,9 +599,10 @@ class _SayimScreenState extends ConsumerState<SayimScreen>
                         child: Text(
                           'Sayılacak depoyu veya aracı seçin, sonra oradaki '
                           'cihazların seri numaralarını tek tek okutun.\n\n'
-                          'Sayım sistemde hiçbir şeyi değiştirmez; sonunda '
-                          'sağ üstteki "Bitir" ile raporu (PDF / Excel) '
-                          'alırsınız.',
+                          'Sayım stokta hiçbir şeyi değiştirmez. Sonunda '
+                          'sağ üstteki "Bitir" ile sayım kaydedilir ve raporu '
+                          '(PDF / Excel) alırsınız. Bütün yerlerin sayımları '
+                          'Raporlar → "Genel sayım"da birleşir.',
                           textAlign: TextAlign.center,
                         ),
                       ),

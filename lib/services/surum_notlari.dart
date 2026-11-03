@@ -36,6 +36,31 @@ class NotMaddesi {
 
 const surumNotlari = <SurumNotu>[
   SurumNotu(
+    surum: '1.35.0',
+    tarih: '03.11.2026',
+    bolumler: [
+      NotBolumu('Yeni', [
+        NotMaddesi(
+          'Genel sayım',
+          'Raporlar → "Genel sayım": bütün depo ve araçların sayımları tek raporda.',
+          'Her yerin seçilen aralıktaki son sayımı; sayılmayan yerler '
+              '"Sayılmadı" yazar. Bir yerde fazla çıkıp kendi yerinde eksik '
+              'görünen cihaz "Yeri yanlış kayıtlı" bölümüne geçer, eksik '
+              'sayılmaz. Ayrıca model özeti, hiçbir yerde bulunamayanlar, '
+              'kayıtsız seri nolar ve malzeme farkları.',
+        ),
+      ]),
+      NotBolumu('Değişen', [
+        NotMaddesi(
+          'Sayımda Bitir',
+          '"Bitir ve kaydet" sayımı kaydeder, sonra raporu açar.',
+          'Kaydedilen sayım değiştirilemez. Aynı yer yeniden sayılırsa genel '
+              'sayımda sonuncusu geçerli olur. Vazgeçmek için "Saymaya devam".',
+        ),
+      ]),
+    ],
+  ),
+  SurumNotu(
     surum: '1.34.0',
     tarih: '03.11.2026',
     bolumler: [

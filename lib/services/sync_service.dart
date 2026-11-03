@@ -67,6 +67,7 @@ class SyncService {
     'etiketler',
     'etiket_hareketleri',
     'zimmet_girisimleri',
+    'sayimlar',
   ];
 
   /// Sonradan eklenen tablolar ve onları oluşturan Supabase SQL sürümü.
@@ -78,6 +79,7 @@ class SyncService {
     'etiketler': '1.22.0',
     'etiket_hareketleri': '1.22.0',
     'zimmet_girisimleri': '1.32.0',
+    'sayimlar': '1.35.0',
   };
 
   /// Sonradan eklenen sütunlar ve SQL sürümü. Sunucuda henüz yoksa o sütun

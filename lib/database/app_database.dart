@@ -11,6 +11,7 @@ import 'models.dart';
 import '../services/bolge_adi.dart' show trBuyuk;
 import '../services/kurum_barkodu.dart';
 import '../services/zimmet_onayi.dart';
+import '../services/genel_sayim.dart';
 import '../services/sn_metni.dart' show seriAnahtari;
 
 export 'etiket_modelleri.dart';
@@ -19,6 +20,7 @@ part 'app_database_etiket.dart';
 part 'app_database_malzeme.dart';
 part 'app_database_birlestir.dart';
 part 'app_database_zimmet.dart';
+part 'app_database_sayim.dart';
 
 const _uuid = Uuid();
 
@@ -406,7 +408,7 @@ class AppDatabase {
         : p.join(await getDatabasesPath(), 'depo_app.sqlite');
     _db = await openDatabase(
       path,
-      version: 15,
+      version: 16,
       onCreate: (db, version) async {
         for (final stmt in _createTablesSql.split(';')) {
           final trimmed = stmt.trim();
@@ -422,6 +424,7 @@ class AppDatabase {
           await db.execute(t);
         }
         await db.execute(_zimmetTabloSql);
+        await db.execute(_sayimTabloSql);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -506,6 +509,10 @@ class AppDatabase {
           await db.execute(
               'ALTER TABLE kullanim_kayitlari ADD COLUMN onay_evrak_sayisi TEXT');
           await db.execute(_zimmetTabloSql);
+        }
+        if (oldVersion < 16) {
+          // 1.35.0: genel sayım (biten sayımlar kaydedilir)
+          await db.execute(_sayimTabloSql);
         }
         if (oldVersion < 4) {
           // 1.4.0: araçlar seyyar depo olarak depolar tablosunda tutulur.
@@ -2732,6 +2739,11 @@ class AppDatabase {
     'zimmet_girisimleri': [
       'id', 'kullanici_id', 'tarih', 'depo_id', 'icerik', 'kullanim_yeri',
       'il', 'ilce', 'mahalle', 'enlem', 'boylam', 'updated_at', 'deleted'
+    ],
+    // 1.35.0: biten sayımlar (genel sayım raporu)
+    'sayimlar': [
+      'id', 'kullanici_id', 'depo_id', 'depo_adi', 'baslangic', 'tarih',
+      'olmali', 'bulunan', 'eksik', 'fazla', 'icerik', 'updated_at', 'deleted'
     ],
   };
 

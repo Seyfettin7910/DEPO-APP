@@ -127,6 +127,13 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
               onTap: () => Navigator.pop(ctx, 'hurda'),
             ),
             ListTile(
+              leading: const Icon(Icons.fact_check_outlined),
+              title: const Text('Genel sayım'),
+              subtitle: Text('Bütün depo ve araçların son sayımları tek '
+                  'raporda: eksik, yeri yanlış kayıtlı, kayıtsız · $aralik'),
+              onTap: () => Navigator.pop(ctx, 'genelSayim'),
+            ),
+            ListTile(
               leading: const Icon(Icons.account_balance),
               title: const Text('Belediye zimmeti – kırsal mahalle'),
               subtitle: Text('Başkanlık onayıyla kullanılanlar (evrak sayısı) ve '
@@ -244,6 +251,10 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
           break;
         case 'etiket':
           rapor = await RaporOlusturucu.etiketDurumu(db);
+          break;
+        case 'genelSayim':
+          rapor = await RaporOlusturucu.genelSayimRaporu(db,
+              baslangic: _tarihAraligi?.start, bitis: _bitisGunSonu());
           break;
         case 'zimmet':
           rapor = await RaporOlusturucu.zimmetKirsal(db,

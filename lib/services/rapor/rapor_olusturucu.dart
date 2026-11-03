@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../../database/app_database.dart';
 import '../../database/models.dart';
 import '../sayim_ozeti.dart';
+import '../genel_sayim.dart';
 import '../adres_servisi.dart';
 import '../giris_kaydi_servisi.dart';
 import '../okuma_istatistigi.dart';
@@ -1538,6 +1539,129 @@ class RaporOlusturucu {
                   sayilan == null ? '' : sayilan - sistemde,
                   birim,
                 ],
+            ],
+          ),
+      ],
+    );
+  }
+
+  // ------------------------------------------------------------------
+  // Genel sayım (1.35.0): bütün depo ve araçların son sayımları
+  // ------------------------------------------------------------------
+  static Future<Rapor> genelSayimRaporu(AppDatabase db,
+      {DateTime? baslangic, DateTime? bitis}) async {
+    final kayitlar =
+        await db.sayimKayitlari(baslangic: baslangic, bitis: bitis);
+    final depolar = await db.tumDepolar();
+    final g = genelSayim(
+      kayitlar: kayitlar,
+      yerler: [
+        for (final d in depolar) (d.id, d.ad, d.tur == DepoTuru.arac),
+      ],
+    );
+    final eksikToplam = g.eksikler.length;
+
+    return Rapor(
+      baslik: 'Genel Sayım Raporu',
+      altBaslik: '${_aralik(baslangic, bitis)} · ${_olusturma()}',
+      dosyaOn: 'genel_sayim_raporu',
+      ozet: [
+        MapEntry('Sayılan yer', '${g.sayilanYer} / ${g.yerler.length}'),
+        MapEntry('Olması gereken', '${g.olmali}'),
+        MapEntry('Bulunan', '${g.bulunan}'),
+        MapEntry('Eksik', '$eksikToplam'),
+        MapEntry('Yeri yanlış kayıtlı', '${g.yeriYanlis.length}'),
+        MapEntry('Kayıtsız', '${g.kayitsizlar.length}'),
+      ],
+      sutunlar: const ['Seri No', 'Ürün', 'Yer'],
+      genislikler: const [22, 36, 30],
+      bolumler: [
+        RaporBolumu(
+          baslik: 'Yerler (${g.yerler.length})',
+          aciklama: 'Her depo ve aracın bu aralıktaki son sayımı. Eksik: '
+              'başka yerde bulunanlar düşülmüş hali.',
+          sutunlar: const [
+            'Yer', 'Tür', 'Sayım', 'Sayan', 'Olmalı', 'Bulunan', 'Eksik',
+            'Fazla'
+          ],
+          genislikler: const [22, 8, 14, 14, 9, 9, 9, 9],
+          satirlar: [
+            for (final y in g.yerler)
+              y.kayit == null
+                  ? [y.yer.$2, y.yer.$3 ? 'Araç' : 'Depo', 'Sayılmadı', '',
+                      '', '', '', '']
+                  : [
+                      y.yer.$2,
+                      y.yer.$3 ? 'Araç' : 'Depo',
+                      _tarih.format(y.kayit!.tarih),
+                      y.kayit!.kullanici ?? '',
+                      y.olmali,
+                      y.bulunan,
+                      y.eksik,
+                      y.fazla,
+                    ],
+          ],
+        ),
+        if (g.modeller.isNotEmpty)
+          RaporBolumu(
+            baslik: 'Model özeti (${g.modeller.length})',
+            aciklama: 'Sayılan yerlerin toplamı. Eksiği çok olan model en '
+                'üstte.',
+            sutunlar: const [
+              'Model', 'Olmalı', 'Bulunan', 'Eksik', 'Yeri yanlış'
+            ],
+            genislikler: const [42, 11, 11, 11, 13],
+            satirlar: [
+              for (final m in g.modeller)
+                [m.urun, m.olmali, m.bulunan, m.eksik, m.yeriYanlis],
+            ],
+          ),
+        RaporBolumu(
+          baslik: 'Eksik: hiçbir yerde bulunamayan ($eksikToplam)',
+          aciklama: 'Sistemde bu yerde görünüyor ama sayımda okutulmadı ve '
+              'başka bir yerde de bulunmadı.',
+          satirlar: [
+            for (final (seri, urun, yer) in g.eksikler) [seri, urun, yer],
+          ],
+        ),
+        RaporBolumu(
+          baslik: 'Yeri yanlış kayıtlı (${g.yeriYanlis.length})',
+          aciklama: 'Okutulduğu yer ile sistemdeki kaydı farklı. Kayıp '
+              'değildir; kaydın düzeltilmesi (transfer vb.) gerekir.',
+          sutunlar: const ['Seri No', 'Ürün', 'Bulunduğu yer', 'Sistemdeki kayıt'],
+          genislikler: const [18, 28, 20, 30],
+          satirlar: [
+            for (final y in g.yeriYanlis)
+              [
+                y.seri,
+                y.urun,
+                y.bulunduguYer,
+                '${y.sistemdekiYer}'
+                    '${y.kendiYerindeEksik ? ' · orada eksik çıktı' : ''}',
+              ],
+          ],
+        ),
+        if (g.kayitsizlar.isNotEmpty)
+          RaporBolumu(
+            baslik: 'Kayıtsız seri no (${g.kayitsizlar.length})',
+            aciklama: 'Sayımda okutuldu ama sistemde hiç kaydı yok '
+                '(depoya giriş yapılmamış).',
+            sutunlar: const ['Seri No', 'Bulunduğu yer'],
+            genislikler: const [30, 40],
+            satirlar: [
+              for (final (seri, yer) in g.kayitsizlar) [seri, yer],
+            ],
+          ),
+        if (g.malzemeFarklari.isNotEmpty)
+          RaporBolumu(
+            baslik: 'Malzeme farkları (${g.malzemeFarklari.length})',
+            aciklama: 'Sayılan miktarı sistemdekinden farklı malzemeler.',
+            sutunlar: const ['Yer', 'Malzeme', 'Sistemde', 'Sayılan', 'Fark', 'Birim'],
+            genislikler: const [18, 30, 11, 11, 10, 10],
+            satirlar: [
+              for (final (yer, ad, birim, sistemde, sayilan)
+                  in g.malzemeFarklari)
+                [yer, ad, sistemde, sayilan, sayilan - sistemde, birim],
             ],
           ),
       ],
