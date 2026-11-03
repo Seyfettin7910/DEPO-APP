@@ -36,6 +36,22 @@ class NotMaddesi {
 
 const surumNotlari = <SurumNotu>[
   SurumNotu(
+    surum: '1.33.1',
+    tarih: '03.11.2026',
+    bolumler: [
+      NotBolumu('Değişen', [
+        NotMaddesi(
+          'Kayıtsız seri no',
+          'Yalnız rakamlı kayıtsız seri no da diğerleri gibi doğrudan "kayıtlı değil" kartını açıyor.',
+          'Kameranın üstündeki küçük "Yok sayıldı" yazısı artık yalnız lot no, '
+              'malzeme kodu ve model kodunda çıkar (etiketteki yazıdan '
+              'anlaşılınca). Yazıdan da oku açıksa kod en fazla 1 saniye '
+              'çerçevede tutulur; bu sürede yazı da okunur.',
+        ),
+      ]),
+    ],
+  ),
+  SurumNotu(
     surum: '1.33.0',
     tarih: '02.11.2026',
     bolumler: [

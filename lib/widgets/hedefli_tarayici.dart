@@ -50,13 +50,16 @@ enum TaramaModu { barkod, karekod }
 ///   barkod okunmazsa çerçevedeki "S/N" satırı yazıdan okunur; iki kez aynı
 ///   okununca, yarım saniye içinde barkod okunmazsa kabul edilir (barkod
 ///   önceliği). Kayıtlı cihazla eşleşmezse "Doğru mu?" sorulur.
-/// - Kayıtsız seri (1.33.0): yalnız rakamlı / tireli kodlar (lot, malzeme
-///   kodu da öyle) kayıt kontrolü olan ekranlarda kayıtlı değilse yok
-///   sayılır. Yok sayılınca yazı tanıma bu karede de 3 sn çalışır: etikette
-///   "SN:" yanında aynı değer görülürse barkod KESİN SERİ sayılıp hemen kabul
-///   edilir ("Doğru mu?" sorulmaz; iki kaynak aynı). "Lot No", "Material
-///   Code", "Model" yanında görülürse ipucu o sebebi yazar. İpucuna
-///   dokunulunca "Seri no olarak kullanılsın mı?" sorulur (her zaman çıkış).
+/// - Kayıtsız seri (1.33.0 / 1.33.1): yalnız rakamlı / tireli kodlar (lot,
+///   malzeme kodu da öyle) kayıt kontrolü olan ekranlarda (Okut) kayıtlı
+///   değilse yazı tanıma bu karede de 3 sn çalışır:
+///   * etikette "SN:" yanında aynı değer → KESİN SERİ, hemen kabul edilir
+///     ("Doğru mu?" sorulmaz; iki kaynak aynı);
+///   * "Lot No", "Material Code", "Model" yanında → yok sayılır, ipucu o
+///     sebebi yazar; ipucuna dokununca "Seri no olarak kullanılsın mı?";
+///   * yazıdan tanınmadıysa (1.33.1, Seyfettin) → diğer kayıtsız seriler
+///     gibi 2. okumada kabul edilir, Okut kayıtsız seri kartını açar
+///     (Depoya giriş / Ara / Atla).
 /// - Okuma kaynağı (1.31.0): kabul edilen okumada çerçevenin hemen üstünde
 ///   1,5 sn "✓ Barkod" / "✓ Karekod" / "✓ Yazı (S/N)" görünür (kayda geçmez).
 ///   Okuma sayıları telefonda birikir ([OkumaIstatistigi]): kaynağa göre
@@ -124,6 +127,7 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
   DateTime _hazir = DateTime.now().add(_acilisBeklemesi);
   String? _aday; // onay bekleyen kod
   Barcode? _adayKod;
+  DateTime _adayBasi = DateTime.fromMillisecondsSinceEpoch(0);
   int _adaySayi = 0;
   int _adayGereken = 1;
   String? _okunan; // en son okunan (gönderilen) kod
@@ -349,13 +353,13 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
     unawaited(MetinOkuma.zorla(const Duration(seconds: 3)));
   }
 
-  /// Kayıtlı olması gereken ama kayıtlı olmayan kod yok sayılırken: aday
-  /// olarak tutulur (yazıyla eşleşirse kesin seri), sebebi etiketten bulunur.
-  String _kayitsizSebep(Barcode b, String v) {
+  /// Kayıtlı olması gereken ama kayıtlı olmayan kod: aday olarak tutulur
+  /// (yazıyla eşleşirse kesin seri), yazı tanıma bu karede de çalıştırılır.
+  /// Etiket yazısına göre türü (bilinmiyorsa null).
+  EtiketKodTuru? _kayitsizTuru(Barcode b, String v) {
     _seriAdaylari[v] = (b, DateTime.now());
     _metinZorla();
-    final tur = _etiketTuru(v);
-    return tur == null || tur == EtiketKodTuru.seri ? 'kayıtlı değil' : tur.ad;
+    return _etiketTuru(v);
   }
 
   /// Yazıda "SN:" yanında görülen değer, az önce yok sayılan bir barkodla
@@ -822,15 +826,19 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
             if (urunBarkoduTuru(b)) {
               yokSayilan ??= '${_kisalt(v)} (${_urunBarkoduSebebi(v)})';
               _yokSay(v, _urunBarkoduKategori(v));
-            } else {
-              final sebep = _kayitsizSebep(b, v);
+              continue;
+            }
+            final tur = _kayitsizTuru(b, v);
+            if (tur != null && tur != EtiketKodTuru.seri) {
               if (yokSayilan == null) {
-                yokSayilan = '${_kisalt(v)} ($sebep)';
+                yokSayilan = '${_kisalt(v)} (${tur.ad})';
                 yokKod = b;
               }
-              _yokSay(v, sebep);
+              _yokSay(v, tur.ad);
+              continue;
             }
-            continue;
+            // 1.33.1: yazıdan lot / malzeme / model diye tanınmadı: diğer
+            // kayıtsız seriler gibi aday (2. okumada kabul, Okut kartı açar).
           }
         }
       }
@@ -876,6 +884,7 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
     });
     if (deger != _aday) {
       _aday = deger;
+      _adayBasi = simdi;
       _adaySayi = 1;
       _adayGereken = _gerekenBelirle(deger, secilen);
     } else {
@@ -894,10 +903,32 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
         // Kayıtlı olması gereken kodun cevabı henüz gelmedi
         (!_taninan(deger) &&
             _kayitliOlmali(kod, deger) &&
-            _bilinenler[deger] != true);
+            _bilinenler[deger] == null);
     if (bekle) {
       setState(() {});
       return;
+    }
+    // 1.33.1: kayıtsız kod beklenirken yazı onu lot / malzeme / model diye
+    // tanıdıysa kabul edilmez.
+    if (_bilinenler[deger] == false &&
+        !_taninan(deger) &&
+        _kayitliOlmali(kod, deger)) {
+      final tur = _etiketTuru(deger);
+      if (tur != null && tur != EtiketKodTuru.seri) {
+        _kayip?.cancel();
+        setState(() => _aday = null);
+        _yokSay(deger, tur.ad);
+        _ipucuGoster('Yok sayıldı: ${_kisalt(deger)} (${tur.ad})', kod: kod);
+        return;
+      }
+      // Yazı tanımaya (SN mi, lot / malzeme / model mi?) 1,2 sn tanınır;
+      // kod çerçevede durdukça okuma sürer. (Yazı tanıma yoksa beklenmez.)
+      if (_yaziAcik &&
+          DateTime.now().difference(_adayBasi) <
+              const Duration(milliseconds: 1200)) {
+        setState(() {});
+        return;
+      }
     }
     _okunan = deger;
     _okunmaZamani = DateTime.now();
@@ -964,8 +995,8 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
           _kodKabulEt(kod);
           return;
         }
-        setState(() => _aday = null);
         if (urunBarkoduTuru(kod) || kurumBarkoduMu(deger)) {
+          setState(() => _aday = null);
           _yokSay(
               deger,
               urunBarkoduTuru(kod)
@@ -973,12 +1004,17 @@ class _HedefliTarayiciState extends State<HedefliTarayici>
                   : 'kayıtlı değil');
           _ipucuGoster(
               'Yok sayıldı: ${_kisalt(deger)} (${_urunBarkoduSebebi(deger)})');
-        } else {
-          final sebep = _kayitsizSebep(kod, deger);
-          _yokSay(deger, sebep);
-          _ipucuGoster('Yok sayıldı: ${_kisalt(deger)} ($sebep)', kod: kod);
+          return;
         }
-        return;
+        final tur = _kayitsizTuru(kod, deger);
+        if (tur != null) {
+          setState(() => _aday = null);
+          _yokSay(deger, tur.ad);
+          _ipucuGoster('Yok sayıldı: ${_kisalt(deger)} (${tur.ad})', kod: kod);
+          return;
+        }
+        // 1.33.1: tanınmayan kayıtsız kod: diğer kayıtsız seriler gibi
+        // 2. okumada kabul edilir (Okut kayıtsız seri kartını açar).
       }
       _adayGereken = v ? 1 : 2;
       _dene();
