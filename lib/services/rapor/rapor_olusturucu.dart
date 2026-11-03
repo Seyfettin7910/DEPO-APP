@@ -2,6 +2,7 @@ import 'package:intl/intl.dart';
 
 import '../../database/app_database.dart';
 import '../../database/models.dart';
+import '../sayim_ozeti.dart';
 import '../adres_servisi.dart';
 import '../giris_kaydi_servisi.dart';
 import '../okuma_istatistigi.dart';
@@ -1446,6 +1447,28 @@ class RaporOlusturucu {
     final fazla = okunanlar.entries
         .where((e) => !beklenenSeriler.contains(e.key))
         .toList();
+    // 1.34.0: model bazında özet; listeler de model sırasıyla gruplu.
+    final gruplar = sayimOzeti(
+      beklenen: [for (final c in beklenen) (c.cihaz.seriNo, c.urunAdi)],
+      okunan: {for (final e in okunanlar.entries) e.key: e.value?.urunAdi},
+    );
+    final sira = {
+      for (var i = 0; i < gruplar.length; i++) gruplar[i].urunAdi: i,
+    };
+    int modelSirasi(String? urun) =>
+        sira[urun ?? sayimKayitsizBasligi] ?? gruplar.length;
+    int cihazSirasi(CihazBilgi a, CihazBilgi b) {
+      final m = modelSirasi(a.urunAdi).compareTo(modelSirasi(b.urunAdi));
+      return m != 0 ? m : a.cihaz.seriNo.compareTo(b.cihaz.seriNo);
+    }
+
+    eksik.sort(cihazSirasi);
+    bulunan.sort(cihazSirasi);
+    fazla.sort((a, b) {
+      final m = modelSirasi(a.value?.urunAdi)
+          .compareTo(modelSirasi(b.value?.urunAdi));
+      return m != 0 ? m : a.key.compareTo(b.key);
+    });
 
     return Rapor(
       baslik: 'Sayım Raporu: $depoAdi',
@@ -1460,6 +1483,24 @@ class RaporOlusturucu {
       sutunlar: const ['Seri No', 'Ürün', 'Açıklama'],
       genislikler: const [24, 30, 36],
       bolumler: [
+        if (gruplar.isNotEmpty)
+          RaporBolumu(
+            baslik: 'Model özeti (${gruplar.length})',
+            aciklama: 'Her model için olması gereken, bulunan, eksik ve '
+                'fazla cihaz sayısı. Eksiği çok olan model en üstte.',
+            sutunlar: const ['Model', 'Olmalı', 'Bulunan', 'Eksik', 'Fazla'],
+            genislikler: const [42, 12, 12, 12, 12],
+            satirlar: [
+              for (final g in gruplar)
+                [
+                  g.urunAdi,
+                  g.olmali.length,
+                  g.bulunan.length,
+                  g.eksik.length,
+                  g.fazla.length,
+                ],
+            ],
+          ),
         RaporBolumu(
           baslik: 'Eksik (${eksik.length})',
           aciklama: 'Sistemde bu konumda görünüyor ama sayımda okutulmadı.',

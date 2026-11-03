@@ -36,6 +36,32 @@ class NotMaddesi {
 
 const surumNotlari = <SurumNotu>[
   SurumNotu(
+    surum: '1.34.0',
+    tarih: '03.11.2026',
+    bolumler: [
+      NotBolumu('Yeni', [
+        NotMaddesi(
+          'Sayımda model özeti',
+          'Eksik, Bulunan ve Fazla listeleri model başlıkları altında toplanıyor.',
+          'Her başlıkta o modelin "Olmalı · Bulunan · Eksik" sayıları ve '
+              'ilerleme çubuğu var; eksiği en çok olan model en üstte. '
+              'Başlığa dokununca seri numaraları açılır / kapanır. Liste '
+              'kalabalıksa başlıklar kapalı başlar.',
+        ),
+        NotMaddesi(
+          'Sayımda arama',
+          'Sağ üstteki büyüteçle listede seri no ya da model aranır.',
+          'Harf ve boşluk farkı önemsiz: "7104 poe" yazınca HIKVISION 7104 '
+              'POE cihazları çıkar.',
+        ),
+        NotMaddesi(
+          'Sayım raporu',
+          'Raporun başında "Model özeti" tablosu; listeler model sırasıyla.',
+        ),
+      ]),
+    ],
+  ),
+  SurumNotu(
     surum: '1.33.1',
     tarih: '03.11.2026',
     bolumler: [

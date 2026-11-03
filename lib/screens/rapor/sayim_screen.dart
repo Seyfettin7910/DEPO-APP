@@ -6,6 +6,7 @@ import '../../database/app_database.dart';
 import '../../database/models.dart';
 import '../../providers/app_providers.dart';
 import '../../services/rapor/rapor_olusturucu.dart';
+import '../../services/sayim_ozeti.dart';
 import '../../services/ses_servisi.dart';
 import '../../services/taslak_servisi.dart';
 import '../../widgets/depo_secici.dart';
@@ -49,6 +50,13 @@ class _SayimScreenState extends ConsumerState<SayimScreen>
 
   bool _kameraAcik = false;
   MobileScannerController? _kamera;
+
+  /// 1.34.0: listelerde arama (seri no / model) ve model başlıklarının
+  /// açık / kapalı durumu ('sekme|model' → açık mı).
+  bool _aramaAcik = false;
+  final _aramaCtrl = TextEditingController();
+  String _arama = '';
+  final _grupAcik = <String, bool>{};
   bool _coklu = false;
   bool _mesgul = false;
   String? _sonKod;
@@ -117,6 +125,7 @@ class _SayimScreenState extends ConsumerState<SayimScreen>
     taslakKorumasiniBitir();
     _seriCtrl.dispose();
     _seriOdak.dispose();
+    _aramaCtrl.dispose();
     _kamera?.dispose();
     super.dispose();
   }
@@ -344,6 +353,13 @@ class _SayimScreenState extends ConsumerState<SayimScreen>
         .toList()
         .reversed
         .toList();
+    // 1.34.0: model bazında gruplar (eksiği çok olan model en üstte).
+    final gruplar = sayimOzeti(
+      beklenen: [for (final c in beklenen) (c.cihaz.seriNo, c.urunAdi)],
+      okunan: {
+        for (final e in _okunanlar.entries) e.key: e.value?.urunAdi,
+      },
+    );
 
     return yarimIsKapsayici(
         child: DefaultTabController(
@@ -352,6 +368,12 @@ class _SayimScreenState extends ConsumerState<SayimScreen>
         appBar: AppBar(
           title: const Text('Sayım'),
           actions: [
+            IconButton(
+              icon: Icon(_aramaAcik ? Icons.search_off : Icons.search,
+                  color: Renkler.ara, size: 26),
+              tooltip: _aramaAcik ? 'Aramayı kapat' : 'Listede ara',
+              onPressed: _depoId == null ? null : _aramaDegistir,
+            ),
             IconButton(
               icon: Icon(
                   _kameraAcik
@@ -485,6 +507,32 @@ class _SayimScreenState extends ConsumerState<SayimScreen>
                   ),
               ],
             ),
+            if (_aramaAcik && _depoId != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                child: TextField(
+                  controller: _aramaCtrl,
+                  autofocus: true,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  decoration: InputDecoration(
+                    isDense: true,
+                    prefixIcon: const Icon(Icons.search),
+                    hintText: 'Listede ara: seri no veya model',
+                    suffixIcon: _arama.isEmpty
+                        ? null
+                        : IconButton(
+                            icon: const Icon(Icons.clear),
+                            tooltip: 'Temizle',
+                            onPressed: () => setState(() {
+                              _aramaCtrl.clear();
+                              _arama = '';
+                            }),
+                          ),
+                  ),
+                  onChanged: (v) => setState(() => _arama = v),
+                ),
+              ),
             Expanded(
               child: _depoId == null
                   ? const Center(
@@ -501,36 +549,62 @@ class _SayimScreenState extends ConsumerState<SayimScreen>
                       ),
                     )
                   : TabBarView(children: [
-                      _cihazListesi(eksik, Icons.help_outline,
-                          Renkler.cikis, 'Eksik yok, hepsi bulundu 🎉'),
-                      _cihazListesi(bulunan, Icons.check_circle,
-                          Renkler.okut, 'Henüz okutma yok'),
-                      fazla.isEmpty
-                          ? const Center(child: Text('Fazla cihaz yok'))
-                          : ListView.separated(
-                              itemCount: fazla.length,
-                              separatorBuilder: (_, __) =>
-                                  const Divider(height: 1),
-                              itemBuilder: (_, i) {
-                                final e = fazla[i];
-                                return ListTile(
-                                  dense: true,
-                                  leading: const Icon(Icons.warning_amber,
-                                      color: Renkler.urun),
-                                  title: Text(e.key),
-                                  subtitle: Text(
-                                      '${e.value?.urunAdi ?? 'Bilinmeyen ürün'}\n'
-                                      '${RaporOlusturucu.sistemdekiYer(e.value)}'),
-                                  isThreeLine: true,
-                                  trailing: IconButton(
-                                    icon: const Icon(Icons.close),
-                                    tooltip: 'Okutmayı geri al',
-                                    onPressed: () => setState(
-                                        () => _okunanlar.remove(e.key)),
-                                  ),
-                                );
-                              },
-                            ),
+                      _grupluListe(
+                        sekme: 'eksik',
+                        gruplar: gruplar,
+                        seriler: (g) => g.eksik,
+                        sayi: (g) => g.eksik.length,
+                        renk: Renkler.cikis,
+                        bos: 'Eksik yok, hepsi bulundu 🎉',
+                        satir: (seri, g) => ListTile(
+                          dense: true,
+                          leading: const Icon(Icons.help_outline,
+                              color: Renkler.cikis),
+                          title: Text(seri),
+                        ),
+                      ),
+                      _grupluListe(
+                        sekme: 'bulunan',
+                        gruplar: gruplar,
+                        seriler: (g) => g.bulunan,
+                        sayi: (g) => g.bulunan.length,
+                        renk: Renkler.okut,
+                        bos: 'Henüz okutma yok',
+                        satir: (seri, g) => ListTile(
+                          dense: true,
+                          leading: const Icon(Icons.check_circle,
+                              color: Renkler.okut),
+                          title: Text(seri),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.undo),
+                            tooltip: 'Okutmayı geri al',
+                            onPressed: () =>
+                                setState(() => _okunanlar.remove(seri)),
+                          ),
+                        ),
+                      ),
+                      _grupluListe(
+                        sekme: 'fazla',
+                        gruplar: gruplar,
+                        seriler: (g) => g.fazla,
+                        sayi: (g) => g.fazla.length,
+                        renk: Renkler.urun,
+                        bos: 'Fazla cihaz yok',
+                        satir: (seri, g) => ListTile(
+                          dense: true,
+                          leading: const Icon(Icons.warning_amber,
+                              color: Renkler.urun),
+                          title: Text(seri),
+                          subtitle: Text(
+                              RaporOlusturucu.sistemdekiYer(_okunanlar[seri])),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.close),
+                            tooltip: 'Okutmayı geri al',
+                            onPressed: () =>
+                                setState(() => _okunanlar.remove(seri)),
+                          ),
+                        ),
+                      ),
                       _malzemeListesi(malzemeler),
                     ]),
             ),
@@ -624,30 +698,115 @@ class _SayimScreenState extends ConsumerState<SayimScreen>
         ),
       );
 
-  Widget _cihazListesi(
-      List<CihazBilgi> liste, IconData ikon, Color renk, String bos) {
-    if (liste.isEmpty) return Center(child: Text(bos));
-    return ListView.separated(
-      itemCount: liste.length,
-      separatorBuilder: (_, __) => const Divider(height: 1),
-      itemBuilder: (_, i) {
-        final c = liste[i];
-        final okundu = _okunanlar.containsKey(c.cihaz.seriNo);
-        return ListTile(
-          dense: true,
-          leading: Icon(ikon, color: renk),
-          title: Text(c.cihaz.seriNo),
-          subtitle: Text(c.urunAdi),
-          trailing: okundu
-              ? IconButton(
-                  icon: const Icon(Icons.undo),
-                  tooltip: 'Okutmayı geri al',
-                  onPressed: () =>
-                      setState(() => _okunanlar.remove(c.cihaz.seriNo)),
-                )
-              : null,
-        );
-      },
+  void _aramaDegistir() => setState(() {
+        _aramaAcik = !_aramaAcik;
+        if (!_aramaAcik) {
+          _aramaCtrl.clear();
+          _arama = '';
+        }
+      });
+
+  /// 1.34.0: cihazlar model başlıkları altında. Başlıkta o modelin
+  /// olmalı / bulunan / eksik (/ fazla) sayıları yazar; dokununca açılır /
+  /// kapanır. Liste kalabalıksa (20'den çok) başlıklar kapalı başlar.
+  /// Aramada yalnız uyan cihazlar gösterilir, başlıklar açık gelir.
+  Widget _grupluListe({
+    required String sekme,
+    required List<SayimGrubu> gruplar,
+    required List<String> Function(SayimGrubu) seriler,
+    required int Function(SayimGrubu) sayi,
+    required Color renk,
+    required String bos,
+    required Widget Function(String seri, SayimGrubu g) satir,
+  }) {
+    final dolu = [for (final g in gruplar) if (sayi(g) > 0) g];
+    if (dolu.isEmpty) return Center(child: Text(bos));
+
+    final aramada = _arama.trim().isNotEmpty;
+    final gorunen = <(SayimGrubu, List<String>)>[];
+    for (final g in dolu) {
+      final l = aramada
+          ? [
+              for (final s in seriler(g))
+                if (sayimAramaUyar(_arama, seri: s, urun: g.urunAdi)) s
+            ]
+          : seriler(g);
+      if (l.isNotEmpty) gorunen.add((g, l));
+    }
+    if (gorunen.isEmpty) {
+      return const Center(child: Text('Aramaya uyan cihaz yok'));
+    }
+
+    final toplam = dolu.fold<int>(0, (t, g) => t + sayi(g));
+    final varsayilanAcik = aramada || toplam <= 20;
+    final satirlar = <Widget>[];
+    for (final (g, l) in gorunen) {
+      final anahtar = '$sekme|${g.urunAdi}';
+      final acik = aramada || (_grupAcik[anahtar] ?? varsayilanAcik);
+      satirlar.add(_grupBasligi(g, sayi(g), renk, acik,
+          aramada ? null : () => setState(() => _grupAcik[anahtar] = !acik)));
+      if (acik) {
+        for (final s in l) {
+          satirlar
+            ..add(satir(s, g))
+            ..add(const Divider(height: 1, indent: 16));
+        }
+      }
+    }
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 24),
+      children: satirlar,
+    );
+  }
+
+  Widget _grupBasligi(SayimGrubu g, int sayi, Color renk, bool acik,
+      VoidCallback? dokun) {
+    final tema = Theme.of(context);
+    final ayrinti = g.olmali.isEmpty
+        ? 'Fazla ${g.fazla.length}'
+        : 'Olmalı ${g.olmali.length} · Bulunan ${g.bulunan.length} · '
+            'Eksik ${g.eksik.length}'
+            '${g.fazla.isEmpty ? '' : ' · Fazla ${g.fazla.length}'}';
+    return Material(
+      color: tema.colorScheme.surfaceContainerHighest,
+      child: InkWell(
+        onTap: dokun,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(8, 10, 16, 10),
+          child: Row(
+            children: [
+              Icon(acik ? Icons.expand_more : Icons.chevron_right,
+                  color: dokun == null ? tema.disabledColor : null),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(g.urunAdi,
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 2),
+                    Text(ayrinti, style: tema.textTheme.bodySmall),
+                    if (g.olmali.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      LinearProgressIndicator(
+                        value: g.bulunan.length / g.olmali.length,
+                        minHeight: 4,
+                        color: Renkler.okut,
+                        backgroundColor: Renkler.okutZemin,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text('$sayi',
+                  style: TextStyle(
+                      fontSize: 20, fontWeight: FontWeight.bold, color: renk)),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
