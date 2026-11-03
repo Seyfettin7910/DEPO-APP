@@ -1,34 +1,3 @@
-s00a	Merhaba. Bu videoda Depo Yönetim Sistemi'ni baştan sona tanıtacağız.
-s00b	Program, cihaz ve malzemeleri depoya girdiği andan sahada takıldığı noktaya kadar takip eder.
-s00c	Her hareket, kimin, ne zaman ve nerede yaptığıyla kaydedilir; ve hiçbir hareket kaydı silinemez.
-s01a	Uygulama, Android telefonlara kurulum dosyasıyla yüklenir. iPhone'da ve bilgisayarda ise web adresinden açılır.
-s01b	Giriş, yöneticinin verdiği e-posta ve şifreyle yapılır. Güvenlik için, beş dakika işlem yapılmazsa oturum kendiliğinden kapanır.
-s01c	Yeni sürüm çıktığında telefona bildirim gelir; "Şimdi güncelle" demeniz yeterli.
-s02a	Alt menüde altı bölüm var: Depolar, Ürünler, Okut, Ara, Raporlar ve Ayarlar.
-s02b	Depolar ekranında depolar ve araçlar ayrı sekmelerde durur. Araçlar, seyyar bir depo gibi çalışır.
-s02c	Üstteki bulut simgesi son eşitleme saatini gösterir. Kırmızı şerit ise kritik stoka düşen ürünleri hatırlatır.
-s03a	Ürünler kategorilere göre listelenir. Kamera, kayıt cihazı ve switch gibi ürünler seri numarasıyla; kablo ve priz gibi malzemeler ise metre, adet ya da top olarak takip edilir.
-s03b	Minimum adedi tanımlanan bir ürün azaldığında, program sizi uyarır.
-s03c	Aynı ürün ikinci kez açılmak istenirse benzer ismi fark eder; gerekirse iki ürünü tek üründe birleştirir.
-s04a	Programın kalbi, Okut ekranıdır. Etiketi kameraya tutmanız yeterli.
-s04b	Barkod okunamazsa, etiketteki seri numarası yazıdan okunur. Lot numarası ve malzeme kodu gibi, seri numarası olmayan kodlar ise ayıklanır.
-s04c	Kayıtlı bir cihaz okutulunca kartı açılır. Kayıtlı değilse, tek dokunuşla depoya girişi yapılır.
-s04d	Hızlı işlemlerle onlarca cihazı arka arkaya okutup, tek seferde depoya alabilir, transfer edebilir ya da araca yükleyebilirsiniz.
-s05a	Bir cihazın yolculuğu şöyle işler: depoya girer, araca yüklenir ve sahada takılır.
-s05b	Arızalanırsa geri alınır; garanti servisine ya da kendi bünyemizde onarıma gönderilir. Onarılırsa depoya döner, onarılamazsa hurdaya ayrılır.
-s06a	Montaj kaydedildiği anda konum alınır ve yer adı kendiliğinden yazılır.
-s06b	Aynı noktaya takılan cihazların hepsi tek seferde kaydedilir. Tutanak durumu ve kullanılan malzemeler de aynı kayda girer.
-s06c	Cihaz kartında, cihazın nerede olduğu ve bütün geçmişi tek bakışta görünür.
-s07a	Belediye zimmetindeki bir ürün montaja çıkarken, program nereye takılacağını sorar.
-s07b	Kırsal mahallede kullanım için Başkanlık onayı gerekir. Onay yazısının evrak sayısı girilmeden montaj kaydedilmez; onaysız girişimler ise raporlanır.
-s08a	Sayım, depo ya da araç ekranındaki Sayım düğmesiyle başlar.
-s08b	Cihazlar okutuldukça eksik, bulunan ve fazla olanlar model model ayrılır. Eksiği en çok olan model, en üstte görünür.
-s08c	"Bitir" dediğinizde sayım kaydedilir ve raporu açılır.
-s09a	Raporlar bölümünde on beş farklı rapor var: stok, kritik stok, bölge, garanti, arıza ve servis, kullanım, hurda ve daha fazlası.
-s09b	Bütün raporlar, PDF ve Excel olarak alınabilir.
-s09c	Genel sayım raporu ise bütün depo ve araçların sayımlarını tek raporda birleştirir. Bir depoda fazla çıkıp kendi yerinde eksik görünen cihazı yakalar; böylece kayıp sanılan cihazın aslında yanlış yerde kayıtlı olduğu anlaşılır.
-s10a	Program internet olmadan da çalışır. Kayıtlar önce telefonda tutulur, internet gelince kendiliğinden gönderilir.
-s10b	Sunucudaki veriler her gece şifrelenip iki ayrı yere yedeklenir ve her ay geri yükleme denemesi yapılır.
-s10c	Kritik stok, arıza, servis gecikmesi ya da şüpheli bir giriş olduğunda, uygulama kapalıyken bile bildirim gelir.
-s11a	Depo Yönetim Sistemi: seri numarasından sahaya, sayımdan rapora kadar, deponun bütün hafızası.
-s11b	Geliştiren: Seyfettin Aydın.
+s06x	Konum yalnızca Kaydet'e basıldığı anda alınır. Uygulama, personelin konumunu sürekli takip etmez; arka planda konum toplamaz.
+s06y	Montajda tutanak durumu da seçilir: tutanak alındı, tutanak alınacak ya da kurum içi kullanım.
+s06z	Kurum içi kullanımda tutanak alınmaz. Bunun yerine cihazın kullanıldığı birim, örneğin Fen İşleri Müdürlüğü ikinci kat, Not alanına yazılır.
