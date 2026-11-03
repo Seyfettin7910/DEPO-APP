@@ -54,12 +54,16 @@ class TutanakBilgi {
     this.durum,
     this.tarih,
     this.kullaniciAdi,
+    this.not_,
   });
 
   final String kullanimKaydiId;
   final String? durum;
   final DateTime? tarih;
   final String? kullaniciAdi;
+
+  /// Montaj notu (kurum içi kullanımda kullanıldığı birim / yer).
+  final String? not_;
 }
 
 extension MalzemeVeritabani on AppDatabase {
@@ -387,7 +391,7 @@ extension MalzemeVeritabani on AppDatabase {
   Future<TutanakBilgi?> cihazTutanagi(String cihazId) async {
     final db = await _database;
     final r = await db.rawQuery('''
-      SELECT kk.id AS id, kk.tutanak AS tutanak,
+      SELECT kk.id AS id, kk.tutanak AS tutanak, kk.not_ AS not_,
              kk.tutanak_tarihi AS tarih, k.ad AS kullanici
         FROM kullanim_kayitlari kk
         JOIN stok_hareketleri sh ON sh.id = kk.stok_hareket_id
@@ -406,6 +410,7 @@ extension MalzemeVeritabani on AppDatabase {
           ? null
           : DateTime.fromMillisecondsSinceEpoch((x['tarih'] as num).toInt()),
       kullaniciAdi: x['kullanici'] as String?,
+      not_: x['not_'] as String?,
     );
   }
 
@@ -413,13 +418,20 @@ extension MalzemeVeritabani on AppDatabase {
       _watch(() => cihazTutanagi(cihazId));
 
   /// Tutanak durumunu günceller (ör. "Alınacak" → "Alındı").
+  /// [not_] verilirse montaj notu da güncellenir (1.35.1: kurum içi
+  /// kullanımda kullanıldığı birim / yer zorunlu).
   Future<void> tutanakGuncelle(String cihazId,
-      {required String tutanak, required String kullaniciId}) async {
+      {required String tutanak,
+      required String kullaniciId,
+      String? not_}) async {
     if (!tutanakSecenekleri.contains(tutanak)) {
       throw ArgumentError('Geçersiz tutanak durumu');
     }
     final t = await cihazTutanagi(cihazId);
     if (t == null) throw StateError('Cihaz şu an montajlı değil');
+    final yeniNot = not_ == null ? t.not_ : trBuyuk(not_.trim());
+    final hata = tutanakNotHatasi(tutanak, yeniNot);
+    if (hata != null) throw StateError(hata);
     final db = await _database;
     final simdi = DateTime.now().millisecondsSinceEpoch;
     await db.update(
@@ -428,6 +440,7 @@ extension MalzemeVeritabani on AppDatabase {
         'tutanak': tutanak,
         'tutanak_tarihi': simdi,
         'tutanak_kullanici_id': kullaniciId,
+        if (not_ != null) 'not_': yeniNot,
         'updated_at': simdi,
         'dirty': 1,
       },

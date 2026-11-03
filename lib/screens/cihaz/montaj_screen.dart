@@ -7,6 +7,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../database/app_database.dart';
 import '../../database/models.dart';
 import '../../providers/app_providers.dart';
+import '../../services/tutanak_kurali.dart';
 import '../../services/adres_servisi.dart';
 import '../../services/bolge_adi.dart';
 import '../../services/konum_izleyici.dart';
@@ -526,6 +527,12 @@ class _MontajScreenState extends ConsumerState<MontajScreen>
           hata: true);
       return;
     }
+    // 1.35.1: kurum içi kullanımda kullanıldığı birim / yer notta zorunlu.
+    final notHatasi = tutanakNotHatasi(_tutanak, _notCtrl.text);
+    if (notHatasi != null) {
+      _mesaj(notHatasi, hata: true);
+      return;
+    }
     // 1.32.0: Belediye zimmetindeki ürün → nereye takılıyor / Başkanlık onayı
     final zimmet = _zimmettekiler();
     ZimmetSecimi? zimmetSecimi;
@@ -992,9 +999,16 @@ class _MontajScreenState extends ConsumerState<MontajScreen>
                       textCapitalization: TextCapitalization.characters,
                       inputFormatters: metinBuyuk,
                       controller: _notCtrl,
-                      decoration: const InputDecoration(
-                          labelText: 'Not (isteğe bağlı)',
-                          hintText: 'Örn: Muhtarlık önü direği'),
+                      decoration: _tutanak == 'kurum_ici'
+                          ? const InputDecoration(
+                              labelText:
+                                  'Not: kullanıldığı birim / yer (zorunlu)',
+                              hintText: 'Örn: FEN İŞLERİ MÜDÜRLÜĞÜ 2. KAT',
+                              helperText: 'Kurum içi kullanımda tutanak '
+                                  'yerine bu not tutulur')
+                          : const InputDecoration(
+                              labelText: 'Not (isteğe bağlı)',
+                              hintText: 'Örn: Muhtarlık önü direği'),
                     ),
                     const SizedBox(height: 12),
                     Align(

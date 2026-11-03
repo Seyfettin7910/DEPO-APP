@@ -7,6 +7,7 @@ import '../../database/app_database.dart';
 import '../../database/models.dart';
 import '../../providers/app_providers.dart';
 import '../../services/ses_servisi.dart';
+import '../../services/tutanak_kurali.dart';
 import '../../services/taslak_servisi.dart';
 import '../../widgets/depo_secici.dart';
 import '../../widgets/alim_bilgisi_alanlari.dart';
@@ -901,11 +902,12 @@ class _TutanakKarti extends ConsumerWidget {
 
   static final _tarih = DateFormat('dd.MM.yyyy HH:mm');
 
-  Future<void> _degistir(
-      BuildContext context, WidgetRef ref, String yeni) async {
+  Future<void> _degistir(BuildContext context, WidgetRef ref, String yeni,
+      {String? not_}) async {
     try {
       await ref.read(appDatabaseProvider).tutanakGuncelle(cihazId,
           tutanak: yeni,
+          not_: not_,
           kullaniciId: ref.read(aktifKullaniciIdProvider) ?? 'demo-kullanici');
       SesServisi.basari();
       if (context.mounted) {
@@ -923,7 +925,52 @@ class _TutanakKarti extends ConsumerWidget {
     }
   }
 
-  Future<void> _sec(BuildContext context, WidgetRef ref, String? mevcut) async {
+  /// 1.35.1: kurum içi kullanımda kullanıldığı birim / yer sorulur (zorunlu).
+  Future<String?> _birimSor(BuildContext context, String? mevcutNot) {
+    final ctrl = TextEditingController(text: mevcutNot ?? '');
+    String? hata;
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) {
+          void tamam() {
+            final h = tutanakNotHatasi('kurum_ici', ctrl.text);
+            if (h != null) {
+              setState(() => hata = h);
+              return;
+            }
+            Navigator.pop(ctx, ctrl.text.trim());
+          }
+
+          return AlertDialog(
+            icon: const Icon(Icons.apartment),
+            title: const Text('Kurum içi kullanım'),
+            content: TextField(
+              controller: ctrl,
+              autofocus: true,
+              textCapitalization: TextCapitalization.characters,
+              inputFormatters: metinBuyuk,
+              decoration: InputDecoration(
+                labelText: 'Kullanıldığı birim / yer (zorunlu)',
+                hintText: 'Örn: FEN İŞLERİ MÜDÜRLÜĞÜ 2. KAT',
+                errorText: hata,
+              ),
+              onSubmitted: (_) => tamam(),
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Vazgeç')),
+              FilledButton(onPressed: tamam, child: const Text('Kaydet')),
+            ],
+          );
+        },
+      ),
+    ).whenComplete(ctrl.dispose);
+  }
+
+  Future<void> _sec(BuildContext context, WidgetRef ref, String? mevcut,
+      String? mevcutNot) async {
     final yeni = await showDialog<String>(
       context: context,
       builder: (ctx) => SimpleDialog(
@@ -945,9 +992,14 @@ class _TutanakKarti extends ConsumerWidget {
         ],
       ),
     );
-    if (yeni != null && yeni != mevcut && context.mounted) {
-      await _degistir(context, ref, yeni);
+    if (yeni == null || yeni == mevcut || !context.mounted) return;
+    if (yeni == 'kurum_ici') {
+      final birim = await _birimSor(context, mevcutNot);
+      if (birim == null || !context.mounted) return;
+      await _degistir(context, ref, yeni, not_: birim);
+      return;
     }
+    await _degistir(context, ref, yeni);
   }
 
   @override
@@ -993,6 +1045,14 @@ class _TutanakKarti extends ConsumerWidget {
                               if (t.kullaniciAdi != null) t.kullaniciAdi!,
                             ].join(' · '),
                             style: Theme.of(context).textTheme.bodySmall),
+                      if (t.durum == 'kurum_ici' &&
+                          (t.not_ ?? '').trim().isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text('Birim / yer: ${t.not_!.trim()}',
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w600)),
+                        ),
                     ],
                   ),
                 ),
@@ -1003,7 +1063,7 @@ class _TutanakKarti extends ConsumerWidget {
               spacing: 4,
               children: [
                 TextButton(
-                  onPressed: () => _sec(context, ref, t.durum),
+                  onPressed: () => _sec(context, ref, t.durum, t.not_),
                   child: const Text('Değiştir'),
                 ),
                 if (t.durum != 'alindi')

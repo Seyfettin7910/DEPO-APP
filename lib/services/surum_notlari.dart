@@ -36,6 +36,21 @@ class NotMaddesi {
 
 const surumNotlari = <SurumNotu>[
   SurumNotu(
+    surum: '1.35.1',
+    tarih: '04.11.2026',
+    bolumler: [
+      NotBolumu('Değişen', [
+        NotMaddesi(
+          'Kurum içi kullanım',
+          'Tutanak "Kurum içi kullanım" seçilince kullanıldığı birim / yer Not alanına yazılmak zorunda.',
+          'Tutanak yerine bu not tutulur (ör. FEN İŞLERİ MÜDÜRLÜĞÜ 2. KAT). '
+              'Cihaz kartında "Değiştir" ile sonradan kurum içine çevrilirken '
+              'de sorulur; kartta "Birim / yer" olarak görünür.',
+        ),
+      ]),
+    ],
+  ),
+  SurumNotu(
     surum: '1.35.0',
     tarih: '03.11.2026',
     bolumler: [

@@ -12,6 +12,7 @@ import '../services/bolge_adi.dart' show trBuyuk;
 import '../services/kurum_barkodu.dart';
 import '../services/zimmet_onayi.dart';
 import '../services/genel_sayim.dart';
+import '../services/tutanak_kurali.dart';
 import '../services/sn_metni.dart' show seriAnahtari;
 
 export 'etiket_modelleri.dart';
@@ -2301,6 +2302,11 @@ class AppDatabase {
       final hata = zimmetSecimiHatasi(
           zimmet: true, yer: zimmetYeri, evrakSayisi: onayEvrakSayisi);
       if (hata != null) throw StateError('${c.seriNo}: $hata');
+    }
+    // 1.35.1: kurum içi kullanımda kullanıldığı birim / yer notta zorunlu.
+    if (sahada) {
+      final hata = tutanakNotHatasi(tutanak, not_);
+      if (hata != null) throw StateError(hata);
     }
 
     var guncelle = <String, Object?>{};
