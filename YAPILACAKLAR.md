@@ -45,6 +45,7 @@ Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlar�
 
 ### Depolar
 - (Araçta hızlı bakış: vazgeçildi; dokununca stok ekranı zaten açılıyor.)
+- [ ] **Genel sayım (Seyfettin'in kararı 03.11.2026: "1. yol"):** Bitir'e basınca sayım sonucu kaydedilir (kim, ne zaman, hangi depo / araç; bulunan / eksik / fazla seri nolar, malzeme sayımı). Raporlar → "Genel sayım": seçilen tarih aralığındaki bütün sayımlar tek raporda; en üstte yer yer ve model model özet, sayılmamış yerler "sayılmadı". Bir yerde fazla çıkıp kendi yerinde eksik görünen cihaz "yeri yanlış kayıtlı" diye eşleştirilir (kayıp sayılmaz). Aynı yer aralıkta birden çok sayıldıysa sonuncusu. Sayım kaydı değiştirilemez / silinemez; sunucuya yeni tablo (SQL). Konuşulacak: Final'e mi, ayrı sürüm mü.
 
 ### Flexity uyumu (dökümdeki biçime göre; döküm ÖRNEK, yapı buna göre düzenlenecek)
 - [ ] **Ürün:** MARKA ve MODEL ayrı alanlar (bugün yalnız "ad"); ad bunlardan + kısa açıklamadan oluşur. Ürüne Flexity **taşınır kodu ve adı** (ör. 253.01.03 · GÖRÜNTÜLEME, BİLGİ TOPLAMA VE TAKİP SİSTEMLERİ).
