@@ -1,0 +1,19 @@
+name: Video seslendirme (geçici)
+on:
+  push:
+    branches: [video-ses]
+jobs:
+  ses:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install edge-tts
+      - run: python tool/video_ses.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ses
+          path: out/
+          retention-days: 2
