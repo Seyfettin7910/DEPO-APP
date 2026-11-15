@@ -2,6 +2,8 @@
 
 Sıradaki işler ve bekleyen kararlar. Yapıldıkça README'deki sürüm notlarına taşınır.
 
+**15.11.2026 — Seyfettin'in kararı: Program artık belediye için değil.** Ticari ürün olarak geliştirilir. Aşağıdaki belediyeye özel maddeler (Flexity, Belediye Zimmeti / Başkanlık onayı, belediye sunucusuna geçiş, belediye KVKK notları) bu gözle yeniden ele alınacak; ne kalacağı, neyin genelleştirileceği birlikte kararlaştırılacak.
+
 **Kapsam:** Uygulamanın amacı **depo yönetimi**. Taşınır / taşınmaz / zimmet kayıtları belediyenin **Flexity** yazılımında tutulur, bu uygulamanın kapsamında değil; uygulama raporlarıyla onu **destekler** (ör. Flexity'ye girilecek bilgileri hazır veren dökümler).
 
 ## Yayınlananların telefonda denenmesi
