@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../database/app_database.dart';
 import '../database/models.dart';
 import '../services/sync_service.dart';
+import '../services/yetki.dart';
+
+export '../services/yetki.dart';
 
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
   final db = AppDatabase();
@@ -157,4 +160,39 @@ final malzemeStoklariProvider =
 final cihazTutanagiProvider =
     StreamProvider.family<TutanakBilgi?, String>((ref, cihazId) {
   return ref.watch(appDatabaseProvider).cihazTutanagiStream(cihazId);
+});
+
+// ---------------------------------------------------------------------
+// 1.36.0: roller ve yetkiler
+// ---------------------------------------------------------------------
+
+/// Giriş yapan kişinin yerel kullanıcı kaydı (rol, ünvan, aktiflik).
+final benimKaydimProvider = StreamProvider<Kullanici?>((ref) {
+  final id = ref.watch(aktifKullaniciIdProvider);
+  if (id == null) return Stream.value(null);
+  return ref.watch(appDatabaseProvider).kullaniciStream(id);
+});
+
+/// rol:yetki → izin (sunucudan senkronlanan tablo).
+final yetkiTablosuProvider = StreamProvider<Map<String, bool>>((ref) {
+  return ref.watch(appDatabaseProvider).yetkiTablosuStream();
+});
+
+/// Giriş yapan kişinin geçerli yetkileri. Yetki tablosu boşsa (sunucuda
+/// 1.36.0 SQL'i yok) eski düzen: her şey açık. Veriler yüklenirken de eski
+/// düzen döner (düğmeler bir an kaybolup gelmesin); asıl denetim sunucuda.
+final yetkilerimProvider = Provider<Yetkilerim>((ref) {
+  final tablo = ref.watch(yetkiTablosuProvider).valueOrNull;
+  final ben = ref.watch(benimKaydimProvider).valueOrNull;
+  if (tablo == null || tablo.isEmpty) return const Yetkilerim.eski();
+  return Yetkilerim(rol: ben?.rol ?? KullaniciRol.gozlemci, tablo: tablo);
+});
+
+final kullanicilarProvider = StreamProvider<List<Kullanici>>((ref) {
+  return ref.watch(appDatabaseProvider).kullanicilarStream();
+});
+
+final bildirimAlicilariProvider =
+    StreamProvider<Map<String, BildirimAlici>>((ref) {
+  return ref.watch(appDatabaseProvider).bildirimAlicilariStream();
 });

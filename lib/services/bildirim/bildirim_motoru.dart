@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../../database/app_database.dart';
 import '../giris_kaydi_servisi.dart';
+import '../hesap_servisi.dart';
 import 'bildirim_ayarlari.dart';
 import 'bildirim_gosterici.dart';
 
@@ -16,6 +17,9 @@ class _Yeni {
   final String baslik;
   final String govde;
 }
+
+/// Bildirime dokununca açılacak ekran (bildirim çubuğu yükü).
+const bildirimYukuSifreTalebi = 'sifreTalebi';
 
 /// Bildirim olaylarını yerel veritabanından (senkron sonrası) hesaplar.
 /// Hem uygulama açıkken (her senkrondan sonra) hem de arka plan görevinde
@@ -39,7 +43,13 @@ class BildirimMotoru {
   }
 
   static Future<int> _calistir(AppDatabase db, String? benimId) async {
-    final ayar = await BildirimAyarlari.yukle();
+    // 1.36.0: yöneticinin seçtiği alıcılar (merkezi); kişi yalnız kapatabilir.
+    final merkez = await db.bildirimAlicilari();
+    final ben = benimId == null ? null : await db.kullaniciGetir(benimId);
+    if (ben != null && !ben.aktif) return 0;
+    final ayar = (await BildirimAyarlari.yukle()).merkezeGore(merkez.isEmpty
+        ? null
+        : (t) => merkez[t.name]?.aliciMi(ben?.rol, benimId));
     final simdi = DateTime.now();
     final ms = simdi.millisecondsSinceEpoch;
     final yeni = <_Yeni>[];
@@ -483,6 +493,40 @@ class BildirimMotoru {
     }
 
     // --------------------------------------------------------------
+    // 1.36.0: Şifre talepleri (yöneticiler; internet gerekir)
+    // --------------------------------------------------------------
+    if (ayar.acikMi(BildirimTuru.sifreTalebi)) {
+      try {
+        final son = await db.bildirimGorulmeZamani('talep_son') ??
+            ms - const Duration(hours: 1).inMilliseconds;
+        if (ms - son < const Duration(minutes: 2).inMilliseconds) {
+          throw const _Atla();
+        }
+        final l = await HesapServisi.islemler(
+            tur: 'sifre_talebi',
+            baslangic: DateTime.fromMillisecondsSinceEpoch(son),
+            limit: 50);
+        await db.bildirimGorulduIsaretle('talep_son', ms);
+        for (final r in l.reversed) {
+          final tarih = DateTime.tryParse('${r['tarih']}')?.toLocal();
+          final kim = (r['hedef_ad'] as String?) ?? (r['hedef_email'] as String?) ?? '-';
+          final not_ = r['aciklama'] == null ? '' : ' · ${r['aciklama']}';
+          yeni.add(_Yeni(
+            BildirimTuru.sifreTalebi,
+            'Şifre talebi: $kim',
+            '${r['hedef_email'] ?? ''}'
+                '${tarih == null ? '' : ' · ${_saat.format(tarih)}'}$not_\n'
+                'Dokunun: Kullanıcılar → Şifre talepleri',
+          ));
+        }
+      } on _Atla {
+        // bu turda sorulmaz
+      } catch (e) {
+        debugPrint('Şifre talepleri okunamadı: $e');
+      }
+    }
+
+    // --------------------------------------------------------------
     // Kaydet ve göster
     // --------------------------------------------------------------
     var sira = 0;
@@ -490,7 +534,8 @@ class BildirimMotoru {
       await db.bildirimEkle(tur: b.tur.name, baslik: b.baslik, govde: b.govde);
       if (sira < 6) {
         await bildirimGoster(
-            (ms ~/ 1000) % 1000000 * 10 + sira, b.baslik, b.govde);
+            (ms ~/ 1000) % 1000000 * 10 + sira, b.baslik, b.govde,
+            yuk: b.tur == BildirimTuru.sifreTalebi ? bildirimYukuSifreTalebi : null);
       }
       sira++;
     }

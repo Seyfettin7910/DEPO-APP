@@ -14,6 +14,8 @@ import '../services/zimmet_onayi.dart';
 import '../services/genel_sayim.dart';
 import '../services/tutanak_kurali.dart';
 import '../services/sn_metni.dart' show seriAnahtari;
+import '../services/urun_adi.dart' show trKarsilastir;
+import '../services/yetki.dart';
 
 export 'etiket_modelleri.dart';
 
@@ -22,6 +24,7 @@ part 'app_database_malzeme.dart';
 part 'app_database_birlestir.dart';
 part 'app_database_zimmet.dart';
 part 'app_database_sayim.dart';
+part 'app_database_yetki.dart';
 
 const _uuid = Uuid();
 
@@ -63,6 +66,10 @@ CREATE TABLE kullanicilar (
   ad TEXT NOT NULL,
   email TEXT NOT NULL,
   rol TEXT NOT NULL,
+  aktif INTEGER NOT NULL DEFAULT 1,
+  unvan TEXT,
+  sifre_degistirmeli INTEGER NOT NULL DEFAULT 0,
+  gecici_bitis INTEGER,
   updated_at INTEGER NOT NULL,
   dirty INTEGER NOT NULL DEFAULT 1,
   deleted INTEGER NOT NULL DEFAULT 0
@@ -409,7 +416,7 @@ class AppDatabase {
         : p.join(await getDatabasesPath(), 'depo_app.sqlite');
     _db = await openDatabase(
       path,
-      version: 16,
+      version: 17,
       onCreate: (db, version) async {
         for (final stmt in _createTablesSql.split(';')) {
           final trimmed = stmt.trim();
@@ -426,6 +433,8 @@ class AppDatabase {
         }
         await db.execute(_zimmetTabloSql);
         await db.execute(_sayimTabloSql);
+        await db.execute(_yetkiTabloSql);
+        await db.execute(_bildirimAliciTabloSql);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -514,6 +523,17 @@ class AppDatabase {
         if (oldVersion < 16) {
           // 1.35.0: genel sayım (biten sayımlar kaydedilir)
           await db.execute(_sayimTabloSql);
+        }
+        if (oldVersion < 17) {
+          // 1.36.0: roller, kullanıcı yönetimi, merkezi bildirim alıcıları
+          await db.execute(
+              'ALTER TABLE kullanicilar ADD COLUMN aktif INTEGER NOT NULL DEFAULT 1');
+          await db.execute('ALTER TABLE kullanicilar ADD COLUMN unvan TEXT');
+          await db.execute(
+              'ALTER TABLE kullanicilar ADD COLUMN sifre_degistirmeli INTEGER NOT NULL DEFAULT 0');
+          await db.execute('ALTER TABLE kullanicilar ADD COLUMN gecici_bitis INTEGER');
+          await db.execute(_yetkiTabloSql);
+          await db.execute(_bildirimAliciTabloSql);
         }
         if (oldVersion < 4) {
           // 1.4.0: araçlar seyyar depo olarak depolar tablosunda tutulur.
@@ -2706,7 +2726,12 @@ class AppDatabase {
       'seri_takipli', 'kutu_icerigi', 'birlesti_id', 'updated_at', 'deleted'
     ],
     'araclar': ['id', 'plaka', 'ad', 'aciklama', 'updated_at', 'deleted'],
-    'kullanicilar': ['id', 'ad', 'email', 'rol', 'updated_at', 'deleted'],
+    'kullanicilar': [
+      'id', 'ad', 'email', 'rol', 'aktif', 'unvan', 'sifre_degistirmeli',
+      'gecici_bitis', 'updated_at', 'deleted'
+    ],
+    'yetkiler': ['id', 'rol', 'yetki', 'izin', 'updated_at', 'deleted'],
+    'bildirim_alicilari': ['id', 'roller', 'kisiler', 'updated_at', 'deleted'],
     'cihazlar': [
       'id', 'urun_id', 'seri_no', 'depo_id', 'durum', 'arac_id',
       'kullanim_yeri', 'alim_tarihi', 'firma', 'ihale', 'garanti_bitis',
@@ -2879,6 +2904,30 @@ class AppDatabase {
     return uygulanan;
   }
 
+  /// 1.36.0: sunucunun yetki yüzünden reddettiği yerel kaydı geri alır:
+  /// sunucuda varsa onun hâli yazılır, yoksa (hiç girmemiş yeni kayıt)
+  /// yerelden kaldırılır.
+  Future<void> reddedileniGeriAl(
+      String tablo, String id, Map<String, dynamic>? uzak) async {
+    final db = await _database;
+    if (uzak == null) {
+      await db.delete(tablo, where: 'id = ? AND dirty = 1', whereArgs: [id]);
+    } else {
+      final kolonlar = senkronKolonlari[tablo]!;
+      await db.update(
+        tablo,
+        {
+          for (final k in kolonlar)
+            if (uzak.containsKey(k)) k: uzak[k],
+          'dirty': 0,
+        },
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+    }
+    _notify();
+  }
+
   /// Giriş yapan kullanıcının yerel kaydı yoksa oluşturur (ad: e-postanın
   /// @ öncesi). Böylece hareket geçmişinde "kim yaptı" görünür.
   Future<void> kullaniciGarantiEt(String id, String email) async {
@@ -2893,7 +2942,10 @@ class AppDatabase {
         ad: email.contains('@') ? email.split('@').first : email,
         email: email,
         rol: KullaniciRol.sahaKullanicisi,
-        updatedAt: DateTime.now(),
+        // 1.36.0: sunucudaki satır (rol, ad...) her zaman kazansın diye
+        // yerel geçici satır en eski tarihle yazılır. Sunucuda satır yoksa
+        // (eski SQL) yine gönderilir; varsa sunucu bu eski bilgiyi yok sayar.
+        updatedAt: DateTime.fromMillisecondsSinceEpoch(0),
       ).toMap(),
     );
     _notify();

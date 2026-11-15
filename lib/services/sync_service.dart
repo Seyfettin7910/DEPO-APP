@@ -8,6 +8,7 @@ import '../database/app_database.dart';
 import 'adres_servisi.dart';
 import 'bildirim/bildirim_motoru.dart';
 import 'supabase_service.dart';
+import 'yetki.dart';
 
 /// Arayüze gösterilen senkron durumu.
 class SyncDurum {
@@ -68,6 +69,8 @@ class SyncService {
     'etiket_hareketleri',
     'zimmet_girisimleri',
     'sayimlar',
+    'yetkiler',
+    'bildirim_alicilari',
   ];
 
   /// Sonradan eklenen tablolar ve onları oluşturan Supabase SQL sürümü.
@@ -80,6 +83,8 @@ class SyncService {
     'etiket_hareketleri': '1.22.0',
     'zimmet_girisimleri': '1.32.0',
     'sayimlar': '1.35.0',
+    'yetkiler': '1.36.0',
+    'bildirim_alicilari': '1.36.0',
   };
 
   /// Sonradan eklenen sütunlar ve SQL sürümü. Sunucuda henüz yoksa o sütun
@@ -90,6 +95,12 @@ class SyncService {
     'kullanim_kayitlari': {
       'zimmet_yeri': '1.32.0',
       'onay_evrak_sayisi': '1.32.0',
+    },
+    'kullanicilar': {
+      'aktif': '1.36.0',
+      'unvan': '1.36.0',
+      'sifre_degistirmeli': '1.36.0',
+      'gecici_bitis': '1.36.0',
     },
   };
   static final _eksikKolonlar = <String, Set<String>>{};
@@ -109,6 +120,23 @@ class SyncService {
           e.code == 'PGRST205' ||
           e.message.contains('does not exist') ||
           e.message.contains('Could not find the table'));
+
+  /// 1.36.0: sunucu yetki denetimi (engel kipi) ya da RLS reddi.
+  static bool _yetkiYok(Object e) =>
+      e is PostgrestException &&
+      (e.code == '42501' || e.message.contains('row-level security'));
+
+  /// Reddedilen yerel kaydı sunucudaki hâline döndürür; sunucuda hiç yoksa
+  /// (yeni kayıttı) yerelden kaldırır.
+  Future<void> _reddedileniGeriAl(String tablo, Map<String, Object?> satir) async {
+    final id = satir['id'] as String;
+    try {
+      final uzak = await SupabaseService.tekSatir(tablo, id);
+      await db.reddedileniGeriAl(tablo, id, uzak);
+    } catch (_) {
+      // Okunamadı: kayıt kirli kalır, sonraki turda yeniden denenir.
+    }
+  }
 
   static String _sqlMesaji(String tablo) =>
       'Sunucuda "$tablo" tablosu yok: Supabase güncelleme SQL\'ini '
@@ -337,7 +365,10 @@ class SyncService {
       // cihaz / hareketler kalan ürüne aktarılıp gönderilir.
       if (await db.birlesenleriAktar() > 0) await _gonder(sorunlar);
       // İnternetsiz kaydedilmiş kurulum noktalarının il/ilçe/mahallesini bul.
-      unawaited(AdresTamamlayici.calistir(db));
+      // 1.36.0: başkalarının montaj kaydına adres yazmak montaj yetkisi ister.
+      unawaited(db
+          .yetkilerimiGetir(SupabaseService.kullanici?.id)
+          .then((y) => y.var_(Yetki.montaj) ? AdresTamamlayici.calistir(db) : null));
 
       final simdi = DateTime.now();
       if (tablolar == null) _sonTamTur = simdi;
@@ -431,6 +462,16 @@ class SyncService {
               await db.senkronEdildi(tablo, satirlar[i]['id'] as String,
                   (satirlar[i]['updated_at'] as num).toInt());
             } catch (e) {
+              if (_yetkiYok(e)) {
+                // 1.36.0: sunucu yetki denetimi "engel" kipinde bu işlemi
+                // reddetti. Kayıt sunucuya hiç girmedi: yerel değişiklik
+                // geri alınır (sunucudaki hâli geri getirilir).
+                await _reddedileniGeriAl(tablo, satirlar[i]);
+                const m = 'Yetkiniz olmayan bir işlem sunucu tarafından '
+                    'reddedildi ve geri alındı';
+                if (!sorunlar.contains(m)) sorunlar.add(m);
+                continue;
+              }
               sorunlar.add(_hataMetni(e));
             }
           }

@@ -25,6 +25,14 @@ class DepoStokScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final yetki = ref.watch(yetkilerimProvider);
+    final malzemeIslemi = yetki.herhangi(const [
+      Yetki.malzemeGiris,
+      Yetki.malzemeAraca,
+      Yetki.malzemeTransfer,
+      Yetki.malzemeIade,
+      Yetki.malzemeKullanim,
+    ]);
     return DefaultTabController(
       length: 3,
       child: Scaffold(
@@ -43,6 +51,7 @@ class DepoStokScreen extends ConsumerWidget {
         floatingActionButton: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (yetki.var_(Yetki.sayim))
             FloatingActionButton.extended(
               heroTag: 'sayim',
               backgroundColor: Renkler.araZemin,
@@ -52,10 +61,12 @@ class DepoStokScreen extends ConsumerWidget {
               icon: const Icon(Icons.fact_check_outlined),
               label: const Text('Sayım'),
             ),
-            const SizedBox(width: 10),
+            if (yetki.var_(Yetki.sayim) && malzemeIslemi)
+              const SizedBox(width: 10),
+            if (malzemeIslemi)
             FloatingActionButton.extended(
               heroTag: 'islemler',
-              onPressed: () => _islemMenusu(context, depoId, depoAdi),
+              onPressed: () => _islemMenusu(context, depoId, depoAdi, yetki),
               icon: const Icon(Icons.cable_outlined),
               label: const Text('İşlemler'),
             ),
@@ -73,7 +84,8 @@ class DepoStokScreen extends ConsumerWidget {
   }
 }
 
-void _islemMenusu(BuildContext context, String depoId, String depoAdi) {
+void _islemMenusu(
+    BuildContext context, String depoId, String depoAdi, Yetkilerim yetki) {
   {
     void ac(Widget ekran) {
       Navigator.pop(context);
@@ -89,30 +101,35 @@ void _islemMenusu(BuildContext context, String depoId, String depoAdi) {
           mainAxisSize: MainAxisSize.min,
           children: [
             const _MenuBasligi('Malzemeler (kablo, adaptör… miktarla)'),
+            if (yetki.var_(Yetki.malzemeGiris))
             ListTile(
               leading: const Icon(Icons.add_circle_outline),
               title: Text('Malzeme girişi ($depoAdi)'),
               onTap: () => ac(MalzemeIslemScreen(
                   islem: MalzemeIslemi.giris, onceHedefId: depoId)),
             ),
+            if (yetki.var_(Yetki.malzemeAraca))
             ListTile(
               leading: const Icon(Icons.local_shipping_outlined),
               title: const Text('Malzeme Araca Yükle'),
               onTap: () => ac(MalzemeIslemScreen(
                   islem: MalzemeIslemi.yukle, onceKaynakId: depoId)),
             ),
+            if (yetki.var_(Yetki.malzemeTransfer))
             ListTile(
               leading: const Icon(Icons.swap_horiz),
               title: const Text('Malzeme transferi'),
               onTap: () => ac(MalzemeIslemScreen(
                   islem: MalzemeIslemi.transfer, onceKaynakId: depoId)),
             ),
+            if (yetki.var_(Yetki.malzemeIade))
             ListTile(
               leading: const Icon(Icons.assignment_return_outlined),
               title: const Text('Malzeme iadesi (araçtan depoya)'),
               onTap: () => ac(MalzemeIslemScreen(
                   islem: MalzemeIslemi.iade, onceKaynakId: depoId)),
             ),
+            if (yetki.var_(Yetki.malzemeKullanim))
             ListTile(
               leading: const Icon(Icons.task_alt),
               title: const Text('Malzeme Montaj / Kullanıldı'),

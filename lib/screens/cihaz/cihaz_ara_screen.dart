@@ -158,9 +158,10 @@ class _Sonuclar extends ConsumerWidget {
             Future<void> menu() async {
               final secim = await secenekMenusu(context,
                   baslik: '${b.urunAdi}\nSN: ${b.cihaz.seriNo}',
-                  secenekler: const [
+                  secenekler: [
                     ('ac', Icons.open_in_new, 'Cihaz kartını aç'),
-                    ('sil', Icons.delete_outline, 'Cihazı sil'),
+                    if (ref.read(yetkilerimProvider).var_(Yetki.cihazSil))
+                      ('sil', Icons.delete_outline, 'Cihazı sil'),
                   ]);
               if (!context.mounted) return;
               if (secim == 'ac') {
@@ -256,12 +257,14 @@ class _ModelAdetleri extends ConsumerWidget {
 }
 
 Future<void> _modelMenusu(BuildContext context, WidgetRef ref, Urun u) async {
+  final yetki = ref.read(yetkilerimProvider);
+  final secenekler = [
+    if (yetki.var_(Yetki.urunTanim)) ('duzenle', Icons.edit_outlined, 'Düzenle'),
+    if (yetki.var_(Yetki.urunSil)) ('sil', Icons.delete_outline, 'Ürünü sil'),
+  ];
+  if (secenekler.isEmpty) return;
   final secim = await secenekMenusu(context,
-      baslik: u.ad,
-      secenekler: const [
-        ('duzenle', Icons.edit_outlined, 'Düzenle'),
-        ('sil', Icons.delete_outline, 'Ürünü sil'),
-      ]);
+      baslik: u.ad, secenekler: secenekler);
   if (!context.mounted) return;
   if (secim == 'duzenle') {
     urunFormDialog(context, ref, mevcut: u);

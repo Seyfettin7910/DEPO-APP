@@ -118,7 +118,8 @@ Future<void> koliKarekoduGoster(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
                 child: Row(
                   children: [
-                    if (tasinabilir.isNotEmpty)
+                    if (tasinabilir.isNotEmpty &&
+                        ref.read(yetkilerimProvider).var_(Yetki.transfer))
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: () => Navigator.pop(
@@ -129,7 +130,8 @@ Future<void> koliKarekoduGoster(
                       ),
                     if (tasinabilir.isNotEmpty && yeni.isNotEmpty)
                       const SizedBox(width: 10),
-                    if (yeni.isNotEmpty)
+                    if (yeni.isNotEmpty &&
+                        ref.read(yetkilerimProvider).var_(Yetki.depoGiris))
                       Expanded(
                         child: FilledButton.icon(
                           onPressed: () => Navigator.pop(

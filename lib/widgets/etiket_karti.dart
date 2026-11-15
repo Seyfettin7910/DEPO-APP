@@ -103,6 +103,7 @@ class EtiketKarti extends ConsumerWidget {
     final kodlar =
         ref.watch(kurumKodlariProvider).valueOrNull ?? const <KurumKodu>[];
     final aktifCihaz = !bilgi.cihaz.deleted && bilgi.cihaz.durum != CihazDurumu.cikti;
+    final yetki = ref.watch(yetkilerimProvider);
 
     if (etiket == null) {
       // Kurum kodu tanımlı değilse özellik kullanılmıyor: kart gösterilmez.
@@ -114,10 +115,12 @@ class EtiketKarti extends ConsumerWidget {
           leading: const Icon(Icons.label_off_outlined),
           title: const Text('Kurum etiketi yok'),
           subtitle: const Text('Bu cihaza kurum kodu üretilebilir'),
-          trailing: TextButton(
-            onPressed: () => _kodUret(context, ref),
-            child: const Text('Kod üret'),
-          ),
+          trailing: !yetki.var_(Yetki.kurumKodu)
+              ? null
+              : TextButton(
+                  onPressed: () => _kodUret(context, ref),
+                  child: const Text('Kod üret'),
+                ),
         ),
       );
     }
@@ -174,7 +177,8 @@ class EtiketKarti extends ConsumerWidget {
             Wrap(
               spacing: 4,
               children: [
-                if (etiket.durum == EtiketDurumu.kayitli)
+                if (etiket.durum == EtiketDurumu.kayitli &&
+                    yetki.var_(Yetki.kurumKodu))
                   TextButton.icon(
                     onPressed: () async {
                       await ref.read(appDatabaseProvider).kuyrugaAl(
@@ -187,7 +191,10 @@ class EtiketKarti extends ConsumerWidget {
                     icon: const Icon(Icons.print_outlined),
                     label: const Text('Basım kuyruğuna al'),
                   ),
-                if (ayar.dogrulama && etiket.dogrulanmadi && aktifCihaz)
+                if (ayar.dogrulama &&
+                    etiket.dogrulanmadi &&
+                    aktifCihaz &&
+                    yetki.var_(Yetki.etiketDogrula))
                   TextButton.icon(
                     onPressed: () => Navigator.of(context).push(
                         MaterialPageRoute(
@@ -197,7 +204,8 @@ class EtiketKarti extends ConsumerWidget {
                   ),
                 if (etiket.durum != EtiketDurumu.kayitli &&
                     etiket.durum != EtiketDurumu.kuyrukta &&
-                    aktifCihaz)
+                    aktifCihaz &&
+                    yetki.var_(Yetki.kurumKodu))
                   TextButton.icon(
                     onPressed: () => _yenidenBas(context, ref, etiket),
                     icon: const Icon(Icons.replay),
@@ -272,6 +280,14 @@ class EtiketDugmesi extends ConsumerWidget {
         : (ayar.dogrulama ? (say[EtiketDurumu.basildi] ?? 0) : 0) +
             (say[EtiketDurumu.uyusmazlik] ?? 0);
     final uyusmazlik = (say[EtiketDurumu.uyusmazlik] ?? 0) > 0;
+    if (!ref.watch(yetkilerimProvider).herhangi(const [
+      Yetki.kurumKodu,
+      Yetki.etiketBas,
+      Yetki.etiketDogrula,
+      Yetki.etiketAyar,
+    ])) {
+      return const SizedBox.shrink();
+    }
     return IconButton(
       tooltip: 'Kurum etiketleri',
       onPressed: () => Navigator.of(context)

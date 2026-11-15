@@ -84,12 +84,20 @@ class CihazDetayScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final bilgiAsync = ref.watch(cihazBilgiProvider(cihazId));
     final gecmisAsync = ref.watch(cihazGecmisiProvider(cihazId));
+    final yetki = ref.watch(yetkilerimProvider);
+    final b0 = bilgiAsync.valueOrNull;
+    final arizaHurda = b0 != null &&
+        b0.cihaz.durum == CihazDurumu.depoda &&
+        !b0.cihaz.arizali &&
+        yetki.herhangi(const [Yetki.ariza, Yetki.hurda]);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Cihaz'),
         actions: [
-          if (bilgiAsync.valueOrNull != null && !bilgiAsync.valueOrNull!.cihaz.deleted)
+          if (b0 != null &&
+              !b0.cihaz.deleted &&
+              (arizaHurda || yetki.var_(Yetki.cihazSil)))
             PopupMenuButton<String>(
               onSelected: (v) async {
                 final b = bilgiAsync.valueOrNull!;
@@ -103,8 +111,8 @@ class CihazDetayScreen extends ConsumerWidget {
                 }
               },
               itemBuilder: (_) => [
-                if (bilgiAsync.valueOrNull!.cihaz.durum == CihazDurumu.depoda &&
-                    !bilgiAsync.valueOrNull!.cihaz.arizali) ...[
+                if (arizaHurda) ...[
+                  if (yetki.var_(Yetki.ariza))
                   const PopupMenuItem(
                     value: 'ariza',
                     child: ListTile(
@@ -113,6 +121,7 @@ class CihazDetayScreen extends ConsumerWidget {
                       contentPadding: EdgeInsets.zero,
                     ),
                   ),
+                  if (yetki.var_(Yetki.hurda))
                   const PopupMenuItem(
                     value: 'hurda',
                     child: ListTile(
@@ -122,6 +131,7 @@ class CihazDetayScreen extends ConsumerWidget {
                     ),
                   ),
                 ],
+                if (yetki.var_(Yetki.cihazSil))
                 const PopupMenuItem(
                   value: 'sil',
                   child: ListTile(
@@ -237,27 +247,31 @@ class CihazDetayScreen extends ConsumerWidget {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
+                    if (yetki.var_(Yetki.transfer))
                     FilledButton.icon(
                       onPressed: () => _transfer(context, ref, bilgi),
                       icon: const Icon(Icons.swap_horiz),
                       label: const Text('Transfer'),
                     ),
+                    if (yetki.var_(Yetki.aracaYukle))
                     FilledButton.tonalIcon(
                       onPressed: () => _kullanima(context, ref, bilgi),
                       icon: const Icon(Icons.local_shipping_outlined),
                       label: const Text('Araca Yükle'),
                     ),
+                    if (yetki.var_(Yetki.montaj))
                     FilledButton.icon(
                       onPressed: () => _sahada(context, ref, bilgi),
                       icon: const Icon(Icons.task_alt),
                       label: const Text('Montaj / Kullanıldı'),
                     ),
-                    if (bilgi.depoArac)
+                    if (bilgi.depoArac && yetki.var_(Yetki.iade))
                       FilledButton.tonalIcon(
                         onPressed: () => _iadeEt(context, ref, bilgi),
                         icon: const Icon(Icons.assignment_return_outlined),
                         label: const Text('İade'),
                       ),
+                    if (yetki.var_(Yetki.transfer))
                     OutlinedButton.icon(
                       onPressed: () => _cikis(context, ref, bilgi),
                       icon: const Icon(Icons.logout),
@@ -265,7 +279,7 @@ class CihazDetayScreen extends ConsumerWidget {
                     ),
                   ],
                 )
-              else
+              else if (yetki.var_(Yetki.geriAlma))
                 FilledButton.icon(
                   onPressed: () => _iade(context, ref, bilgi),
                   icon: const Icon(Icons.assignment_return_outlined),
@@ -640,6 +654,7 @@ class CihazDetayScreen extends ConsumerWidget {
                       style: TextStyle(
                           fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
+                if (ref.watch(yetkilerimProvider).var_(Yetki.cihazDuzenle))
                 IconButton(
                   icon: const Icon(Icons.edit_outlined),
                   tooltip: 'Düzenle',
@@ -1058,6 +1073,7 @@ class _TutanakKarti extends ConsumerWidget {
                 ),
               ],
             ),
+            if (ref.watch(yetkilerimProvider).var_(Yetki.cihazDuzenle))
             Wrap(
               alignment: WrapAlignment.end,
               spacing: 4,

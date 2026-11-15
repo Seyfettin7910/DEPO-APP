@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../providers/app_providers.dart';
 import '../../services/bildirim/bildirim_ayarlari.dart';
 import '../../services/bildirim/bildirim_motoru.dart';
+import '../yonetim/hesap_islemleri_screen.dart';
 
 IconData bildirimIkonu(BildirimTuru? t) => switch (t) {
       BildirimTuru.kritikStok => Icons.warning_amber,
@@ -22,6 +23,7 @@ IconData bildirimIkonu(BildirimTuru? t) => switch (t) {
       BildirimTuru.etiketBasim => Icons.print_outlined,
       BildirimTuru.etiketUyusmazlik => Icons.report_gmailerrorred,
       BildirimTuru.zimmetOnaysiz => Icons.account_balance,
+      BildirimTuru.sifreTalebi => Icons.lock_reset,
       null => Icons.notifications_none,
     };
 
@@ -30,6 +32,7 @@ Color bildirimRengi(BildirimTuru? t) => switch (t) {
       BildirimTuru.hataliSifre ||
       BildirimTuru.etiketUyusmazlik ||
       BildirimTuru.zimmetOnaysiz ||
+      BildirimTuru.sifreTalebi ||
       BildirimTuru.gonderilmemis =>
         Colors.red.shade700,
       BildirimTuru.yeniAriza ||
@@ -138,6 +141,12 @@ class _BildirimlerScreenState extends ConsumerState<BildirimlerScreen> {
                     '${b['govde']}\n${_tarih.format(DateTime.fromMillisecondsSinceEpoch((b['tarih'] as num).toInt()))}',
                   ),
                   isThreeLine: true,
+                  // 1.36.0: şifre talebine dokununca talepler ekranı
+                  onTap: tur == BildirimTuru.sifreTalebi
+                      ? () => Navigator.of(context).push(MaterialPageRoute(
+                          builder: (_) =>
+                              const HesapIslemleriScreen(yalnizTalepler: true)))
+                      : null,
                 );
               },
             ),

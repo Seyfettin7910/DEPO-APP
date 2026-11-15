@@ -26,9 +26,11 @@ class UrunListScreen extends ConsumerWidget {
         k.urunId: k,
     };
 
+    final yetki = ref.watch(yetkilerimProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Ürünler'), actions: [
         // 1.30.2 / 1.30.3: malzemelere toplu stok kodu.
+        if (yetki.var_(Yetki.urunTanim))
         PopupMenuButton<String>(
           onSelected: (v) {
             if (v == 'kod') barkodsuzlaraKodVer(context, ref);
@@ -41,10 +43,12 @@ class UrunListScreen extends ConsumerWidget {
         ),
         ...ustDugmeler(),
       ]),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => urunFormDialog(context, ref),
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: !yetki.var_(Yetki.urunTanim)
+          ? null
+          : FloatingActionButton(
+              onPressed: () => urunFormDialog(context, ref),
+              child: const Icon(Icons.add),
+            ),
       body: urunlerAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Hata: $e')),
@@ -219,26 +223,28 @@ class _KategoriBasligi extends StatelessWidget {
 class _UrunSatiri extends ConsumerWidget {
   const _UrunSatiri({required this.urun, required this.child});
   final Urun urun;
-  final Widget Function(VoidCallback menu) child;
+  final Widget Function(VoidCallback? menu) child;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final yetki = ref.watch(yetkilerimProvider);
+    final secenekler = [
+      if (yetki.var_(Yetki.urunTanim))
+        ('duzenle', Icons.edit_outlined, 'Düzenle'),
+      if (yetki.var_(Yetki.urunTanim) &&
+          urun.miktarli &&
+          !kurumBarkoduMu((urun.barkod ?? '').trim()))
+        ('kod', Icons.qr_code_2, 'Stok kodu ver (266…)'),
+      if (urun.miktarli && (urun.barkod ?? '').trim().isNotEmpty)
+        ('etiket', Icons.print_outlined, 'Barkod etiketi bas'),
+      if (yetki.var_(Yetki.urunBirlestir))
+        ('birlestir', Icons.merge_type, 'Başka ürünle birleştir'),
+      if (yetki.var_(Yetki.urunSil))
+        ('sil', Icons.delete_outline, 'Ürünü sil'),
+    ];
     Future<void> menu() async {
       final secim = await secenekMenusu(context,
-          baslik: urun.ad,
-          secenekler: [
-            ('duzenle', Icons.edit_outlined, 'Düzenle'),
-            if (urun.miktarli &&
-                !kurumBarkoduMu((urun.barkod ?? '').trim()))
-              ('kod', Icons.qr_code_2, 'Stok kodu ver (266…)'),
-            if (urun.miktarli &&
-                (urun.barkod ?? '').trim().isNotEmpty)
-              ('etiket', Icons.print_outlined,
-                  'Barkod etiketi bas'),
-            ('birlestir', Icons.merge_type,
-                'Başka ürünle birleştir'),
-            ('sil', Icons.delete_outline, 'Ürünü sil'),
-          ]);
+          baslik: urun.ad, secenekler: secenekler);
       if (!context.mounted) return;
       if (secim == 'kod') {
         await malzemeyeKodVer(context, ref, urun);
@@ -253,6 +259,7 @@ class _UrunSatiri extends ConsumerWidget {
       }
     }
 
+    if (secenekler.isEmpty) return child(null);
     return SagTik(onMenu: menu, child: child(menu));
   }
 }

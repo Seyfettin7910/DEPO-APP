@@ -100,6 +100,18 @@ class EtiketAyarlariScreen extends ConsumerWidget {
     final kodlar = ref.watch(kurumKodlariProvider).valueOrNull ?? const <KurumKodu>[];
     final ayar = ref.watch(etiketAyarlariProvider).valueOrNull ?? const EtiketAyarlari();
     final db = ref.read(appDatabaseProvider);
+    if (!ref.watch(yetkilerimProvider).var_(Yetki.etiketAyar)) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Etiket ayarları')),
+        body: const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text('Kurum etiketi ayarları için yetkiniz yok.',
+                textAlign: TextAlign.center),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(title: const Text('Etiket ayarları')),

@@ -1,4 +1,19 @@
-enum KullaniciRol { admin, depoSorumlusu, sahaKullanicisi }
+/// Kullanıcı rolleri (1.36.0: Gözlemci ve Amir eklendi). Sunucuda da aynı
+/// adlarla tutulur.
+enum KullaniciRol {
+  admin('Yönetici'),
+  depoSorumlusu('Depo sorumlusu'),
+  sahaKullanicisi('Saha'),
+  gozlemci('Gözlemci'),
+  amir('Amir');
+
+  const KullaniciRol(this.etiket);
+  final String etiket;
+}
+
+/// Tanınmayan rol (daha yeni sürümden) en kısıtlı rol sayılır.
+KullaniciRol kullaniciRolCoz(Object? ad) => KullaniciRol.values
+    .firstWhere((r) => r.name == ad, orElse: () => KullaniciRol.gozlemci);
 
 /// Depo türü: sabit depo ya da seyyar depo olarak çalışan araç.
 enum DepoTuru { sabit, arac }
@@ -235,6 +250,13 @@ class Kullanici {
   final bool dirty;
   final bool deleted;
 
+  /// 1.36.0: pasif kullanıcı giremez; rol / aktiflik / şifre bilgileri
+  /// yalnız sunucu fonksiyonuyla (hesap) değişir.
+  final bool aktif;
+  final String? unvan;
+  final bool sifreDegistirmeli;
+  final DateTime? geciciBitis;
+
   Kullanici({
     required this.id,
     required this.ad,
@@ -243,17 +265,32 @@ class Kullanici {
     required this.updatedAt,
     this.dirty = true,
     this.deleted = false,
+    this.aktif = true,
+    this.unvan,
+    this.sifreDegistirmeli = false,
+    this.geciciBitis,
   });
 
   factory Kullanici.fromMap(Map<String, dynamic> m) => Kullanici(
         id: m['id'] as String,
-        ad: m['ad'] as String,
-        email: m['email'] as String,
-        rol: KullaniciRol.values.firstWhere((r) => r.name == m['rol']),
-        updatedAt: _epochToDate(m['updated_at'] as int),
-        dirty: _intToBool(m['dirty'] as int),
-        deleted: _intToBool(m['deleted'] as int),
+        ad: (m['ad'] as String?) ?? '',
+        email: (m['email'] as String?) ?? '',
+        rol: kullaniciRolCoz(m['rol']),
+        updatedAt: _epochToDate((m['updated_at'] as num).toInt()),
+        dirty: _intToBool((m['dirty'] as num?)?.toInt() ?? 0),
+        deleted: _intToBool((m['deleted'] as num?)?.toInt() ?? 0),
+        aktif: ((m['aktif'] as num?)?.toInt() ?? 1) == 1,
+        unvan: m['unvan'] as String?,
+        sifreDegistirmeli: ((m['sifre_degistirmeli'] as num?)?.toInt() ?? 0) == 1,
+        geciciBitis: m['gecici_bitis'] == null
+            ? null
+            : DateTime.fromMillisecondsSinceEpoch((m['gecici_bitis'] as num).toInt()),
       );
+
+  /// Durum: "Aktif", "Pasif", "Şifre değiştirmesi bekleniyor".
+  String get durumMetni => !aktif
+      ? 'Pasif'
+      : (sifreDegistirmeli ? 'Şifre değiştirmesi bekleniyor' : 'Aktif');
 
   Map<String, dynamic> toMap() => {
         'id': id,
@@ -263,6 +300,10 @@ class Kullanici {
         'updated_at': _dateToEpoch(updatedAt),
         'dirty': _boolToInt(dirty),
         'deleted': _boolToInt(deleted),
+        'aktif': aktif ? 1 : 0,
+        'unvan': unvan,
+        'sifre_degistirmeli': sifreDegistirmeli ? 1 : 0,
+        'gecici_bitis': geciciBitis?.millisecondsSinceEpoch,
       };
 }
 

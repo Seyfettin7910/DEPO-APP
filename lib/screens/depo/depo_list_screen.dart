@@ -85,7 +85,9 @@ class DepoListScreen extends ConsumerWidget {
               ),
             ]),
           ),
-          floatingActionButton: FloatingActionButton(
+          floatingActionButton: !ref.watch(yetkilerimProvider).var_(Yetki.depoTanim)
+              ? null
+              : FloatingActionButton(
             tooltip: 'Depo / araç ekle',
             onPressed: () => _formDialog(context, ref,
                 tur: DefaultTabController.of(context).index == 1
@@ -104,6 +106,7 @@ class DepoListScreen extends ConsumerWidget {
 
   Widget _satir(BuildContext context, WidgetRef ref, Depo depo,
       DepoOzet? ozet, int malzemeCesidi) {
+    final yetki = ref.read(yetkilerimProvider);
     final ozetMetni = [
       if (ozet != null && ozet.urunCesidi > 0)
         '${ozet.urunCesidi} çeşit cihaz',
@@ -133,6 +136,7 @@ class DepoListScreen extends ConsumerWidget {
               const Text('cihaz', style: TextStyle(fontSize: 11)),
             ],
           ),
+          if (yetki.herhangi(const [Yetki.depoTanim, Yetki.depoSil]))
           PopupMenuButton<String>(
             onSelected: (v) {
               if (v == 'duzenle') {
@@ -141,9 +145,11 @@ class DepoListScreen extends ConsumerWidget {
                 _sil(context, ref, depo);
               }
             },
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'duzenle', child: Text('Düzenle')),
-              PopupMenuItem(value: 'sil', child: Text('Sil')),
+            itemBuilder: (_) => [
+              if (yetki.var_(Yetki.depoTanim))
+                const PopupMenuItem(value: 'duzenle', child: Text('Düzenle')),
+              if (yetki.var_(Yetki.depoSil))
+                const PopupMenuItem(value: 'sil', child: Text('Sil')),
             ],
           ),
         ],

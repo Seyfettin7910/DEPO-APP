@@ -30,6 +30,7 @@ type Satir = Record<string, any>;
 interface Ayarlar {
   acik?: string[];
   bilinen?: string[];
+  kapatilan?: string[];
   servisGecikmeGun?: number;
   garantiGun?: number;
   izlenenDepolar?: string[];
@@ -155,7 +156,43 @@ async function calistir(db: SupabaseClient, ayar: Record<string, string>) {
     await ayarYaz(db, "imlec_giris", ayar.imlec_giris);
   }
 
-  const aboneler = v<Satir[]>(await db.from("push_abonelikleri").select("*"));
+  const tumAboneler = v<Satir[]>(await db.from("push_abonelikleri").select("*"));
+
+  // 1.36.0: merkezi bildirim alıcıları ve kullanıcıların rolü / aktifliği.
+  // Tablolar yoksa (1.36.0 SQL'i çalıştırılmadıysa) eski düzen.
+  const merkez = new Map<string, { roller: string[]; kisiler: string[] }>();
+  {
+    const r = await db.from("bildirim_alicilari").select("id, roller, kisiler").eq("deleted", 0);
+    const parca = (x: unknown) => String(x ?? "").split(",").map((p) => p.trim()).filter(Boolean);
+    for (const m of (r.error ? [] : r.data ?? []) as Satir[]) {
+      merkez.set(String(m.id), { roller: parca(m.roller), kisiler: parca(m.kisiler) });
+    }
+  }
+  const kisiler = new Map<string, { rol: string; aktif: boolean }>();
+  {
+    let r: any = await db.from("kullanicilar").select("id, rol, aktif");
+    if (r.error) r = await db.from("kullanicilar").select("id, rol");
+    for (const k of (r.error ? [] : r.data ?? []) as Satir[]) {
+      kisiler.set(String(k.id), { rol: String(k.rol ?? ""), aktif: k.aktif === undefined || k.aktif === 1 });
+    }
+  }
+  // Pasif kullanıcılara bildirim gitmez.
+  const aboneler = tumAboneler.filter((x) => kisiler.get(String(x.kullanici_id))?.aktif !== false);
+
+  // Şifre talepleri (yalnız hesap_islemleri tablosu varsa)
+  if (ayar.imlec_talep === undefined) {
+    const r = await db.from("hesap_islemleri").select("id").order("id", { ascending: false }).limit(1);
+    if (!r.error) {
+      ayar.imlec_talep = String(r.data?.[0]?.id ?? 0);
+      await ayarYaz(db, "imlec_talep", ayar.imlec_talep);
+    }
+  }
+  const talepSorgu = ayar.imlec_talep === undefined
+    ? { data: [] as Satir[], error: null }
+    : await db.from("hesap_islemleri").select("*").eq("tur", "sifre_talebi")
+      .gt("id", Number(ayar.imlec_talep)).order("id").limit(100);
+  const talepler: Satir[] = talepSorgu.error ? [] : (talepSorgu.data ?? []);
+  const talepImlec = talepler.reduce((m, g) => Math.max(m, Number(g.id)), Number(ayar.imlec_talep ?? 0));
 
   // Yeni sürüm: sürüm dosyası değişince herkese bir kez (kapatılamaz).
   // İlk çalışmada yalnızca mevcut sürüm kaydedilir.
@@ -300,13 +337,28 @@ async function calistir(db: SupabaseClient, ayar: Record<string, string>) {
     await ayarYaz(db, "imlec_giris", String(girisImlec));
     if (!etiketSorgu.error) await ayarYaz(db, "imlec_etiket", String(etiketImlec));
     if (!zimmetSorgu.error) await ayarYaz(db, "imlec_zimmet", String(zimmetImlec));
+    if (talepler.length) await ayarYaz(db, "imlec_talep", String(talepImlec));
     return { abone: 0, hareket: hareketler.length };
   }
 
-  const acikMi = (a: Ayarlar, t: string) => a.acik
+  const kendiAcik = (a: Ayarlar, t: string) => a.acik
     ? a.acik.includes(t) || (!(a.bilinen ?? ILK_TURLER).includes(t) && VARSAYILAN_ACIK.includes(t))
     : VARSAYILAN_ACIK.includes(t);
-  const herhangi = (t: string) => aboneler.some((x) => acikMi(x.ayarlar ?? {}, t));
+  // Kişinin kendisinin kapattıkları (1.36.0 öncesi kayıtta: varsayılanı açık
+  // olup kapalı duranlar).
+  const kapatilan = (a: Ayarlar) => a.kapatilan ??
+    (a.acik ? VARSAYILAN_ACIK.filter((t) => (a.bilinen ?? ILK_TURLER).includes(t) && !a.acik!.includes(t)) : []);
+  // Merkezi seçim varsa: alıcıysa ve kendisi kapatmadıysa alır.
+  const aboneAcik = (abone: Satir, t: string) => {
+    const a: Ayarlar = abone.ayarlar ?? {};
+    const m = merkez.get(t);
+    if (!m) return kendiAcik(a, t);
+    const id = String(abone.kullanici_id);
+    const rol = kisiler.get(id)?.rol;
+    const alici = (rol !== undefined && m.roller.includes(rol)) || m.kisiler.includes(id);
+    return alici && !kapatilan(a).includes(t);
+  };
+  const herhangi = (t: string) => aboneler.some((x) => aboneAcik(x, t));
 
   // 5) Ortak durum bilgileri (yalnızca gereken varsa sorgulanır)
   const kritik = herhangi("kritikStok") || herhangi("gunlukOzet") ? await kritikStoklar(db) : [];
@@ -341,6 +393,7 @@ async function calistir(db: SupabaseClient, ayar: Record<string, string>) {
   let gonderilen = 0, silinen = 0;
   for (const abone of aboneler) {
     const a: Ayarlar = abone.ayarlar ?? {};
+    const acikMi = (_: Ayarlar, t: string) => aboneAcik(abone, t);
     const gorulen = new Set(v<Satir[]>(await db.from("push_gorulen").select("anahtar")
       .eq("abonelik_id", abone.id)).map((x) => x.anahtar));
     const yeniGorulen: string[] = [];
@@ -541,6 +594,17 @@ async function calistir(db: SupabaseClient, ayar: Record<string, string>) {
       }
     }
 
+    if (acikMi(a, "sifreTalebi")) {
+      for (const r of talepler) {
+        const k = `talep:${r.id}`;
+        if (gorulen.has(k)) continue;
+        isaretle(k);
+        ekle("sifreTalebi", `Şifre talebi: ${r.hedef_ad ?? r.hedef_email ?? "-"}`,
+          `${r.hedef_email ?? ""} · ${saatMetni(new Date(r.tarih))}${r.aciklama ? ` · ${r.aciklama}` : ""}\n` +
+          "Kullanıcılar → Şifre talepleri");
+      }
+    }
+
     // Kaydet ve gönder
     if (silinecekGorulen.length) {
       v(await db.from("push_gorulen").delete().eq("abonelik_id", abone.id).in("anahtar", silinecekGorulen));
@@ -571,6 +635,7 @@ async function calistir(db: SupabaseClient, ayar: Record<string, string>) {
   await ayarYaz(db, "imlec_giris", String(girisImlec));
   if (!etiketSorgu.error) await ayarYaz(db, "imlec_etiket", String(etiketImlec));
   if (!zimmetSorgu.error) await ayarYaz(db, "imlec_zimmet", String(zimmetImlec));
+  if (talepler.length) await ayarYaz(db, "imlec_talep", String(talepImlec));
   // Eski işaretleri temizle
   await db.from("push_islenen").delete().lt("tarih", new Date(ms - 5 * GUN).toISOString());
   await db.from("push_gorulen").delete().like("anahtar", "ozet:%").lt("tarih", new Date(ms - 10 * GUN).toISOString());

@@ -36,6 +36,57 @@ class NotMaddesi {
 
 const surumNotlari = <SurumNotu>[
   SurumNotu(
+    surum: '1.36.0',
+    tarih: '15.11.2026',
+    bolumler: [
+      NotBolumu('Yeni', [
+        NotMaddesi(
+          'Roller',
+          'Her kullanıcının bir rolü var: Yönetici, Depo sorumlusu, Saha, Gözlemci, Amir.',
+          'Rolünüz Ayarlar\'da adınızın altında yazar. Yetkiniz olmayan '
+              'düğmeler görünmez. Gözlemci ve Amir okutur, arar ve rapor alır; '
+              'cihaz ve malzeme işlemi yapmaz.',
+        ),
+        NotMaddesi(
+          'Kullanıcılar',
+          'Yönetici kullanıcı ekler, rolünü ve unvanını düzenler, şifresini sıfırlar, pasif yapar.',
+          'Yeni kullanıcıya ve şifre sıfırlamada 15 dakika geçerli 6 haneli '
+              'geçici şifre verilir; kişi bununla girince kendi şifresini '
+              'belirler. Pasif kullanıcı giriş yapamaz ama yaptığı kayıtlar '
+              'olduğu gibi kalır; kullanıcı silinmez.',
+        ),
+        NotMaddesi(
+          'Roller ve yetkiler',
+          'Kullanıcılar → ⋮ → Roller ve yetkiler: her rolün yapabildiklerini yönetici açıp kapatır.',
+          'Hareket kayıtlarını silme hiçbir role açılamaz; yöneticinin '
+              'kullanıcı yönetimi kapatılamaz. "Varsayılana dön" ile ilk '
+              'hâline döner.',
+        ),
+        NotMaddesi(
+          'Bildirim alıcıları',
+          'Hangi bildirimi kimlerin alacağını yönetici seçer (rol ya da kişi).',
+          'Seçilen kişi bildirimi kendi Bildirim ayarları\'ndan yalnızca '
+              'kapatabilir; seçilmeyen kişi o bildirimi görmez.',
+        ),
+        NotMaddesi(
+          'Şifremi unuttum',
+          'Giriş ekranında: yöneticilere bildirim gider, yönetici geçici şifre verir.',
+          'Yönetici bildirime dokununca "Şifre talepleri" açılır; kişiyi '
+              'arayıp teyit ettikten sonra "Şifre sıfırla" der.',
+        ),
+        NotMaddesi(
+          'Şifremi değiştir',
+          'Ayarlar → Kişiler: kendi şifrenizi değiştirin (en az 8 karakter, harf ve rakam).',
+        ),
+        NotMaddesi(
+          'Hesap işlemleri kaydı',
+          'Yönetici için: kim kimi ekledi, şifre sıfırladı, rol değiştirdi, pasif yaptı.',
+          'Şifreler ve geçici kodlar hiçbir yere yazılmaz.',
+        ),
+      ]),
+    ],
+  ),
+  SurumNotu(
     surum: '1.35.1',
     tarih: '04.11.2026',
     bolumler: [

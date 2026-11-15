@@ -849,6 +849,7 @@ class ServisKarti extends ConsumerWidget {
         ref.watch(cihazServisKayitlariProvider(c.id)).valueOrNull ?? const [];
     final durum = c.servisDurumu;
     if (durum == null && kayitlar.isEmpty) return const SizedBox.shrink();
+    final yetki = ref.watch(yetkilerimProvider);
     final acik = kayitlar.where((k) => k.acik).firstOrNull;
     final gecmis = kayitlar.where((k) => !k.acik).toList();
     final tema = Theme.of(context);
@@ -928,7 +929,7 @@ class ServisKarti extends ConsumerWidget {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  if (!durum.serviste)
+                  if (!durum.serviste && yetki.var_(Yetki.servis))
                     FilledButton.icon(
                       onPressed: () => servisGonderAkisi(context, ref, bilgi),
                       icon: const Icon(Icons.send_outlined),
@@ -936,6 +937,7 @@ class ServisKarti extends ConsumerWidget {
                           ? 'Değişime gönder'
                           : 'Onarıma gönder'),
                     ),
+                  if (yetki.var_(Yetki.servis))
                   FilledButton.tonalIcon(
                     onPressed: () =>
                         servisSonucuAkisi(context, ref, bilgi, acik),
@@ -944,7 +946,7 @@ class ServisKarti extends ConsumerWidget {
                         ? 'Servisten döndü'
                         : 'Sonucu gir'),
                   ),
-                  if (durum != ServisDurumu.garantide)
+                  if (durum != ServisDurumu.garantide && yetki.var_(Yetki.hurda))
                     OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.brown.shade600),

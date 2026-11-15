@@ -54,6 +54,11 @@ enum BildirimTuru {
     'Bir kullanıcı daha önce görülmemiş IP adresinden girince',
     'Güvenlik ve sistem',
   ),
+  sifreTalebi(
+    'Şifre talebi',
+    'Bir kullanıcı giriş ekranında "Şifremi unuttum" deyince (yöneticiler için)',
+    'Güvenlik ve sistem',
+  ),
   gonderilmemis(
     'Gönderilmemiş kayıtlar',
     'Bu telefonda 1 saattir sunucuya gidemeyen işlem varsa',
@@ -91,7 +96,13 @@ enum BildirimTuru {
       this != BildirimTuru.hataliSifre &&
       this != BildirimTuru.yeniIpGiris &&
       this != BildirimTuru.etiketBasim &&
-      this != BildirimTuru.zimmetOnaysiz;
+      this != BildirimTuru.zimmetOnaysiz &&
+      this != BildirimTuru.sifreTalebi;
+
+  /// 1.36.0: alıcıları yöneticinin merkezi olarak seçtiği türler
+  /// (Kullanıcılar → Roller ve yetkiler → Bildirim alıcıları). "Gönderilmemiş
+  /// kayıtlar" yalnız o telefonu ilgilendirir, merkezden seçilmez.
+  bool get merkezi => this != BildirimTuru.gonderilmemis;
 }
 
 /// 1.19.0'daki türler: kayıtlı ayarda "bilinen" listesi yoksa bunlar
@@ -110,11 +121,17 @@ class BildirimAyarlari {
     Set<String>? izlenenDepolar,
     this.ozetSaat = 8,
     this.ozetDakika = 30,
+    Set<BildirimTuru>? kapatilan,
   })  : acik = acik ??
             {for (final t in BildirimTuru.values) if (t.varsayilan) t},
+        kapatilan = kapatilan ?? {},
         izlenenDepolar = izlenenDepolar ?? {};
 
   final Set<BildirimTuru> acik;
+
+  /// 1.36.0: kişinin kendisinin kapattığı türler. Merkezi alıcı listesinde
+  /// olsa bile bu türleri almaz (kişi yalnızca kapatabilir).
+  final Set<BildirimTuru> kapatilan;
   int servisGecikmeGun;
   int garantiGun;
 
@@ -124,6 +141,42 @@ class BildirimAyarlari {
   int ozetDakika;
 
   bool acikMi(BildirimTuru t) => acik.contains(t);
+
+  /// Kişinin anahtarı: açar ya da kapatır.
+  void ayarla(BildirimTuru t, bool ac) {
+    if (ac) {
+      acik.add(t);
+      kapatilan.remove(t);
+    } else {
+      acik.remove(t);
+      kapatilan.add(t);
+    }
+  }
+
+  /// 1.36.0: merkezi alıcı seçimine göre geçerli ayar. Bir tür için merkezi
+  /// seçim varsa: alıcıysa ve kendisi kapatmadıysa alır. Merkezi seçim
+  /// yoksa (sunucu eski) kişinin kendi ayarı geçerli.
+  BildirimAyarlari merkezeGore(bool? Function(BildirimTuru t)? alici) {
+    if (alici == null) return this;
+    final gecerli = <BildirimTuru>{};
+    for (final t in BildirimTuru.values) {
+      final m = t.merkezi ? alici(t) : null;
+      if (m == null) {
+        if (acik.contains(t)) gecerli.add(t);
+      } else if (m && !kapatilan.contains(t)) {
+        gecerli.add(t);
+      }
+    }
+    return BildirimAyarlari(
+      acik: gecerli,
+      kapatilan: kapatilan,
+      servisGecikmeGun: servisGecikmeGun,
+      garantiGun: garantiGun,
+      izlenenDepolar: izlenenDepolar,
+      ozetSaat: ozetSaat,
+      ozetDakika: ozetDakika,
+    );
+  }
 
   static const _anahtar = 'bildirim_ayarlari';
 
@@ -138,7 +191,23 @@ class BildirimAyarlari {
       final bilinen = {
         for (final x in (m['bilinen'] as List? ?? _ilkTurler)) '$x'
       };
+      final acikAdlar = {for (final x in (m['acik'] as List? ?? const [])) '$x'};
+      // 1.36.0 öncesi kayıt: varsayılanı açık olup kapalı duran türler
+      // kişinin kendisinin kapattıklarıdır.
+      final kapatilanAdlar = m['kapatilan'] is List
+          ? {for (final x in m['kapatilan'] as List) '$x'}
+          : {
+              for (final t in BildirimTuru.values)
+                if (t.varsayilan &&
+                    bilinen.contains(t.name) &&
+                    !acikAdlar.contains(t.name))
+                  t.name
+            };
       return BildirimAyarlari(
+        kapatilan: {
+          for (final t in BildirimTuru.values)
+            if (kapatilanAdlar.contains(t.name)) t
+        },
         acik: {
           for (final ad in (m['acik'] as List? ?? const []))
             for (final t in BildirimTuru.values)
@@ -163,6 +232,7 @@ class BildirimAyarlari {
   /// Sunucuya da (web bildirimi) aynı biçimde gönderilir.
   Map<String, dynamic> toJson() => {
         'acik': [for (final t in acik) t.name],
+        'kapatilan': [for (final t in kapatilan) t.name],
         'bilinen': [for (final t in BildirimTuru.values) t.name],
         'servisGecikmeGun': servisGecikmeGun,
         'garantiGun': garantiGun,

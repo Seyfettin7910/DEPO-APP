@@ -27,6 +27,7 @@ class EtiketlerScreen extends ConsumerWidget {
     final ayar = ref.watch(etiketAyarlariProvider).valueOrNull ?? const EtiketAyarlari();
     final kodlar = ref.watch(kurumKodlariProvider).valueOrNull ?? const <KurumKodu>[];
     int n(EtiketDurumu d) => say[d] ?? 0;
+    final yetki = ref.watch(yetkilerimProvider);
 
     Widget adet(int x, Color renk) => x == 0
         ? const Icon(Icons.chevron_right)
@@ -40,6 +41,7 @@ class EtiketlerScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Kurum etiketleri'),
         actions: [
+          if (yetki.var_(Yetki.etiketAyar))
           IconButton(
             icon: const Icon(Icons.settings_outlined),
             tooltip: 'Etiket ayarları',
@@ -60,7 +62,9 @@ class EtiketlerScreen extends ConsumerWidget {
                     'Etiket ayarlarından kurum kodu (ör. BLD-BIM) ekleyince '
                     'depoya girişte cihazlara kod üretilir.'),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () => _ac(context, const EtiketAyarlariScreen()),
+                onTap: yetki.var_(Yetki.etiketAyar)
+                    ? () => _ac(context, const EtiketAyarlariScreen())
+                    : null,
               ),
             ),
           if (ayar.engelEtkin)
@@ -74,6 +78,7 @@ class EtiketlerScreen extends ConsumerWidget {
                     'edilemez, araca yüklenemez, montajda kullanılamaz.'),
               ),
             ),
+          if (yetki.herhangi(const [Yetki.etiketBas, Yetki.kurumKodu]))
           ListTile(
             leading: const Icon(Icons.print_outlined),
             title: const Text('Etiket basımı'),
@@ -83,7 +88,7 @@ class EtiketlerScreen extends ConsumerWidget {
             trailing: adet(n(EtiketDurumu.kuyrukta), Colors.indigo),
             onTap: () => _ac(context, const EtiketBasimScreen()),
           ),
-          if (ayar.dogrulama)
+          if (ayar.dogrulama && yetki.var_(Yetki.etiketDogrula))
             ListTile(
               leading: const Icon(Icons.verified_outlined),
               title: const Text('Etiket doğrula'),
@@ -111,6 +116,7 @@ class EtiketlerScreen extends ConsumerWidget {
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => _ac(context, EtiketListeScreen(durum: d)),
               ),
+          if (yetki.var_(Yetki.kurumKodu))
           ListTile(
             leading: const Icon(Icons.label_off_outlined),
             title: const Text('Etiketsiz cihazlar'),

@@ -23,6 +23,7 @@ import 'hareket/barkod_tarama_screen.dart';
 import 'rapor/kullanim_rapor_screen.dart';
 import 'ayarlar_screen.dart';
 import 'yenilikler_screen.dart';
+import 'yonetim/hesap_islemleri_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -82,6 +83,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     unawaited(_bildirimleriHazirla());
     _onPlanZamanlayici = Timer.periodic(
         const Duration(seconds: 45), (_) => onPlandaIsaretle(true));
+
+    // 1.36.0: şifre talebi bildirimine dokununca talepler ekranı
+    bildirimDokunusu.addListener(_bildirimeDokunuldu);
+    unawaited(bildirimDokunusunuHazirla()
+        .then((_) => Future.delayed(const Duration(milliseconds: 1500)))
+        .then((_) => _bildirimeDokunuldu()));
+  }
+
+  void _bildirimeDokunuldu() {
+    final y = bildirimDokunusu.value;
+    if (y == null || !mounted) return;
+    bildirimDokunusu.value = null;
+    if (y == 'sifreTalebi') {
+      Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => const HesapIslemleriScreen(yalnizTalepler: true)));
+    }
   }
 
   Timer? _onPlanZamanlayici;
@@ -115,6 +132,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   @override
   void dispose() {
     _onPlanZamanlayici?.cancel();
+    bildirimDokunusu.removeListener(_bildirimeDokunuldu);
     GuncellemeServisi.durdur();
     unawaited(onPlandaIsaretle(false));
     WidgetsBinding.instance.removeObserver(this);

@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../services/guncelleme_servisi.dart';
+import '../../services/hesap_servisi.dart';
 import '../../services/oturum_kilidi.dart';
 import '../../services/supabase_service.dart';
 import '../../services/tarayici.dart';
@@ -17,6 +18,10 @@ import '../../services/giris_kaydi_servisi.dart';
 /// (Authentication > Users) eklenir; uygulamadan kayıt olunamaz.
 class GirisScreen extends StatefulWidget {
   const GirisScreen({super.key});
+
+  /// 1.36.0: giriş ekranının üstünde bir kez gösterilecek bilgi
+  /// (ör. "Hesabınız pasif").
+  static String? bilgi;
 
   @override
   State<GirisScreen> createState() => _GirisScreenState();
@@ -28,13 +33,72 @@ class _GirisScreenState extends State<GirisScreen> {
   bool _yukleniyor = false;
   bool _gizli = true;
   String? _hata;
+  String? _bilgi;
 
   static const _sonEmailAnahtari = 'son_giris_email';
 
   @override
   void initState() {
     super.initState();
+    _bilgi = GirisScreen.bilgi;
+    GirisScreen.bilgi = null;
     _sonEmailiYukle();
+  }
+
+  /// 1.36.0: Şifremi unuttum → yöneticilere bildirim (e-posta gönderilmez;
+  /// yönetici geçici şifre verir).
+  Future<void> _sifremiUnuttum() async {
+    final ctrl = TextEditingController(text: _emailCtrl.text.trim());
+    final email = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Şifremi unuttum'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Yöneticilere bildirim gider. Yöneticiniz size 15 dakika '
+                'geçerli 6 haneli geçici bir şifre iletir; onunla girince '
+                'kendi şifrenizi belirlersiniz.'),
+            const SizedBox(height: 12),
+            TextField(
+              controller: ctrl,
+              keyboardType: TextInputType.emailAddress,
+              autofocus: ctrl.text.isEmpty,
+              decoration: const InputDecoration(
+                  labelText: 'E-posta', border: OutlineInputBorder()),
+              onSubmitted: (v) => Navigator.pop(ctx, v.trim()),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Vazgeç')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+              child: const Text('Gönder')),
+        ],
+      ),
+    );
+    ctrl.dispose();
+    if (email == null || email.isEmpty || !mounted) return;
+    if (!email.contains('@')) {
+      setState(() => _hata = 'Geçerli bir e-posta yazın');
+      return;
+    }
+    try {
+      await HesapServisi.sifreTalebi(email);
+      if (!mounted) return;
+      setState(() {
+        _hata = null;
+        _bilgi = 'Talebiniz yöneticilere iletildi. Yöneticiniz size geçici '
+            'şifre verecek; yalnızca tanıdığınız yöneticiden gelen şifreyi '
+            'kullanın.';
+      });
+    } on HesapHatasi catch (e) {
+      if (mounted) setState(() => _hata = e.mesaj);
+    }
   }
 
   /// Son başarılı girişteki e-postayı kutuya yazar; böylece yalnızca şifre
@@ -93,7 +157,9 @@ class _GirisScreenState extends State<GirisScreen> {
           ? 'E-posta veya şifre hatalı'
           : m.contains('not confirmed')
               ? 'E-posta onaylanmamış. Yöneticiye başvurun.'
-              : 'Giriş yapılamadı: ${e.message}');
+              : m.contains('banned')
+                  ? 'Hesabınız pasif. Yöneticinize başvurun.'
+                  : 'Giriş yapılamadı: ${e.message}');
     } catch (_) {
       setState(() => _hata =
           'Sunucuya ulaşılamadı. Giriş için internet bağlantısı gerekir.');
@@ -130,6 +196,22 @@ class _GirisScreenState extends State<GirisScreen> {
                           fontWeight: FontWeight.bold,
                           letterSpacing: 0.5)),
                   const SizedBox(height: 24),
+                  if (_bilgi != null)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.tertiaryContainer,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.info_outline),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text(_bilgi!)),
+                        ],
+                      ),
+                    ),
                   if (OturumKilidi.instance.sonSebep != null)
                     Container(
                       margin: const EdgeInsets.only(bottom: 16),
@@ -191,7 +273,13 @@ class _GirisScreenState extends State<GirisScreen> {
                       child: Text(_yukleniyor ? 'Giriş yapılıyor...' : 'Giriş yap'),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  Align(
+                    child: TextButton(
+                      onPressed: _yukleniyor ? null : _sifremiUnuttum,
+                      child: const Text('Şifremi unuttum'),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   Text(
                     'Hesap bilgilerini yöneticinizden alın.\n'
                     'Güvenlik için 5 dakika işlem yapılmazsa oturum kapanır.'

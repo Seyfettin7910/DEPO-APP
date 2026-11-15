@@ -78,6 +78,12 @@ class SupabaseService {
     await client.from(tablo).upsert(satirlar);
   }
 
+  /// Tek satır (yoksa null). 1.36.0: reddedilen kaydı geri almak için.
+  static Future<Map<String, dynamic>?> tekSatir(String tablo, String id) async {
+    final r = await client.from(tablo).select().eq('id', id).maybeSingle();
+    return r == null ? null : Map<String, dynamic>.from(r);
+  }
+
   /// [since] (sunucu zamanı, ms) ve sonrasında değişen satırlardan bir sayfa.
   static Future<List<Map<String, dynamic>>> cek(
     String tablo,

@@ -60,6 +60,7 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
         ? 'Tüm zamanlar'
         : '${DateFormat('dd.MM.yyyy').format(_tarihAraligi!.start)} - '
             '${DateFormat('dd.MM.yyyy').format(_tarihAraligi!.end)}';
+    final yetki = ref.read(yetkilerimProvider);
     final tur = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
@@ -153,12 +154,14 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
                   'Kurum etiketleri: kuyrukta, yapıştırma bekleyen, doğrulanan, uyuşmazlık'),
               onTap: () => Navigator.pop(ctx, 'etiket'),
             ),
+            if (yetki.var_(Yetki.girisKayitlari))
             ListTile(
               leading: const Icon(Icons.login),
               title: const Text('Giriş kayıtları'),
               subtitle: Text('Kim, ne zaman, hangi IP\'den giriş yaptı · $aralik'),
               onTap: () => Navigator.pop(ctx, 'giris'),
             ),
+            if (yetki.var_(Yetki.okumaIstatistik))
             ListTile(
               leading: const Icon(Icons.analytics_outlined),
               title: const Text('Okuma istatistikleri'),
@@ -427,6 +430,7 @@ class _KullanimRaporScreenState extends ConsumerState<KullanimRaporScreen> {
             ),
           ),
           Expanded(child: _raporListesi()),
+          if (ref.watch(yetkilerimProvider).var_(Yetki.rapor))
           SafeArea(
             top: false,
             child: Padding(

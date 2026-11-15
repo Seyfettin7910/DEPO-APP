@@ -15,6 +15,7 @@ import '../widgets/sync_durum_dugmesi.dart';
 import '../widgets/iphone_rehberi.dart';
 import '../widgets/yarim_isler.dart';
 import 'bildirim/bildirim_ayarlari_screen.dart';
+import 'giris/sifre_degistir_screen.dart';
 import 'kullanicilar_screen.dart';
 import 'etiket/etiket_ayarlari_screen.dart';
 import 'yenilikler_screen.dart';
@@ -28,6 +29,8 @@ class AyarlarScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final d = ref.watch(syncDurumProvider);
     final tema = Theme.of(context);
+    final yetki = ref.watch(yetkilerimProvider);
+    final ben = ref.watch(benimKaydimProvider).valueOrNull;
 
     void ac(Widget ekran) => Navigator.of(context)
         .push(MaterialPageRoute(builder: (_) => ekran));
@@ -61,7 +64,12 @@ class AyarlarScreen extends ConsumerWidget {
               ),
               title: Text(SupabaseService.kullanici?.email ?? 'Oturum yok',
                   style: const TextStyle(fontWeight: FontWeight.w500)),
-              subtitle: Text(senkronMetni),
+              subtitle: Text([
+                if (!yetki.eskiDuzen && ben != null)
+                  [ben.rol.etiket, if ((ben.unvan ?? '').isNotEmpty) ben.unvan!]
+                      .join(' · '),
+                senkronMetni,
+              ].join('\n')),
             ),
           ]),
           const _Baslik('İŞLER'),
@@ -111,8 +119,17 @@ class AyarlarScreen extends ConsumerWidget {
               renk: Renkler.depo,
               zemin: Renkler.depoZemin,
               baslik: 'Kullanıcılar',
-              alt: 'Kimler kullanıyor, son giriş, sürüm',
+              alt: yetki.yonetici && !yetki.eskiDuzen
+                  ? 'Ekle, düzenle, şifre sıfırla, roller ve yetkiler'
+                  : 'Kimler kullanıyor, son giriş, sürüm',
               onTap: () => ac(const KullanicilarScreen()),
+            ),
+            _Satir(
+              ikon: Icons.password,
+              renk: Renkler.ara,
+              zemin: Renkler.araZemin,
+              baslik: 'Şifremi değiştir',
+              onTap: () => ac(const SifreDegistirScreen()),
             ),
           ]),
           const _Baslik('TERCİHLER'),
@@ -125,6 +142,7 @@ class AyarlarScreen extends ConsumerWidget {
               baslik: 'Bildirim ayarları',
               onTap: () => ac(const BildirimAyarlariScreen()),
             ),
+            if (yetki.var_(Yetki.etiketAyar))
             _Satir(
               ikon: Icons.qr_code_2,
               renk: Renkler.ara,

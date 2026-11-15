@@ -175,9 +175,29 @@ class _BarkodTaramaScreenState extends ConsumerState<BarkodTaramaScreen> {
   }
 
   /// Listeyi ilgili işlem ekranına götürür; orada kaydedilirse liste boşalır.
+  /// 1.36.0: okut işleminin gerektirdiği yetki.
+  static Yetki _gereken(OkutIslemi i) => switch (i) {
+        OkutIslemi.giris => Yetki.depoGiris,
+        OkutIslemi.transfer => Yetki.transfer,
+        OkutIslemi.yukle => Yetki.aracaYukle,
+        OkutIslemi.montaj => Yetki.montaj,
+      };
+
+  bool _yetkiliMi(OkutIslemi i) =>
+      ref.read(yetkilerimProvider).var_(_gereken(i));
+
+  void _yetkiYok() {
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Bu işlem için yetkiniz yok. Yöneticinize başvurun.')));
+  }
+
   Future<void> _isle() async {
     final i = _liste.islem;
     if (i == null || _liste.bos) return;
+    if (!_yetkiliMi(i)) {
+      _yetkiYok();
+      return;
+    }
     final seriler = List.of(_liste.seriler);
     final malzemeler = Map.of(_liste.malzemeler);
     final Widget ekran = switch (i) {
@@ -346,14 +366,21 @@ class _BarkodTaramaScreenState extends ConsumerState<BarkodTaramaScreen> {
   Future<void> _malzemeMenusu(Urun urun) async {
     SesServisi.basari();
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    final yetki = ref.read(yetkilerimProvider);
+    final secenekler = [
+      if (yetki.var_(Yetki.malzemeGiris))
+        ('giris', Icons.add_circle_outline, 'Giriş'),
+      if (yetki.var_(Yetki.malzemeAraca))
+        ('yukle', Icons.local_shipping_outlined, 'Araca Yükle'),
+      if (yetki.var_(Yetki.malzemeKullanim))
+        ('kullanim', Icons.task_alt, 'Montaj / Kullanıldı'),
+      if (yetki.var_(Yetki.malzemeTransfer))
+        ('transfer', Icons.swap_horiz, 'Transfer'),
+    ];
+    if (secenekler.isEmpty) return;
     final secim = await secenekMenusu(context,
         baslik: '${urun.ad} (malzeme, ${urun.birim})',
-        secenekler: const [
-          ('giris', Icons.add_circle_outline, 'Giriş'),
-          ('yukle', Icons.local_shipping_outlined, 'Araca Yükle'),
-          ('kullanim', Icons.task_alt, 'Montaj / Kullanıldı'),
-          ('transfer', Icons.swap_horiz, 'Transfer'),
-        ]);
+        secenekler: secenekler);
     if (secim == null || !mounted) return;
     await _ac(MalzemeIslemScreen(
         islem: MalzemeIslemi.values.firstWhere((m) => m.name == secim),
@@ -616,6 +643,7 @@ class _BarkodTaramaScreenState extends ConsumerState<BarkodTaramaScreen> {
           const SizedBox(height: 6),
           Row(
             children: [
+              if (ref.read(yetkilerimProvider).var_(Yetki.depoGiris))
               Expanded(
                 child: FilledButton.icon(
                   style: FilledButton.styleFrom(
@@ -862,7 +890,11 @@ class _BarkodTaramaScreenState extends ConsumerState<BarkodTaramaScreen> {
           ),
         );
 
-    final kutular = [for (final i in OkutIslemi.values) kutu(i)];
+    final yetki = ref.watch(yetkilerimProvider);
+    final kutular = [
+      for (final i in OkutIslemi.values)
+        if (yetki.var_(_gereken(i))) kutu(i)
+    ];
 
     return SafeArea(
       top: false,
@@ -888,6 +920,7 @@ class _BarkodTaramaScreenState extends ConsumerState<BarkodTaramaScreen> {
                 } catch (_) {}
               }),
             ]),
+            if (kutular.isNotEmpty)
             Padding(
               padding: const EdgeInsets.fromLTRB(4, 12, 4, 6),
               child: Text('HIZLI İŞLEMLER',
@@ -906,7 +939,8 @@ class _BarkodTaramaScreenState extends ConsumerState<BarkodTaramaScreen> {
                 satirlar.add(Row(children: [
                   for (var j = i; j < i + sutun; j++) ...[
                     if (j > i) const SizedBox(width: 8),
-                    Expanded(child: kutular[j]),
+                    Expanded(
+                        child: j < kutular.length ? kutular[j] : const SizedBox()),
                   ],
                 ]));
               }

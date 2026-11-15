@@ -198,6 +198,17 @@ class _BildirimAyarlariScreenState
       );
     }
     final depolar = ref.watch(depolarStreamProvider).valueOrNull ?? <Depo>[];
+    // 1.36.0: merkezi alıcılar. Yönetici bir tür için alıcı seçtiyse kişi
+    // yalnız alıcıysa görür ve yalnızca kapatabilir.
+    final merkez = ref.watch(bildirimAlicilariProvider).valueOrNull ?? const {};
+    final ben = ref.watch(benimKaydimProvider).valueOrNull;
+    bool? alici(BildirimTuru t) {
+      final m = t.merkezi ? merkez[t.name] : null;
+      return m?.aliciMi(ben?.rol, ben?.id);
+    }
+
+    bool acik(BildirimTuru t) =>
+        alici(t) == true ? !a.kapatilan.contains(t) : a.acikMi(t);
     final gruplar = <String, List<BildirimTuru>>{};
     for (final t in BildirimTuru.values) {
       gruplar.putIfAbsent(t.grup, () => []).add(t);
@@ -238,29 +249,34 @@ class _BildirimAyarlariScreenState
                 value: true,
                 onChanged: null,
               ),
-            for (final t in g.value) ...[
+            for (final t in g.value)
+              if (alici(t) == false)
+                const SizedBox.shrink()
+              else ...[
               SwitchListTile(
                 secondary: Icon(bildirimIkonu(t), color: bildirimRengi(t)),
                 title: Text(t.etiket),
-                subtitle: Text(t.aciklama),
-                value: a.acikMi(t),
-                onChanged: (v) => _degisti((x) => v ? x.acik.add(t) : x.acik.remove(t)),
+                subtitle: Text(alici(t) == true
+                    ? '${t.aciklama}\nAlıcıları yönetici belirler; isterseniz kapatabilirsiniz.'
+                    : t.aciklama),
+                value: acik(t),
+                onChanged: (v) => _degisti((x) => x.ayarla(t, v)),
               ),
-              if (t == BildirimTuru.servisGecikmesi && a.acikMi(t))
+              if (t == BildirimTuru.servisGecikmesi && acik(t))
                 _gunSecici(
                   etiket: 'Kaç gün sonra uyarsın?',
                   deger: a.servisGecikmeGun,
                   secenekler: const [3, 7, 10, 15, 20, 30, 45, 60],
                   degisti: (v) => _degisti((x) => x.servisGecikmeGun = v),
                 ),
-              if (t == BildirimTuru.garantiBitiyor && a.acikMi(t))
+              if (t == BildirimTuru.garantiBitiyor && acik(t))
                 _gunSecici(
                   etiket: 'Bitişine kaç gün kala?',
                   deger: a.garantiGun,
                   secenekler: const [7, 15, 30, 60, 90],
                   degisti: (v) => _degisti((x) => x.garantiGun = v),
                 ),
-              if (t == BildirimTuru.cihazGeldi && a.acikMi(t))
+              if (t == BildirimTuru.cihazGeldi && acik(t))
                 Padding(
                   padding: const EdgeInsets.fromLTRB(72, 0, 16, 8),
                   child: Column(
@@ -292,7 +308,7 @@ class _BildirimAyarlariScreenState
                     ],
                   ),
                 ),
-              if (t == BildirimTuru.gunlukOzet && a.acikMi(t))
+              if (t == BildirimTuru.gunlukOzet && acik(t))
                 Padding(
                   padding: const EdgeInsets.fromLTRB(72, 0, 16, 8),
                   child: Row(
