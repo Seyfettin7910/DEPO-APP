@@ -44,6 +44,14 @@ imza = '''    signingConfigs {
         }
     }
 
+    // Sürüm derlemesindeki Android lint denetimi kapalı: 11.2026'da lint
+    // aracının kendisi (JavaDocParser NoSuchMethodError) çöküp derlemeyi
+    // durdurdu; uygulama kodu Flutter tarafında ayrıca denetleniyor.
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
+    }
+
     buildTypes {'''
 assert metin.count("    buildTypes {") == 1, "buildTypes bloğu bulunamadı"
 metin = metin.replace("    buildTypes {", imza, 1)
