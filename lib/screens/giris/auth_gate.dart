@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../database/app_database.dart';
 import '../../providers/app_providers.dart';
 import '../../services/hesap_servisi.dart';
 import '../../services/oturum_kilidi.dart';
