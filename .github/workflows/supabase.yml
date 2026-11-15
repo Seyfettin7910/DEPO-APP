@@ -27,7 +27,7 @@ jobs:
             echo "::error::SUPABASE_ACCESS_TOKEN secret'ı eklenmemiş (Supabase > Account > Access Tokens)"
             exit 1
           fi
-          supabase functions deploy bildirim-gonder --project-ref xxnzfqtwtfzltjkjteco --no-verify-jwt
+          supabase functions deploy bildirim-gonder --project-ref xxnzfqtwtfzltjkjteco --no-verify-jwt --yes
           # 1.36.0: kullanıcı hesap işlemleri (giriş yapmadan "şifremi unuttum" de
           # çağırdığı için JWT denetimini fonksiyon kendisi yapar)
-          supabase functions deploy hesap --project-ref xxnzfqtwtfzltjkjteco --no-verify-jwt
+          supabase functions deploy hesap --project-ref xxnzfqtwtfzltjkjteco --no-verify-jwt --yes
